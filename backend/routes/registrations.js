@@ -571,7 +571,10 @@ router.post("/", async (req, res) => {
 
     const [users] = await db
       .promise()
-      .query("SELECT id, full_name, email FROM users WHERE id = ?", [user_id]);
+      .query(
+        "SELECT id, full_name, email, allow_multiple_programs FROM users WHERE id = ?",
+        [user_id]
+      );
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -602,6 +605,28 @@ router.post("/", async (req, res) => {
         message: "Kuota program sudah penuh",
       });
     }
+
+    const allowMultiplePrograms = users[0].allow_multiple_programs === 1;
+
+    if (!allowMultiplePrograms) {
+      const [activeRegistrations] = await db
+        .promise()
+        .query(
+          `SELECT id FROM registrations
+           WHERE user_id = ?
+             AND registration_status IN ('menunggu', 'lolos')`,
+          [user_id]
+        );
+
+      if (activeRegistrations.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Anda sudah memiliki pendaftaran aktif. Silakan hubungi admin jika ingin mendaftar program lain.",
+        });
+      }
+    }
+
 
     const [existingRegistrations] = await db
       .promise()

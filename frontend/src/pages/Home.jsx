@@ -3,37 +3,21 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 
 const Home = () => {
-  const [featuredPrograms, setFeaturedPrograms] = useState([]);
+   const [featuredPrograms, setFeaturedPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentStory, setCurrentStory] = useState(0);
+  const [successStories, setSuccessStories] = useState([]);
+  const [storiesLoading, setStoriesLoading] = useState(true);
+  const [storiesError, setStoriesError] = useState("");
   const hasFetched = useRef(false);
 
-  const successStories = [
-    {
-      id: 1,
-      name: "Andi Salman AL-Farisi",
-      position: "Kaigo",
-      content: "Bergabung dengan FITALENTA adalah keputusan terbaik dalam hidup saya. Saya mendapatkan pelatihan bahasa Jepang yang intensif, pemahaman budaya kerja, serta bimbingan disiplin yang benar-benar mempersiapkan saya menghadapi dunia kerja di Jepang. Berkat dukungan penuh dari para mentor, saya kini bisa bekerja dengan percaya diri di perusahaan Jepang."
-    },
-    {
-      id: 2,
-      name: "Siti Nurhaliza",
-      position: "IT Engineer",
-      content: "Program FITALENTA memberikan saya kesempatan emas untuk mengembangkan karir di bidang IT di Jepang. Pelatihan teknis dan bahasa yang diberikan sangat membantu adaptasi saya di lingkungan kerja baru."
-    },
-    {
-      id: 3,
-      name: "Budi Santoso",
-      position: "Manufacturing Specialist",
-      content: "Saya sangat berterima kasih kepada FITALENTA yang telah membimbing saya dari nol hingga mampu bekerja di perusahaan manufaktur Jepang. Proses pelatihannya sistematis dan mentor sangat berpengalaman."
-    }
-  ];
-
+  
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
     fetchFeaturedPrograms();
+    fetchSuccessStories();
   }, []);
 
   useEffect(() => {
@@ -44,6 +28,13 @@ const Home = () => {
       return () => clearInterval(interval);
     }
   }, [successStories.length]);
+
+  useEffect(() => {
+    if (successStories.length > 0) {
+      setCurrentStory(0);
+    }
+  }, [successStories.length]);
+
 
   const fetchFeaturedPrograms = async () => {
     try {
@@ -74,6 +65,28 @@ const Home = () => {
     }
   };
 
+  const fetchSuccessStories = async () => {
+    try {
+      setStoriesError("");
+      setStoriesLoading(true);
+      const response = await axios.get("/api/success-stories", { timeout: 8000 });
+      if (response.data?.success) {
+        setSuccessStories(response.data.data);
+      } else {
+        setStoriesError("Gagal memuat success story");
+      }
+    } catch (error) {
+      console.error("Error fetching success stories:", error);
+      const message =
+        error.response?.data?.message ||
+        "Gagal memuat success story. Silakan coba lagi nanti.";
+      setStoriesError(message);
+    } finally {
+      setStoriesLoading(false);
+    }
+  };
+
+
   const handleWhatsAppClick = () => {
     const waNumber = "6281110119273";
     const waMessage = "Halo Fitalenta, saya tertarik dengan program magang. Mohon info pendaftaran dan langkah selanjutnya. Terima kasih!";
@@ -88,6 +101,7 @@ const Home = () => {
   const handleRetry = () => {
     hasFetched.current = false;
     fetchFeaturedPrograms();
+    fetchSuccessStories();
   };
 
   return (
@@ -211,7 +225,7 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Program Section - tetap sama */}
+        {/* Program Section */}
         <div className="row mt-5 mb-5">
           <div className="d-flex justify-content-center align-items-center mb-4">
             <h2 className="text-uppercase">Program</h2>
@@ -304,39 +318,60 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Success Stories Section - tetap sama */}
+        {/* Success Stories Section */}
         <div className="row mt-5">
-          <div className="col-12">
+          <div className="col-12 col-lg-10 mx-auto">
             <div className="bg-primary text-white p-4 p-md-5 rounded text-center">
               <h3 className="mb-3 text-uppercase">Success Stories</h3>
-              <div className="position-relative overflow-hidden" style={{ minHeight: "200px" }}>
-                <div
-                  className="d-flex transition-all"
-                  style={{
-                    transform: `translateX(-${currentStory * 100}%)`,
-                    transition: 'transform 0.5s ease-in-out'
-                  }}
-                >
-                  {successStories.map((story, index) => (
+              {storiesLoading ? (
+                <p className="mb-0">Memuat cerita terbaik alumni kami…</p>
+              ) : storiesError ? (
+                <p className="text-warning mb-0">{storiesError}</p>
+              ) : successStories.length === 0 ? (
+                <p className="mb-0">Belum ada testimoni yang ditayangkan.</p>
+              ) : (
+                <>
+                  <div className="position-relative overflow-hidden" style={{ minHeight: "200px" }}>
                     <div
-                      key={story.id}
-                      className="w-100 flex-shrink-0 px-2"
-                      style={{ minWidth: "100%" }}
+                      className="d-flex transition-all"
+                      style={{
+                        transform: `translateX(-${currentStory * 100}%)`,
+                        transition: "transform 0.5s ease-in-out",
+                      }}
                     >
-                      <p className="lead mb-4">
-                        {story.content}
-                      </p>
-                      <div className="d-flex align-items-center justify-content-center gap-3">
-                        <div className="text-center text-white small">
-                          <strong>{story.name}</strong>
-                          <br />
-                          <span>{story.position}</span>
+                      {successStories.map((story) => (
+                        <div
+                          key={story.id}
+                          className="w-100 flex-shrink-0 px-2"
+                          style={{ minWidth: "100%" }}
+                        >
+                          <p className="lead mb-4">{story.content}</p>
+                          <div className="text-center text-white small">
+                            <strong>{story.title || story.name}</strong>
+                            {story.excerpt && (
+                              <>
+                                <br />
+                                <span>{story.excerpt}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                 </div>
+                  <div className="d-flex justify-content-center gap-2 mt-3">
+                    {successStories.map((story, index) => (
+                      <button
+                        key={story.id}
+                        type="button"
+                        className={`indicator-dot ${index === currentStory ? "active" : ""}`}
+                        onClick={() => setCurrentStory(index)}
+                        aria-label={`Lihat cerita ${story.title || story.name}`}
+                      ></button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

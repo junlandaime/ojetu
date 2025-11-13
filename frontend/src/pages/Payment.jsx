@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import { buildFileUrl } from "../utils/api";
 
 const paymentUtils = {
   formatCurrency: (value) => {
@@ -349,7 +350,7 @@ const paymentUtils = {
   getImageUrl: (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
-    return `http://localhost:5000${path}`;
+    return buildFileUrl(path);
   },
 };
 

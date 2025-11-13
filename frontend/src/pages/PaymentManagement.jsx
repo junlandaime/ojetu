@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import { buildFileUrl } from "../utils/api";
 
 const paymentUtils = {
   getStatusBadge: (status) => {
@@ -183,7 +184,15 @@ const paymentUtils = {
 
   shouldShowVerifyButton: (payment) => {
     if (!payment) return false;
-    return (payment.status === "pending" || payment.status.startsWith("installment_")) && payment.proof_image;
+     if (!payment.proof_image) return false;
+    if (payment.verified_by) return false;
+    if (payment.status === "paid" || payment.status === "cancelled") {
+      return false;
+    }
+    return (
+      payment.status === "pending" ||
+      (typeof payment.status === "string" && payment.status.startsWith("installment_"))
+    );
   },
 
   validatePayment: (payment) => {
@@ -198,7 +207,7 @@ const paymentUtils = {
   getImageUrl: (path) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
-    return `http://localhost:5000${path}`;
+    return buildFileUrl(path);
   },
 };
 

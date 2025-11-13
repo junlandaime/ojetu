@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import helpers from "../utils/helpers";
+import { buildFileUrl } from "../utils/api";
 
 const AdminDashboard = () => {
   const [registrations, setRegistrations] = useState([]);
@@ -370,7 +371,7 @@ const AdminDashboard = () => {
       certificates.push(
         <div key="n4" className="mb-1">
           <a
-            href={`http://localhost:5000${registration.n4_certificate_path}`}
+            href={buildFileUrl(registration.n4_certificate_path)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-decoration-none d-flex align-items-center"
@@ -387,7 +388,7 @@ const AdminDashboard = () => {
       certificates.push(
         <div key="ssw" className="mb-1">
           <a
-            href={`http://localhost:5000${registration.ssw_certificate_path}`}
+            href={buildFileUrl(registration.ssw_certificate_path)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-decoration-none d-flex align-items-center"
@@ -764,7 +765,7 @@ const AdminDashboard = () => {
                         <div className="d-flex align-items-center">
                           {registration.photo_path && (
                             <img
-                              src={`http://localhost:5000${registration.photo_path}`}
+                              src={buildFileUrl(registration.photo_path)}
                               alt={registration.full_name}
                               className="me-2"
                               style={{ width: '50px', height: '75px', objectFit: 'cover' }}
@@ -1062,7 +1063,7 @@ const AdminDashboard = () => {
                                 <h6>Foto Profil</h6>
                                 {selectedRegistration.photo_path ? (
                                   <a
-                                    href={`http://localhost:5000${selectedRegistration.photo_path}`}
+                                    href={buildFileUrl(selectedRegistration.photo_path)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-outline-primary btn-sm mt-2"
@@ -1082,7 +1083,7 @@ const AdminDashboard = () => {
                                 <h6>Sertifikat N4</h6>
                                 {selectedRegistration.n4_certificate_path ? (
                                   <a
-                                    href={`http://localhost:5000${selectedRegistration.n4_certificate_path}`}
+                                    href={buildFileUrl(selectedRegistration.n4_certificate_path)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-outline-danger btn-sm mt-2"
@@ -1102,7 +1103,7 @@ const AdminDashboard = () => {
                                 <h6>Sertifikat SSW</h6>
                                 {selectedRegistration.ssw_certificate_path ? (
                                   <a
-                                    href={`http://localhost:5000${selectedRegistration.ssw_certificate_path}`}
+                                    href={buildFileUrl(selectedRegistration.ssw_certificate_path)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-outline-danger btn-sm mt-2"

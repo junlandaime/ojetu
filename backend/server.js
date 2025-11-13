@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import db, { testConnection } from "./config/database.js";
 import jwt from "jsonwebtoken";
+import rateLimiter from "./middleware/rateLimiter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,20 +23,36 @@ import reportRoutes from "./routes/reports.js";
 import programCategoriesRoutes from "./routes/program-categories.js";
 import wilayahRoutes from "./routes/wilayah.js";
 import uploadRoutes from "./routes/uploads.js";
+import successStoriesRoutes from "./routes/successStories.js";
 
 dotenv.config();
 
 const app = express();
+app.disable("x-powered-by");
 const PORT = process.env.PORT || 5000;
 
-app.use(
-  cors({
-    origin: process.env.APP_URL || "http://localhost:3000",
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: process.env.APP_URL || "http://localhost:3000",
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  credentials: true, // penting jika pakai cookie/JWT
+}));
+
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "geolocation=(), microphone=(), camera=()"
+  );
+  next();
+});
+
+app.use(rateLimiter);
+
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use((req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -84,6 +101,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/program-categories", programCategoriesRoutes);
 app.use("/api/wilayah", wilayahRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/success-stories", successStoriesRoutes);
 
 app.use((error, req, res, next) => {
   console.error("Error:", error);

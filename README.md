@@ -45,4 +45,4 @@ Atau:
     ```bash
     npm run dev
     ```
-Server frontend akan berjalan di http://localhost:3000 dan server backend akan berjalan di http://localhost:5000
+Server frontend akan berjalan di http://localhost:3000 dan server backend akan berjalan di http://localhost:5001

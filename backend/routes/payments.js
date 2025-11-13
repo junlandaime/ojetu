@@ -8,6 +8,11 @@ import db, {
   generateInvoiceNumber,
   generateReceiptNumber,
 } from "../config/database.js";
+import {
+  sendEmail,
+  createInvoiceEmailTemplate,
+  createPaymentStatusEmailTemplate,
+} from "../services/emailService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -373,13 +378,17 @@ router.post("/:id/create-invoice", async (req, res) => {
 
     const { installment_number, amount, due_date, notes, verified_by } =
       req.body;
+      const issuerId = verified_by || req.user?.userId || null;
     const paymentId = req.params.id;
 
     const [payments] = await connection.query(
-      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan
+      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan,
+              p.name AS program_name, r.registration_code, r.id AS registration_id,
+              u.email AS participant_email, u.full_name AS participant_name
        FROM payments py
        LEFT JOIN registrations r ON py.registration_id = r.id
        LEFT JOIN programs p ON r.program_id = p.id
+       LEFT JOIN users u ON r.user_id = u.id
        WHERE py.id = ?`,
       [paymentId]
     );
@@ -479,7 +488,7 @@ router.post("/:id/create-invoice", async (req, res) => {
       amount: amount,
       due_date: due_date,
       created_at: new Date().toISOString(),
-      created_by: verified_by,
+      created_by: issuerId,
       notes: notes,
     };
 
@@ -517,11 +526,35 @@ router.post("/:id/create-invoice", async (req, res) => {
         newStatus,
         `Manual invoice created: Cicilan ${installment_number} - Amount: Rp ${amount} - Due: ${due_date} - ${notes || ""
         }`,
-        verified_by,
+       issuerId,
       ]
     );
 
     await connection.commit();
+
+    let emailSent = false;
+    if (currentPayment.participant_email) {
+      try {
+        const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+        const paymentUrl = `${appUrl}/dashboard/payments/${currentPayment.registration_id || ""}`;
+        await sendEmail({
+          to: currentPayment.participant_email,
+          subject: `Tagihan Cicilan ${installment_number} Program ${currentPayment.program_name}`,
+          html: createInvoiceEmailTemplate({
+            fullName: currentPayment.participant_name,
+            programName: currentPayment.program_name || "Program Fitalenta",
+            invoiceNumber: currentPayment.invoice_number || paymentId,
+            amount: formatCurrency(amount),
+            dueDate: new Date(due_date).toLocaleDateString("id-ID"),
+            paymentUrl,
+          }),
+        });
+        emailSent = true;
+      } catch (emailError) {
+        console.error("Failed to send invoice email", emailError);
+      }
+    }
+
 
     res.json({
       success: true,
@@ -533,6 +566,7 @@ router.post("/:id/create-invoice", async (req, res) => {
         due_date: due_date,
         current_installment_number: installment_number,
       },
+      meta: { emailSent },
     });
   } catch (error) {
     await connection.rollback();
@@ -565,11 +599,18 @@ router.put("/:id/status", async (req, res) => {
     } = req.body;
     const paymentId = req.params.id;
 
+    const noteValue =
+      typeof notes === "string" && notes.trim().length > 0 ? notes.trim() : null;
+
+
     const [currentPayments] = await connection.query(
-      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan
+      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan,
+              p.name AS program_name, r.registration_code, r.id AS registration_id,
+              u.email AS participant_email, u.full_name AS participant_name
        FROM payments py
        LEFT JOIN registrations r ON py.registration_id = r.id
        LEFT JOIN programs p ON r.program_id = p.id
+       LEFT JOIN users u ON r.user_id = u.id
        WHERE py.id = ?`,
       [paymentId]
     );
@@ -653,16 +694,20 @@ router.put("/:id/status", async (req, res) => {
       receipt_number = await generateReceiptNumber();
     }
 
-    let updateQuery = `UPDATE payments 
-       SET status = ?, amount_paid = ?, receipt_number = ?, notes = COALESCE(?, notes), 
-           verified_by = ?, verified_at = NOW(), due_date = ?, current_installment_number = ?`;
+    const reviewerId = verified_by || req.user?.userId || currentPayment.verified_by || null;
+
+    let updateQuery = `UPDATE payments
+       SET status = ?, amount_paid = ?, receipt_number = ?, notes = COALESCE(?, notes),
+           verified_by = ?, verified_at = CASE WHEN ? IS NOT NULL THEN NOW() ELSE verified_at END,
+           due_date = ?, current_installment_number = ?`;
 
     let updateParams = [
       finalStatus,
       newTotalPaid,
       receipt_number,
-      notes,
-      verified_by,
+      noteValue,
+      reviewerId,
+      reviewerId,
       due_date,
       current_installment_number,
     ];
@@ -683,7 +728,7 @@ router.put("/:id/status", async (req, res) => {
     await connection.query(updateQuery, updateParams);
 
     const historyNotes =
-      notes ||
+      noteValue ||
       (is_manual
         ? `Manual payment: Rp ${newPaymentAmount} - Status: ${finalStatus}`
         : `Status berubah dari ${currentPayment.status} ke ${finalStatus} - Pembayaran: Rp ${newPaymentAmount}`);
@@ -700,11 +745,49 @@ router.put("/:id/status", async (req, res) => {
         newTotalPaid,
         newPaymentAmount,
         historyNotes,
-        verified_by,
+        reviewerId,
       ]
     );
 
     await connection.commit();
+
+    let emailSent = false;
+    const notifiableStatuses = [
+      "installment_1",
+      "installment_2",
+      "installment_3",
+      "installment_4",
+      "installment_5",
+      "installment_6",
+      "paid",
+    ];
+
+    if (
+      currentPayment.participant_email &&
+      (notifiableStatuses.includes(finalStatus) || finalStatus === "pending")
+    ) {
+      try {
+        const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+        const paymentUrl = `${appUrl}/dashboard/payments/${currentPayment.registration_id || ""}`;
+        await sendEmail({
+          to: currentPayment.participant_email,
+          subject: `Status Pembayaran Program ${currentPayment.program_name}`,
+          html: createPaymentStatusEmailTemplate({
+            fullName: currentPayment.participant_name,
+            programName: currentPayment.program_name || "Program Fitalenta",
+            statusText: getStatusText(finalStatus),
+            amount: formatCurrency(newTotalPaid),
+            invoiceNumber: currentPayment.invoice_number || paymentId,
+            notes: noteValue || "",
+            paymentUrl,
+          }),
+        });
+        emailSent = true;
+      } catch (emailError) {
+        console.error("Failed to send payment status email", emailError);
+      }
+    }
+
 
     res.json({
       success: true,
@@ -718,7 +801,9 @@ router.put("/:id/status", async (req, res) => {
         due_date: due_date,
         current_installment_number: current_installment_number,
         is_manual: is_manual,
+        verified_by: reviewerId,
       },
+      meta: { emailSent },
     });
   } catch (error) {
     await connection.rollback();

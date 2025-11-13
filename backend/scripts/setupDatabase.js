@@ -14,7 +14,7 @@ const connection = mysql.createConnection({
   multipleStatements: true,
 });
 
-const schemaPath = path.join(__dirname, "../../database/schema.sql"); // jka menggunakan versi mysql terbaru harap ganti nama dari ../../database/schema.sql ke ../../database/schema2.sql
+const schemaPath = path.join(__dirname, "../../database/schema2.sql"); // jka menggunakan versi mysql terbaru harap ganti nama dari ../../database/schema.sql ke ../../database/schema2.sql
 const schema = fs.readFileSync(schemaPath, "utf8");
 
 console.log("Setting up database...");

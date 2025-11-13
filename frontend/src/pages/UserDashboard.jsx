@@ -235,9 +235,7 @@ const UserDashboard = () => {
                 <li>Status akan diperbarui secara real-time oleh admin</li>
                 <li>Untuk pertanyaan mengenai status, hubungi admin</li>
                 <li>Proses interview membutuhkan waktu 3-5 hari kerja</li>
-                <li>
-                  Nama perusahaan akan ditentukan setelah proses seleksi selesai
-                </li>
+                
               </ul>
             </div>
           </div>
@@ -334,7 +332,7 @@ const UserDashboard = () => {
                               </span>
                             ) : (
                               <span className="text-muted">
-                                Belum ditentukan
+                               Menunggu Penempatan
                               </span>
                             )}
                           </td>

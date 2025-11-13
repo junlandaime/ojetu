@@ -14,7 +14,12 @@ const deleteFileSafely = (filePath) => {
   if (!filePath) return false;
 
   try {
-    const fullPath = path.join(__dirname, '..', filePath);
+     const sanitizedPath = filePath.replace(/^\/+/, "");
+    const fullPath = path.resolve(
+      __dirname,
+      "..",
+      sanitizedPath.startsWith("uploads") ? sanitizedPath : path.join("uploads", sanitizedPath)
+    );
 
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
@@ -465,7 +470,8 @@ router.delete("/users/:id", async (req, res) => {
       await connection.commit();
 
       let deletedFilesCount = 0;
-      filesToDelete.forEach(filePath => {
+      const uniqueFiles = [...new Set(filesToDelete.filter(Boolean))];
+      uniqueFiles.forEach((filePath) => {
         if (deleteFileSafely(filePath)) {
           deletedFilesCount++;
         }
