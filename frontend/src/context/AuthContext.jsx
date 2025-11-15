@@ -12,55 +12,37 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await axios.get("/api/auth/session");
+        if (response.data?.success) {
+          setUser(response.data.data.user);
+        } else {
+          setUser(null);
+        }
+         } catch (error) {
+        console.error("Auth check error:", error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+     };
+
     checkAuthStatus();
   }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const userData = localStorage.getItem("user");
-
-      if (token && userData) {
-        const response = await axios.get("/api/auth/check", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.data.success) {
-          setUser(JSON.parse(userData));
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        } else {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          delete axios.defaults.headers.common["Authorization"];
-        }
-      }
-    } catch (error) {
-      console.error("Auth check error:", error);
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      delete axios.defaults.headers.common["Authorization"];
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const login = async (email, password, isAdmin = false) => {
     try {
       const endpoint = isAdmin ? "/api/auth/admin/login" : "/api/auth/login";
-      const response = await axios.post(endpoint, {
-        email: isAdmin ? undefined : email,
-        username: isAdmin ? email : undefined,
-        password,
-      });
+      const payload = isAdmin
+        ? { username: email, password }
+        : { email, password };
 
-      if (response.data.success) {
-        const { token, user: userData } = response.data.data;
+     const response = await axios.post(endpoint, payload);
 
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(userData));
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+         if (response.data.success) {
+        const { user: userData } = response.data.data;
         setUser(userData);
-
         return { success: true, user: userData };
       } else {
         return { success: false, message: response.data.message };
@@ -77,16 +59,9 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         const payload = response.data.data;
-        
-            if (payload?.token && payload?.user) {
-          const { token, user: newUser } = payload;
-
-        localStorage.setItem("token", token);
-          localStorage.setItem("user", JSON.stringify(newUser));
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          setUser(newUser);
-
-          return { success: true, user: newUser };
+        if (payload?.user) {
+          setUser(payload.user);
+          return { success: true, user: payload.user };
         }
 
         return {
@@ -114,9 +89,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      delete axios.defaults.headers.common["Authorization"];
       setUser(null);
     }
   };

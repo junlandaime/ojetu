@@ -4,8 +4,8 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import db, { testConnection } from "./config/database.js";
-import jwt from "jsonwebtoken";
 import rateLimiter from "./middleware/rateLimiter.js";
+import authenticateRequest from "./middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,45 +31,69 @@ const app = express();
 app.disable("x-powered-by");
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({
-  origin: process.env.APP_URL || "http://localhost:3000",
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  credentials: true, // penting jika pakai cookie/JWT
-}));
+const uniqueOrigins = (...origins) => {
+  const allowed = new Set();
+  origins
+    .flatMap((entry) =>
+      typeof entry === "string"
+        ? entry
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : []
+    )
+    .forEach((origin) => allowed.add(origin));
 
+  return Array.from(allowed);
+};
+
+const allowedOrigins = uniqueOrigins(
+  process.env.APP_URL,
+  process.env.ADMIN_APP_URL,
+  process.env.CORS_ALLOWED_ORIGINS
+);
+
+const corsMiddleware = cors({
+  origin: allowedOrigins.length === 0 ? true : allowedOrigins,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+});
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("X-DNS-Prefetch-Control", "off");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
-    "geolocation=(), microphone=(), camera=()"
+    "geolocation=(), microphone=(), camera=(), fullscreen=(self)"
   );
-  next();
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+  }
+
+ next();
+});
+
+app.use((req, res, next) => {
+   const origin = req.header("Origin");
+  if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+    console.warn(`Blocked request from origin: ${origin}`);
+    return res.status(403).json({
+      success: false,
+      message: "Origin tidak diizinkan oleh kebijakan CORS",
+    });
+  }
+
+  return corsMiddleware(req, res, next);
 });
 
 app.use(rateLimiter);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-app.use((req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-    } catch (error) {
-      console.log("Invalid token:", error.message);
-    }
-  }
-
-  next();
-});
+app.use(authenticateRequest);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

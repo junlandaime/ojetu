@@ -1,6 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import validator from "validator";
 import db from "../config/database.js";
 import {
@@ -8,6 +9,12 @@ import {
   createVerificationEmailTemplate,
   createPasswordResetEmailTemplate,
 } from "../services/emailService.js";
+import {
+  clearAuthCookie,
+  getAuthToken,
+  requireAuth,
+  setAuthCookie,
+} from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -20,13 +27,48 @@ const PASSWORD_RESET_TOKEN_EXPIRY_MINUTES = parseInt(
   10
 );
 
+const buildUserResponse = (user) => {
+  const payload = {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    phone: user.phone,
+    address: user.address,
+    user_type: user.user_type,
+  };
+
+  if (user.user_type === "admin") {
+    payload.role = "admin";
+  }
+
+  return payload;
+};
+
+const fetchUserById = async (userId) => {
+  const [rows] = await db
+    .promise()
+    .query(
+      `SELECT id, email, full_name, phone, address, user_type FROM users WHERE id = ?`,
+      [userId]
+    );
+
+  return rows[0];
+};
+
 const checkAlreadyLoggedIn = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
+  const token = getAuthToken(req);
+
+  if (req.user && token) {
+    return res.status(403).json({
+      success: false,
+      message: "Anda sudah login, tidak dapat mengakses halaman ini",
+    });
+  }
 
   if (token) {
     try {
-     jwt.verify(token, process.env.JWT_SECRET);
-      return res.status(403).json({
+         jwt.verify(token, process.env.JWT_SECRET);
+         return res.status(403).json({
         success: false,
         message: "Anda sudah login, tidak dapat mengakses halaman ini",
       });
@@ -357,7 +399,9 @@ if (!user.is_verified) {
       userType: "participant",
     });
 
-    await db
+  setAuthCookie(res, token);
+    
+  await db
       .promise()
       .query(`UPDATE users SET last_login_at = NOW() WHERE id = ?`, [user.id]);
 
@@ -365,7 +409,6 @@ if (!user.is_verified) {
       success: true,
       message: "Login berhasil",
       data: {
-        token,
         user: {
           id: user.id,
           email: user.email,
@@ -429,7 +472,9 @@ if (!username || !password) {
       userType: "admin",
     });
 
-     await db
+     setAuthCookie(res, token);
+
+    await db
       .promise()
       .query(`UPDATE users SET last_login_at = NOW() WHERE id = ?`, [admin.id]);
 
@@ -437,7 +482,7 @@ if (!username || !password) {
       success: true,
       message: "Login admin berhasil",
       data: {
-        token,
+
         user: {
           id: admin.id,
           email: admin.email,
@@ -594,23 +639,37 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-router.post("/logout", (req, res) =>
-  res.json({ success: true, message: "Logout berhasil" })
-);
-
-router.get("/check", (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token) {
-    return res.json({ success: false, message: "Token tidak ditemukan" });
-  }
-
+const respondWithSession = async (req, res) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return res.json({ success: true, data: { user: decoded } });
+    const userRecord = await fetchUserById(req.user.userId);
+
+ if (!userRecord) {
+      clearAuthCookie(res);
+      return res.status(401).json({
+        success: false,
+        message: "Sesi tidak valid atau pengguna tidak ditemukan",
+      });
+    }
+
+ return res.json({
+      success: true,
+      data: { user: buildUserResponse(userRecord) },
+    });
   } catch (error) {
-    return res.json({ success: false, message: "Token tidak valid" });
+    console.error("Session lookup error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil informasi sesi",
+    });
   }
+  };
+
+router.get("/session", requireAuth, respondWithSession);
+router.get("/check", requireAuth, respondWithSession);
+
+router.post("/logout", (req, res) => {
+  clearAuthCookie(res);
+  return res.json({ success: true, message: "Logout berhasil" });
 });
 
 export default router;
