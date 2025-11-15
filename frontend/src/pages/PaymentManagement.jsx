@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { buildFileUrl } from "../utils/api";
@@ -64,6 +64,214 @@ const paymentUtils = {
       return `Cicilan ${installmentNum}`;
     }
     return payment.status;
+  },
+
+parseInstallmentAmounts: (payment) => {
+    if (!payment || !payment.installment_amounts) return {};
+
+    try {
+      return typeof payment.installment_amounts === "string"
+        ? JSON.parse(payment.installment_amounts)
+        : payment.installment_amounts || {};
+    } catch (error) {
+      console.error("❌ Error parsing installment_amounts:", error);
+      return {};
+    }
+  },
+
+  getInstallmentContext: (payment, installmentNumber) => {
+    if (!payment || !installmentNumber) {
+      return {
+        amount: 0,
+        label: `Cicilan ${installmentNumber}`,
+        status: "pending",
+        dueDate: null,
+        proofImage: null,
+        proofUploadedAt: null,
+        proofVerifiedAt: null,
+        receiptNumber: null,
+        invoiceAvailable: false,
+        receiptAvailable: false,
+        paidAmount: 0,
+        paidAt: null,
+        invoiceIssuedAt: null,
+        entry: {},
+      };
+    }
+
+    const totalAmount = paymentUtils.parseFloatSafe(
+      payment.program_training_cost || payment.amount || 0
+    );
+    const totalInstallments = paymentUtils.getTotalInstallments(payment);
+    const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+    const key = `installment_${installmentNumber}`;
+    const entry = installmentData[key] || {};
+
+    const configuredAmount = paymentUtils.parseFloatSafe(entry.amount);
+    const defaultAmount =
+      totalInstallments > 0 ? totalAmount / totalInstallments : totalAmount;
+    const amount = configuredAmount > 0 ? configuredAmount : defaultAmount;
+
+    const currentInstallment = paymentUtils.getCurrentInstallmentNumber(payment);
+    const proofImage = entry.proof_image || null;
+    const proofUploadedAt = entry.proof_uploaded_at || null;
+    const proofVerifiedAt = entry.proof_verified_at || null;
+    const receiptNumber = entry.receipt_number || null;
+    const receiptAvailable = Boolean(receiptNumber);
+    const invoiceAvailable = Boolean(entry.amount);
+
+    let status = entry.status || null;
+
+    if (!status) {
+      if (receiptAvailable || paymentUtils.parseFloatSafe(entry.paid_amount) > 0) {
+        status = "paid";
+      } else if (
+        currentInstallment &&
+        installmentNumber < currentInstallment
+      ) {
+        status = "paid";
+      } else if (
+        currentInstallment &&
+        installmentNumber === currentInstallment
+      ) {
+        if (proofImage && !proofVerifiedAt && !receiptAvailable) {
+          status = "waiting_verification";
+        } else if (invoiceAvailable || payment.due_date) {
+          status = "active";
+        } else {
+          status = "pending";
+        }
+      } else {
+        status = "upcoming";
+      }
+    }
+
+    const dueDate =
+      entry.due_date ||
+      (currentInstallment && installmentNumber === currentInstallment
+        ? payment.due_date || null
+        : null);
+
+    return {
+      amount,
+      label: `Cicilan ${installmentNumber}`,
+      status,
+      dueDate,
+      proofImage,
+      proofUploadedAt,
+      proofVerifiedAt,
+      receiptNumber,
+      receiptAvailable,
+      invoiceAvailable,
+      paidAmount: paymentUtils.parseFloatSafe(entry.paid_amount),
+      paidAt: entry.paid_at || null,
+      invoiceIssuedAt: entry.invoice_issued_at || null,
+      entry,
+    };
+  },
+
+  getInstallmentProgressRows: (payment) => {
+    if (!payment) return [];
+
+    const totalInstallments = paymentUtils.getTotalInstallments(payment);
+    const rows = [];
+    const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+
+    for (let i = 1; i <= totalInstallments; i++) {
+      const context = paymentUtils.getInstallmentContext(payment, i);
+      const entry = installmentData[`installment_${i}`] || {};
+
+      let statusLabel = "Belum Diterbitkan";
+      let statusVariant = "secondary";
+
+      if (context.status === "paid" || context.receiptAvailable) {
+        statusLabel = "Sudah Dibayar";
+        statusVariant = "success";
+      } else if (context.status === "waiting_verification") {
+        statusLabel = "Menunggu Verifikasi";
+        statusVariant = "warning";
+      } else if (context.status === "active") {
+        statusLabel = "Tagihan Aktif";
+        statusVariant = "primary";
+      } else if (context.invoiceAvailable) {
+        statusLabel = "Tagihan Diterbitkan";
+        statusVariant = "info";
+      }
+
+      rows.push({
+        installment: i,
+        amount: context.amount,
+        dueDate: context.dueDate,
+        statusLabel,
+        statusVariant,
+        invoiceAvailable: context.invoiceAvailable,
+        receiptAvailable: context.receiptAvailable,
+        receiptNumber: context.receiptNumber,
+        proofImage: context.proofImage,
+        notes: entry.notes || null,
+        paidAt: context.paidAt,
+        invoiceIssuedAt: context.invoiceIssuedAt,
+      });
+    }
+
+    return rows;
+  },
+
+  getInstallmentStatusDisplay: (status) => {
+    if (!status) return "Belum Ditetapkan";
+
+    const mapping = {
+      paid: "Sudah Dibayar",
+      waiting_verification: "Menunggu Verifikasi",
+      active: "Tagihan Aktif",
+      upcoming: "Menunggu Dijadwalkan",
+      pending: "Menunggu Pembayaran",
+    };
+
+    if (mapping[status]) {
+      return mapping[status];
+    }
+
+    if (status.startsWith("installment_")) {
+      return `Cicilan ${status.split("_")[1]}`;
+    }
+
+    return paymentUtils.getInstallmentText({ status }) || status;
+  },
+
+  getCurrentInstallmentNumber: (payment) => {
+    if (!payment) return null;
+
+    if (
+      typeof payment.status === "string" &&
+      payment.status.startsWith("installment_")
+    ) {
+      const parsed = parseInt(payment.status.split("_")[1], 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+
+    if (payment.current_installment_number) {
+      const parsed = parseInt(payment.current_installment_number, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    if (payment.status === "pending") {
+      return 1;
+    }
+
+    if (payment.status === "paid") {
+      return paymentUtils.getTotalInstallments(payment);
+    }
+
+    return 1;
+  },
+
+  getCurrentInstallmentContext: (payment) => {
+    const currentNumber = paymentUtils.getCurrentInstallmentNumber(payment);
+    if (!currentNumber) return null;
+    return paymentUtils.getInstallmentContext(payment, currentNumber);
   },
 
   getTotalInstallments: (payment) => {
@@ -184,15 +392,19 @@ const paymentUtils = {
 
   shouldShowVerifyButton: (payment) => {
     if (!payment) return false;
-     if (!payment.proof_image) return false;
-    if (payment.verified_by) return false;
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
     if (payment.status === "paid" || payment.status === "cancelled") {
       return false;
     }
-    return (
-      payment.status === "pending" ||
-      (typeof payment.status === "string" && payment.status.startsWith("installment_"))
+   if (!context || !context.proofImage) {
+      return false;
+    }
+
+    const alreadyVerified = Boolean(
+      context.proofVerifiedAt || context.receiptNumber
     );
+
+    return !alreadyVerified;
   },
 
   validatePayment: (payment) => {
@@ -236,6 +448,13 @@ const PaymentManagement = () => {
   const [activeModal, setActiveModal] = useState(MODAL_TYPES.NONE);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+const installmentRows = useMemo(
+    () =>
+      selectedPayment
+        ? paymentUtils.getInstallmentProgressRows(selectedPayment)
+        : [],
+    [selectedPayment]
+  );
 
   const [stats, setStats] = useState(null);
   const [formData, setFormData] = useState({
@@ -451,13 +670,19 @@ const PaymentManagement = () => {
         let nextStatus = latestPayment.status;
         let suggestedAmount = 0;
 
+         const currentContext = paymentUtils.getCurrentInstallmentContext(
+          latestPayment
+        );
+
         if (latestPayment.status === "pending") {
           nextStatus = "installment_1";
-          suggestedAmount = totalAmount / paymentUtils.getTotalInstallments(latestPayment);
-        } else if (latestPayment.status.startsWith("installment_")) {
-          const currentInstallment = parseInt(latestPayment.status.split("_")[1]);
-          suggestedAmount = totalAmount / paymentUtils.getTotalInstallments(latestPayment);
-          nextStatus = latestPayment.status;
+          }
+
+        if (currentContext && currentContext.amount) {
+          suggestedAmount = paymentUtils.parseFloatSafe(currentContext.amount);
+        } else {
+          suggestedAmount =
+            totalAmount / paymentUtils.getTotalInstallments(latestPayment); 
         }
 
         setVerificationForm({
@@ -952,6 +1177,100 @@ const PaymentManagement = () => {
                       <small>Rp 0</small>
                       <small>Rp {paymentUtils.formatCurrency(selectedPayment.program_training_cost)}</small>
                     </div>
+                  </div>
+                </div>
+
+<div className="card mb-4">
+                  <div className="card-header bg-primary text-white">
+                    <h6 className="mb-0">Progress Cicilan</h6>
+                  </div>
+                  <div className="card-body">
+                    {installmentRows.length === 0 ? (
+                      <p className="text-muted mb-0">Belum ada data cicilan.</p>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table table-sm align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Cicilan</th>
+                              <th>Nominal</th>
+                              <th>Jatuh Tempo</th>
+                              <th>Status</th>
+                              <th className="text-center">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {installmentRows.map((row) => (
+                              <tr key={row.installment}>
+                                <td>
+                                  <strong>Cicilan {row.installment}</strong>
+                                  {row.invoiceIssuedAt && (
+                                    <div className="text-muted small">
+                                      Terbit: {new Date(row.invoiceIssuedAt).toLocaleDateString("id-ID")}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>
+                                  Rp {paymentUtils.formatCurrency(row.amount)}
+                                  {row.paidAt && (
+                                    <div className="text-muted small">
+                                      Dibayar: {new Date(row.paidAt).toLocaleDateString("id-ID")}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>
+                                  {row.dueDate
+                                    ? new Date(row.dueDate).toLocaleDateString("id-ID")
+                                    : "-"}
+                                </td>
+                                <td>
+                                  <span className={`badge bg-${row.statusVariant}`}>
+                                    {row.statusLabel}
+                                  </span>
+                                  {row.receiptNumber && (
+                                    <div className="text-muted small mt-1">
+                                      Kwitansi: {row.receiptNumber}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="text-center">
+                                  <div className="btn-group btn-group-sm">
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-primary"
+                                      disabled={!row.invoiceAvailable}
+                                      onClick={() =>
+                                        window.open(
+                                          `/api/payments/${selectedPayment.id}/invoice?installment=${row.installment}`,
+                                          "_blank"
+                                        )
+                                      }
+                                      title={`Unduh invoice cicilan ${row.installment}`}
+                                    >
+                                      <i className="bi bi-file-earmark-arrow-down"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-primary"
+                                      disabled={!row.receiptAvailable}
+                                      onClick={() =>
+                                        window.open(
+                                          `/api/payments/${selectedPayment.id}/receipt?installment=${row.installment}`,
+                                          "_blank"
+                                        )
+                                      }
+                                      title={`Unduh kwitansi cicilan ${row.installment}`}
+                                    >
+                                      <i className="bi bi-download"></i>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
 

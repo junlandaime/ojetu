@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import { buildFileUrl } from "../utils/api";
@@ -153,10 +153,234 @@ const paymentUtils = {
     return payment.status;
   },
 
+   parseInstallmentAmounts: (payment) => {
+    if (!payment || !payment.installment_amounts) return {};
+
+    try {
+      return typeof payment.installment_amounts === "string"
+        ? JSON.parse(payment.installment_amounts)
+        : payment.installment_amounts || {};
+    } catch (error) {
+      console.error("❌ Error parsing installment_amounts:", error);
+      return {};
+    }
+  },
+
+  getInstallmentContext: (payment, installmentNumber) => {
+    if (!payment || !installmentNumber) {
+      return {
+        amount: 0,
+        label: `Cicilan ${installmentNumber}`,
+        status: "pending",
+        dueDate: null,
+        proofImage: null,
+        proofUploadedAt: null,
+        proofVerifiedAt: null,
+        receiptNumber: null,
+        invoiceAvailable: false,
+        receiptAvailable: false,
+        paidAmount: 0,
+        paidAt: null,
+        invoiceIssuedAt: null,
+        entry: {},
+      };
+    }
+
+    const totalAmount = paymentUtils.parseFloatSafe(
+      payment.program_training_cost || payment.amount || 0
+    );
+    const totalInstallments = paymentUtils.getTotalInstallments(payment);
+    const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+    const key = `installment_${installmentNumber}`;
+    const entry = installmentData[key] || {};
+
+    const configuredAmount = paymentUtils.parseFloatSafe(entry.amount);
+    const defaultAmount =
+      totalInstallments > 0 ? totalAmount / totalInstallments : totalAmount;
+    const amount = configuredAmount > 0 ? configuredAmount : defaultAmount;
+
+    const currentInstallment = paymentUtils.getCurrentInstallmentNumber(payment);
+    const proofImage = entry.proof_image || null;
+    const proofUploadedAt = entry.proof_uploaded_at || null;
+    const proofVerifiedAt = entry.proof_verified_at || null;
+    const receiptNumber = entry.receipt_number || null;
+    const receiptAvailable = Boolean(receiptNumber);
+    const invoiceAvailable = Boolean(entry.amount);
+
+    let status = entry.status || null;
+
+    if (!status) {
+      if (receiptAvailable || paymentUtils.parseFloatSafe(entry.paid_amount) > 0) {
+        status = "paid";
+      } else if (
+        currentInstallment &&
+        installmentNumber < currentInstallment
+      ) {
+        status = "paid";
+      } else if (
+        currentInstallment &&
+        installmentNumber === currentInstallment
+      ) {
+        if (proofImage && !proofVerifiedAt && !receiptAvailable) {
+          status = "waiting_verification";
+        } else if (invoiceAvailable || payment.due_date) {
+          status = "active";
+        } else {
+          status = "pending";
+        }
+      } else {
+        status = "upcoming";
+      }
+    }
+
+    const dueDate =
+      entry.due_date ||
+      (currentInstallment && installmentNumber === currentInstallment
+        ? payment.due_date || null
+        : null);
+
+    return {
+      amount,
+      label: `Cicilan ${installmentNumber}`,
+      status,
+      dueDate,
+      proofImage,
+      proofUploadedAt,
+      proofVerifiedAt,
+      receiptNumber,
+      receiptAvailable,
+      invoiceAvailable,
+      paidAmount: paymentUtils.parseFloatSafe(entry.paid_amount),
+      paidAt: entry.paid_at || null,
+      invoiceIssuedAt: entry.invoice_issued_at || null,
+      entry,
+    };
+  },
+
+  getInstallmentProgressRows: (payment) => {
+    if (!payment) return [];
+
+    const totalInstallments = paymentUtils.getTotalInstallments(payment);
+    const rows = [];
+    const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+    const currentInfo = paymentUtils.getCurrentInstallmentInfo(payment);
+    const waitingVerification = paymentUtils.isWaitingVerification(payment);
+
+    for (let i = 1; i <= totalInstallments; i++) {
+      const context = paymentUtils.getInstallmentContext(payment, i);
+      const entry = installmentData[`installment_${i}`] || {};
+
+      let statusLabel = "Belum Diterbitkan";
+      let statusVariant = "secondary";
+
+      if (context.status === "paid" || context.receiptAvailable) {
+        statusLabel = "Sudah Dibayar";
+        statusVariant = "success";
+      } else if (
+        context.status === "waiting_verification" ||
+        (waitingVerification && i === currentInfo.number)
+      ) {
+        statusLabel = "Menunggu Verifikasi";
+        statusVariant = "warning";
+      } else if (
+        context.status === "active" ||
+        (paymentUtils.hasActiveInvoice(payment) && i === currentInfo.number)
+      ) {
+        statusLabel = "Tagihan Aktif";
+        statusVariant = "primary";
+      } else if (
+        entry.amount ||
+        context.invoiceAvailable ||
+        (payment.due_date && i === currentInfo.number)
+      ) {
+        statusLabel = "Tagihan Diterbitkan";
+        statusVariant = "info";
+      } else if (context.status === "upcoming") {
+        statusLabel = "Menunggu Dijadwalkan";
+        statusVariant = "secondary";
+      }
+
+      rows.push({
+        installment: i,
+        amount: context.amount,
+        dueDate: context.dueDate,
+        statusLabel,
+        statusVariant,
+        invoiceAvailable: context.invoiceAvailable,
+        receiptAvailable: context.receiptAvailable,
+        receiptNumber: context.receiptNumber,
+        proofImage: context.proofImage,
+        notes: entry.notes || null,
+        paidAt: context.paidAt,
+        invoiceIssuedAt: context.invoiceIssuedAt,
+      });
+    }
+
+    return rows;
+  },
+
+  getInstallmentStatusDisplay: (status) => {
+    if (!status) return "Belum Ditetapkan";
+
+    const mapping = {
+      paid: "Sudah Dibayar",
+      waiting_verification: "Menunggu Verifikasi",
+      active: "Tagihan Aktif",
+      upcoming: "Menunggu Dijadwalkan",
+      pending: "Menunggu Pembayaran",
+    };
+
+    if (mapping[status]) {
+      return mapping[status];
+    }
+
+    if (status.startsWith("installment_")) {
+      return `Cicilan ${status.split("_")[1]}`;
+    }
+
+    return paymentUtils.getStatusText(status) || status;
+  },
+
+  getCurrentInstallmentNumber: (payment) => {
+    if (!payment) return null;
+
+    if (
+      typeof payment.status === "string" &&
+      payment.status.startsWith("installment_")
+    ) {
+      const parsed = parseInt(payment.status.split("_")[1], 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+
+    if (payment.current_installment_number) {
+      const parsed = parseInt(payment.current_installment_number, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    if (payment.status === "pending") {
+      return 1;
+    }
+
+    if (payment.status === "paid") {
+      return paymentUtils.getTotalInstallments(payment);
+    }
+
+    return 1;
+  },
+
+  getCurrentInstallmentContext: (payment) => {
+    const currentNumber = paymentUtils.getCurrentInstallmentNumber(payment);
+    if (!currentNumber) return null;
+    return paymentUtils.getInstallmentContext(payment, currentNumber);
+  },
+
   getCurrentInstallmentInfo: (payment) => {
     if (!payment) return { number: 0, text: "Unknown", isPaid: false, totalInstallments: 4, isWaitingVerification: false };
 
     const totalInstallments = paymentUtils.getTotalInstallments(payment);
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
     const isWaitingVerification = paymentUtils.isWaitingVerification(payment);
 
     if (payment.status === "paid") {
@@ -180,8 +404,8 @@ const paymentUtils = {
     }
 
     if (payment.status.startsWith("installment_")) {
-      const currentNum = parseInt(payment.status.split("_")[1]) || 1;
-      const isPaid = paymentUtils.isInstallmentPaid(payment, currentNum);
+      const currentNum = paymentUtils.getCurrentInstallmentNumber(payment) || 1;
+      const isPaid = context ? context.status === "paid" || context.receiptAvailable : paymentUtils.isInstallmentPaid(payment, currentNum);
 
       let text = `Cicilan ${currentNum}`;
       if (isWaitingVerification) {
@@ -233,6 +457,13 @@ const paymentUtils = {
 
     if (payment.status === 'paid') return true;
 
+    const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+    const entry = installmentData[`installment_${installmentNumber}`];
+    if (entry) {
+      if (entry.status === "paid") return true;
+      if (paymentUtils.parseFloatSafe(entry.paid_amount) > 0) return true;
+    }
+
     const totalInstallments = paymentUtils.getTotalInstallments(payment);
     const totalAmount = paymentUtils.parseFloatSafe(payment.program_training_cost);
     const paidAmount = paymentUtils.parseFloatSafe(payment.amount_paid);
@@ -248,36 +479,9 @@ const paymentUtils = {
   getCurrentInstallmentAmount: (payment) => {
     if (!payment) return 0;
 
-    if (!payment.due_date && payment.status !== "pending") {
-      return 0;
-    }
-
-    if (payment.installment_amounts) {
-      try {
-        const installmentAmounts =
-          typeof payment.installment_amounts === "string"
-            ? JSON.parse(payment.installment_amounts)
-            : payment.installment_amounts;
-
-        const currentInfo = paymentUtils.getCurrentInstallmentInfo(payment);
-        const currentInstallment = currentInfo.number;
-
-        if (currentInstallment > 0) {
-          const installmentKey = `installment_${currentInstallment}`;
-          if (installmentAmounts[installmentKey]?.amount) {
-            return parseFloat(installmentAmounts[installmentKey].amount);
-          }
-        }
-
-        for (let i = 1; i <= 6; i++) {
-          const key = `installment_${i}`;
-          if (installmentAmounts[key]?.amount) {
-            return parseFloat(installmentAmounts[key].amount);
-          }
-        }
-      } catch (e) {
-        console.error("❌ Error parsing installment_amounts:", e);
-      }
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    if (context && context.amount) {
+      return paymentUtils.parseFloatSafe(context.amount);
     }
 
     const totalAmount = paymentUtils.parseFloatSafe(payment.program_training_cost);
@@ -286,9 +490,19 @@ const paymentUtils = {
   },
 
   isOverdue: (payment) => {
-    if (!payment?.due_date || payment.status === "paid") return false;
+   if (!payment || payment.status === "paid") return false;
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    const dueDateRaw = context?.dueDate || payment?.due_date;
+    if (!dueDateRaw) return false;
+    if (context && (context.status === "paid" || context.receiptAvailable)) {
+      return false;
+    }
+    if (paymentUtils.isWaitingVerification(payment)) {
+      return false;
+    }
+
     try {
-      const dueDate = new Date(payment.due_date);
+      const dueDate = new Date(dueDateRaw);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       return dueDate < today;
@@ -299,9 +513,19 @@ const paymentUtils = {
   },
 
   isDueSoon: (payment) => {
-    if (!payment?.due_date || payment.status === "paid") return false;
+   if (!payment || payment.status === "paid") return false;
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    const dueDateRaw = context?.dueDate || payment?.due_date;
+    if (!dueDateRaw) return false;
+    if (context && (context.status === "paid" || context.receiptAvailable)) {
+      return false;
+    }
+    if (paymentUtils.isWaitingVerification(payment)) {
+      return false;
+    }
+
     try {
-      const dueDate = new Date(payment.due_date);
+     const dueDate = new Date(dueDateRaw);
       const today = new Date();
       const threeDaysFromNow = new Date(today);
       threeDaysFromNow.setDate(today.getDate() + 3);
@@ -320,49 +544,83 @@ const paymentUtils = {
       return false;
     }
 
-    const hasProof = !!payment.proof_image;
-    const notVerified = !payment.verified_by;
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    if (!context) return false;
 
-    return hasProof && notVerified;
+    if (context.status === "waiting_verification") {
+      return true;
+    }
+
+    const hasProof = Boolean(context.proofImage);
+    const proofVerified = Boolean(
+      context.proofVerifiedAt || context.receiptNumber
+    );
+
+    return hasProof && !proofVerified;
   },
 
   needsUpload: (payment) => {
     if (!payment) return false;
 
-    const currentInfo = paymentUtils.getCurrentInstallmentInfo(payment);
-    const hasDueDate = !!payment.due_date;
-    const noProof = !payment.proof_image;
-    const notVerified = !payment.verified_by;
-    const notPaid = payment.status !== "paid" && payment.status !== "cancelled";
-    const currentNotPaid = !currentInfo.isPaid;
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    if (!context) return false;
 
-    return hasDueDate && noProof && notVerified && notPaid && currentNotPaid;
+    const notPaid = payment.status !== "paid" && payment.status !== "cancelled";
+    if (!notPaid) return false;
+
+    const hasInvoice = Boolean(context.invoiceAvailable || context.dueDate);
+    if (!hasInvoice) return false;
+
+    if (context.status === "paid" || context.receiptAvailable) {
+      return false;
+    }
+
+    if (paymentUtils.isWaitingVerification(payment)) {
+      return false;
+    }
+
+    return !context.proofImage;
   },
 
   hasActiveInvoice: (payment) => {
     if (!payment) return false;
 
-    const hasDueDate = !!payment.due_date;
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    if (!context) return false;
+
     const isNotPaid = payment.status !== "paid" && payment.status !== "cancelled";
-    const hasRemaining = paymentUtils.parseFloatSafe(payment.amount_paid || 0) <
+   if (!isNotPaid) return false;
+
+    const hasRemaining =
+      paymentUtils.parseFloatSafe(payment.amount_paid || 0) <
       paymentUtils.parseFloatSafe(payment.program_training_cost || 0);
 
-    const notWaitingVerification = !paymentUtils.isWaitingVerification(payment);
+    if (!hasRemaining) return false;
 
-    return hasDueDate && isNotPaid && hasRemaining && notWaitingVerification;
+    if (paymentUtils.isWaitingVerification(payment)) {
+      return false;
+    }
+
+    if (context.status === "paid" || context.receiptAvailable) {
+      return false;
+    }
+
+    return Boolean(context.dueDate) || Boolean(context.invoiceAvailable);
   },
 
   isWaitingForInvoice: (payment) => {
     if (!payment) return false;
 
-    const hasRemaining = paymentUtils.parseFloatSafe(payment.amount_paid || 0) <
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    const hasRemaining =
+      paymentUtils.parseFloatSafe(payment.amount_paid || 0) <
       paymentUtils.parseFloatSafe(payment.program_training_cost || 0);
 
     const currentInfo = paymentUtils.getCurrentInstallmentInfo(payment);
     const nextInfo = paymentUtils.getNextInstallmentInfo(payment);
 
     return (
-      !payment.due_date &&
+      (!context || (!context.invoiceAvailable && !context.dueDate)) &&
       hasRemaining &&
       payment.status !== "paid" &&
       payment.status !== "cancelled" &&
@@ -432,6 +690,14 @@ const Payment = () => {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [paymentAlerts, setPaymentAlerts] = useState([]);
+const [detailLoading, setDetailLoading] = useState(false);
+  const installmentRows = useMemo(
+    () =>
+      selectedPayment
+        ? paymentUtils.getInstallmentProgressRows(selectedPayment)
+        : [],
+    [selectedPayment]
+  );
 
   const formatDate = useCallback((dateString) => {
     if (!dateString) return "-";
@@ -809,7 +1075,7 @@ const Payment = () => {
     return Boolean(payment.invoice_number);
   };
 
-  const downloadReceipt = async (payment) => {
+   const downloadReceipt = async (payment, options = {}) => {
     const validation = paymentUtils.validatePayment(payment);
     if (!validation.isValid) {
       setMessage({
@@ -819,26 +1085,46 @@ const Payment = () => {
       return;
     }
 
+    const { installment } = options || {};
+
     const totalAmount = paymentUtils.parseFloatSafe(
       payment.program_training_cost || payment.amount || 0
     );
     const amountPaid = paymentUtils.parseFloatSafe(payment.amount_paid || 0);
     const remaining = paymentUtils.calculateRemainingSafe(totalAmount, amountPaid);
 
-    const currentInstallmentAmount = getDisplayAmount(payment);
-    let highlightAmountValue =
-      currentInstallmentAmount && currentInstallmentAmount > 0
-        ? currentInstallmentAmount
-        : paymentUtils.parseFloatSafe(
-            payment.amount_paid || payment.amount || totalAmount
-          );
-
-    if (!highlightAmountValue || highlightAmountValue <= 0) {
-      highlightAmountValue = totalAmount;
+    let context = null;
+    if (installment) {
+      context = paymentUtils.getInstallmentContext(payment, installment);
+      if (!context || (!context.receiptAvailable && context.amount <= 0)) {
+        setMessage({
+          type: "error",
+          text: `Data kwitansi untuk cicilan ${installment} belum tersedia.`,
+        });
+        return;
+      }
     }
 
+    const highlightAmountValue = context?.amount && context.amount > 0
+      ? context.amount
+      : (() => {
+          const currentInstallmentAmount = getDisplayAmount(payment);
+          let fallbackAmount =
+            currentInstallmentAmount && currentInstallmentAmount > 0
+              ? currentInstallmentAmount
+              : paymentUtils.parseFloatSafe(
+                  payment.amount_paid || payment.amount || totalAmount
+                );
+          if (!fallbackAmount || fallbackAmount <= 0) {
+            fallbackAmount = totalAmount;
+          }
+          return fallbackAmount;
+        })();
+
     const amountInWords = paymentUtils.numberToWords(highlightAmountValue);
-    const receiptDateObj = payment.payment_date
+    const receiptDateObj = context?.paidAt
+      ? new Date(context.paidAt)
+      : payment.payment_date
       ? new Date(payment.payment_date)
       : new Date();
     const receiptDate = receiptDateObj.toLocaleDateString("id-ID", {
@@ -846,9 +1132,12 @@ const Payment = () => {
       month: "long",
       day: "numeric",
     });
-    const progress = totalAmount > 0 ? Math.min(100, (amountPaid / totalAmount) * 100) : 0;
-    const statusText = paymentUtils.getStatusText(payment.status);
-    const paymentLabel = paymentUtils.getInstallmentText(payment);
+     const progress =
+      totalAmount > 0 ? Math.min(100, (amountPaid / totalAmount) * 100) : 0;
+    const statusText = context
+      ? paymentUtils.getInstallmentStatusDisplay(context.status)
+      : paymentUtils.getStatusText(payment.status);
+    const paymentLabel = context?.label || paymentUtils.getInstallmentText(payment);
     const generatedAt = new Date().toLocaleString("id-ID");
 
     const escapeHtml = (value) =>
@@ -858,8 +1147,11 @@ const Payment = () => {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
+        const receiptNumberValue =
+      context?.receiptNumber || payment.receipt_number || payment.invoice_number || "-";
+
     const metadata = {
-      receiptNumber: escapeHtml(payment.receipt_number || payment.invoice_number || "-"),
+      receiptNumber: escapeHtml(receiptNumberValue),
       invoiceNumber: escapeHtml(payment.invoice_number || "-"),
       statusText: escapeHtml(statusText),
       paymentLabel: escapeHtml(paymentLabel),
@@ -868,7 +1160,11 @@ const Payment = () => {
       participantPhone: escapeHtml(payment.phone || user?.phone || "-"),
       participantAddress: escapeHtml(payment.address || "-"),
       programName: escapeHtml(payment.program_name || "-"),
-      notes: payment.notes ? escapeHtml(payment.notes) : "",
+       notes: context?.entry?.notes
+        ? escapeHtml(context.entry.notes)
+        : payment.notes
+        ? escapeHtml(payment.notes)
+        : "",
     };
 
     const totals = {
@@ -880,11 +1176,16 @@ const Payment = () => {
       amountWords: escapeHtml(amountInWords),
     };
 
+const params = new URLSearchParams();
+    if (installment) {
+      params.append("installment", installment);
+    }
+    const queryString = params.toString();
 
     try {
       try {
         const response = await axios.get(
-          `/api/payments/${payment.id}/receipt`,
+          `/api/payments/${payment.id}/receipt${queryString ? `?${queryString}` : ""}`,
           {
             responseType: "blob",
             timeout: 15000,
@@ -893,10 +1194,11 @@ const Payment = () => {
 
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
+        const suffix = installment ? `-cicilan-${installment}` : "";
         link.href = url;
         link.setAttribute(
           "download",
-          `kwitansi-${payment.receipt_number || payment.invoice_number}.pdf`
+           `kwitansi-${receiptNumberValue}${suffix}.pdf`
         );
         document.body.appendChild(link);
         link.click();
@@ -1031,10 +1333,10 @@ const Payment = () => {
         </body>
         </html>
       `;
-              receiptWindow.document.write(htmlContent);
+      receiptWindow.document.write(htmlContent);
       receiptWindow.document.close();
 
-              setMessage({
+        setMessage({
         type: "success",
         text: "Kwitansi HTML berhasil dibuka di tab baru. Silakan simpan atau cetak.",
       });
@@ -1049,7 +1351,7 @@ const Payment = () => {
 
               
 
-              const downloadInvoice = async (payment) => {
+              const downloadInvoice = async (payment, options = {}) => {
     const validation = paymentUtils.validatePayment(payment);
     if (!validation.isValid) {
       setMessage({
@@ -1067,15 +1369,30 @@ const Payment = () => {
       return;
     }
 
+    const { installment } = options || {};
+
               const totalAmount = paymentUtils.parseFloatSafe(
       payment.program_training_cost || payment.amount || 0
     );
     const amountPaid = paymentUtils.parseFloatSafe(payment.amount_paid || 0);
     const remaining = paymentUtils.calculateRemainingSafe(totalAmount, amountPaid);
 
-              const currentInstallmentAmount = getDisplayAmount(payment);
-    let invoiceAmountValue =
-      currentInstallmentAmount && currentInstallmentAmount > 0
+             let context = null;
+    if (installment) {
+      context = paymentUtils.getInstallmentContext(payment, installment);
+      if (!context || (!context.invoiceAvailable && context.amount <= 0)) {
+        setMessage({
+          type: "error",
+          text: `Invoice untuk cicilan ${installment} belum tersedia.`,
+        });
+        return;
+      }
+    }
+
+    const currentInstallmentAmount = getDisplayAmount(payment);
+    let invoiceAmountValue = context?.amount && context.amount > 0
+      ? context.amount
+      : currentInstallmentAmount && currentInstallmentAmount > 0
         ? currentInstallmentAmount
         : paymentUtils.parseFloatSafe(payment.amount || remaining || totalAmount);
 
@@ -1084,7 +1401,9 @@ const Payment = () => {
     }
 
     const amountInWords = paymentUtils.numberToWords(invoiceAmountValue);
-    const invoiceDateObj = payment.updated_at
+    const invoiceDateObj = context?.invoiceIssuedAt
+      ? new Date(context.invoiceIssuedAt)
+      : payment.updated_at
       ? new Date(payment.updated_at)
       : payment.created_at
       ? new Date(payment.created_at)
@@ -1095,7 +1414,11 @@ const Payment = () => {
       day: "numeric",
     });
 
-    const dueDateObj = payment.due_date ? new Date(payment.due_date) : null;
+    const dueDateObj = context?.dueDate
+      ? new Date(context.dueDate)
+      : payment.due_date
+      ? new Date(payment.due_date)
+      : null;
     const dueDate = dueDateObj
       ? dueDateObj.toLocaleDateString("id-ID", {
           year: "numeric",
@@ -1125,9 +1448,13 @@ const Payment = () => {
       participantName: escapeHtml(payment.full_name || user?.full_name || "-"),
       participantAddress: escapeHtml(payment.address || "-"),
       programName: escapeHtml(payment.program_name || "-"),
-      paymentLabel: escapeHtml(paymentUtils.getInstallmentText(payment)),
+       paymentLabel: escapeHtml(
+        context?.label || paymentUtils.getInstallmentText(payment)
+      ),
       notes:
-        payment.notes
+       context?.entry?.notes
+          ? escapeHtml(context.entry.notes)
+          : payment.notes
           ? escapeHtml(payment.notes)
           : "Mohon menyelesaikan pembayaran sebelum jatuh tempo dan unggah bukti pembayaran melalui dashboard peserta.",
     };
@@ -1141,16 +1468,29 @@ const Payment = () => {
     };
 
     try {
+      const params = new URLSearchParams();
+      if (installment) {
+        params.append("installment", installment);
+      }
+      const queryString = params.toString();
+
       try {
-        const response = await axios.get(`/api/payments/${payment.id}/invoice`, {
-          responseType: "blob",
-          timeout: 15000,
-        });
+        const response = await axios.get(
+          `/api/payments/${payment.id}/invoice${queryString ? `?${queryString}` : ""}`,
+          {
+            responseType: "blob",
+            timeout: 15000,
+          }
+        );
 
               const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `invoice-${payment.invoice_number}.pdf`);
+        const suffix = installment ? `-cicilan-${installment}` : "";
+        link.setAttribute(
+          "download",
+          `invoice-${payment.invoice_number}${suffix}.pdf`
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1292,7 +1632,7 @@ const Payment = () => {
     }
   };
 
-  const handleShowDetail = (payment) => {
+   const handleShowDetail = async (payment) => {
     const validation = paymentUtils.validatePayment(payment);
     if (!validation.isValid) {
       setMessage({
@@ -1302,8 +1642,31 @@ const Payment = () => {
       return;
     }
 
-    setSelectedPayment(payment);
-    setShowDetailModal(true);
+    if (detailLoading) return;
+
+    try {
+      setDetailLoading(true);
+      const response = await axios.get(`/api/payments/${payment.id}`, {
+        timeout: 15000,
+      });
+
+      if (response.data?.success) {
+        setSelectedPayment(response.data.data);
+        setShowDetailModal(true);
+      } else {
+        throw new Error(response.data?.message || "Gagal memuat detail pembayaran");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching payment detail:", error);
+      const errorMessage =
+        error.response?.data?.message || error.message || "Gagal memuat detail pembayaran";
+      setMessage({
+        type: "error",
+        text: errorMessage,
+      });
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const handleCloseDetail = () => {
@@ -2365,6 +2728,94 @@ const Payment = () => {
                         <small>100%</small>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+<div className="card mb-3">
+                  <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h6 className="mb-0">Progress Cicilan</h6>
+                  </div>
+                  <div className="card-body">
+                    {installmentRows.length === 0 ? (
+                      <p className="text-muted mb-0">Belum ada data cicilan.</p>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table table-sm align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Cicilan</th>
+                              <th>Nominal</th>
+                              <th>Jatuh Tempo</th>
+                              <th>Status</th>
+                              <th className="text-center">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {installmentRows.map((row) => (
+                              <tr key={row.installment}>
+                                <td>
+                                  <strong>Cicilan {row.installment}</strong>
+                                  {row.invoiceIssuedAt && (
+                                    <div className="text-muted small">
+                                      Terbit: {formatDate(row.invoiceIssuedAt)}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>
+                                  Rp {paymentUtils.formatCurrency(row.amount)}
+                                  {row.paidAt && (
+                                    <div className="text-muted small">
+                                      Dibayar: {formatDate(row.paidAt)}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>{row.dueDate ? formatDate(row.dueDate) : "-"}</td>
+                                <td>
+                                  <span className={`badge bg-${row.statusVariant}`}>
+                                    {row.statusLabel}
+                                  </span>
+                                  {row.receiptNumber && (
+                                    <div className="text-muted small mt-1">
+                                      Kwitansi: {row.receiptNumber}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="text-center">
+                                  <div className="btn-group btn-group-sm">
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-primary"
+                                      disabled={!row.invoiceAvailable || detailLoading}
+                                      onClick={() =>
+                                        downloadInvoice(selectedPayment, {
+                                          installment: row.installment,
+                                        })
+                                      }
+                                      title={`Download invoice cicilan ${row.installment}`}
+                                    >
+                                      <i className="bi bi-file-earmark-arrow-down"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline-primary"
+                                      disabled={!row.receiptAvailable || detailLoading}
+                                      onClick={() =>
+                                        downloadReceipt(selectedPayment, {
+                                          installment: row.installment,
+                                        })
+                                      }
+                                      title={`Download kwitansi cicilan ${row.installment}`}
+                                    >
+                                      <i className="bi bi-download"></i>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
 

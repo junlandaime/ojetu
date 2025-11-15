@@ -311,31 +311,51 @@ const findLogoPath = () => {
   return null;
 };
 
-const parseInstallmentAmount = (payment, installmentNumber) => {
+const parseInstallmentAmounts = (payment) => {
   if (!payment || !payment.installment_amounts) {
-    return 0;
+    return {};
   }
 
   try {
-    const installmentData =
-      typeof payment.installment_amounts === "string"
-        ? JSON.parse(payment.installment_amounts)
-        : payment.installment_amounts;
-
-    const key = `installment_${installmentNumber}`;
-    const amountValue = installmentData?.[key]?.amount;
-
-    if (amountValue) {
-      const parsed = parseFloat(amountValue);
-      if (!isNaN(parsed)) {
-        return parsed;
-      }
-    }
+    return typeof payment.installment_amounts === "string"
+      ? JSON.parse(payment.installment_amounts)
+      : payment.installment_amounts || {};
   } catch (error) {
     console.error("Error parsing installment_amounts:", error);
+   return {};
+  }
+};
+
+const parseInstallmentAmount = (payment, installmentNumber) => {
+  if (!payment || !installmentNumber) {
+    return 0;
+  }
+
+  const installmentData = parseInstallmentAmounts(payment);
+  const key = `installment_${installmentNumber}`;
+  const amountValue = installmentData?.[key]?.amount;
+
+  if (amountValue) {
+    const parsed = parseFloat(amountValue);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
   }
 
   return 0;
+};
+
+const ensureInstallmentEntry = (installmentAmounts, installmentNumber) => {
+  if (!installmentNumber) return installmentAmounts;
+
+  const key = `installment_${installmentNumber}`;
+  const cloned = { ...(installmentAmounts || {}) };
+
+  if (!cloned[key]) {
+    cloned[key] = {};
+  }
+
+  return cloned;
 };
 
 const getLastPaymentChange = async (payment, statusFilter = null) => {
@@ -373,29 +393,57 @@ const getLastPaymentChange = async (payment, statusFilter = null) => {
   return 0;
 };
 
-const resolveCurrentPaymentContext = async (payment, totalAmount) => {
-  const status = payment?.status || "";
+const resolveCurrentPaymentContext = async (
+  payment,
+  totalAmount,
+  options = {}
+) => {
+  const rawStatus = payment?.status || "";
+  let targetStatus = options.status || rawStatus;
   const totalInstallments = getTotalInstallments(payment);
-  let label = getStatusText(status);
-  let amountValue = parseFloat(payment?.amount_paid || 0);
-  let installmentNumber = null;
+  let amountValue = parseFloat(payment?.amount_paid || 0) || 0;
+  let installmentNumber = options.installmentNumber || null;
 
-  if (status && status.startsWith("installment_")) {
-    installmentNumber = parseInt(status.split("_")[1]);
+  if (!targetStatus && installmentNumber) {
+    targetStatus = `installment_${installmentNumber}`;
+  }
+
+  if (!targetStatus) {
+    targetStatus = rawStatus;
+  }
+
+   if (!installmentNumber && targetStatus?.startsWith("installment_")) {
+    const parsedInstallment = parseInt(targetStatus.split("_")[1]);
+    if (!isNaN(parsedInstallment)) {
+      installmentNumber = parsedInstallment;
+    }
+  }
+
+  let label = getStatusText(targetStatus || rawStatus);
+  const installmentData = parseInstallmentAmounts(payment);
+  let installmentEntry = installmentNumber
+    ? installmentData[`installment_${installmentNumber}`] || {}
+    : null;
+
+  if (installmentNumber) {
     label = `Cicilan Ke-${installmentNumber}`;
 
     const configuredAmount = parseInstallmentAmount(payment, installmentNumber);
     if (configuredAmount > 0) {
       amountValue = configuredAmount;
     } else {
-      const historicalAmount = await getLastPaymentChange(payment, status);
+      const historicalAmount = await getLastPaymentChange(
+        payment,
+        `installment_${installmentNumber}`
+      );
       if (historicalAmount > 0) {
         amountValue = historicalAmount;
       } else {
-        amountValue = totalAmount / totalInstallments;
+        amountValue =
+          totalInstallments > 0 ? totalAmount / totalInstallments : totalAmount;
       }
     }
-  } else if (status === "paid") {
+   } else if (targetStatus === "paid") {
     const historicalAmount = await getLastPaymentChange(payment, "paid");
     if (historicalAmount > 0) {
       amountValue = historicalAmount;
@@ -403,8 +451,8 @@ const resolveCurrentPaymentContext = async (payment, totalAmount) => {
       amountValue = totalAmount;
     }
     label = "Pelunasan";
-  } else {
-    const historicalAmount = await getLastPaymentChange(payment, status);
+ } else if (targetStatus) {
+    const historicalAmount = await getLastPaymentChange(payment, targetStatus);
     if (historicalAmount > 0) {
       amountValue = historicalAmount;
     } else if (!amountValue || amountValue <= 0) {
@@ -418,11 +466,19 @@ const resolveCurrentPaymentContext = async (payment, totalAmount) => {
     }
   }
 
+const dueDate = installmentEntry?.due_date || payment?.due_date || null;
+  const receiptNumber =
+    installmentEntry?.receipt_number || payment?.receipt_number || null;
+
   return {
     amountValue,
     label,
     installmentNumber,
     totalInstallments,
+     status: targetStatus,
+    dueDate,
+    receiptNumber,
+    installmentEntry: installmentEntry || null,
   };
 };
 
@@ -586,13 +642,65 @@ router.post(
       }
 
       const proofImage = `/uploads/payments/${req.file.filename}`;
+const [payments] = await db
+        .promise()
+        .query(
+          `SELECT py.*, p.installment_plan as program_installment_plan
+           FROM payments py
+           LEFT JOIN registrations r ON py.registration_id = r.id
+           LEFT JOIN programs p ON r.program_id = p.id
+           WHERE py.id = ?`,
+          [req.params.id]
+        );
+
+      if (payments.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found",
+        });
+      }
+
+      const payment = payments[0];
+      let installmentNumber = null;
+
+      if (payment.status && payment.status.startsWith("installment_")) {
+        installmentNumber = parseInt(payment.status.split("_")[1]);
+      } else if (payment.current_installment_number) {
+        installmentNumber = payment.current_installment_number;
+      } else if (payment.status === "pending") {
+        installmentNumber = 1;
+      }
+
+      if (!installmentNumber || isNaN(installmentNumber)) {
+        installmentNumber = 1;
+      }
+
+      const existingInstallments = parseInstallmentAmounts(payment);
+      const updatedInstallments = ensureInstallmentEntry(
+        existingInstallments,
+        installmentNumber
+      );
+
+      const key = `installment_${installmentNumber}`;
+      updatedInstallments[key] = {
+        ...updatedInstallments[key],
+        proof_image: proofImage,
+        proof_uploaded_at: new Date().toISOString(),
+        status: "waiting_verification",
+      };
 
       await db
         .promise()
-        .query("UPDATE payments SET proof_image = ? WHERE id = ?", [
-          proofImage,
-          req.params.id,
-        ]);
+       .query(
+          `UPDATE payments
+           SET proof_image = ?,
+               verified_by = NULL,
+               verified_at = NULL,
+               installment_amounts = ?,
+               updated_at = NOW()
+           WHERE id = ?`,
+          [proofImage, JSON.stringify(updatedInstallments), req.params.id]
+        );
 
       res.json({
         success: true,
@@ -600,6 +708,7 @@ router.post(
           "Bukti pembayaran berhasil diupload dan menunggu verifikasi admin",
         data: {
           proof_image: proofImage,
+           installment_number: installmentNumber,
         },
       });
     } catch (error) {
@@ -726,12 +835,21 @@ router.post("/:id/create-invoice", async (req, res) => {
       installmentAmounts = {};
     }
 
-    installmentAmounts[`installment_${installment_number}`] = {
+    const installmentKey = `installment_${installment_number}`;
+    const existingEntry = installmentAmounts[installmentKey] || {};
+    const nowIso = new Date().toISOString();
+
+    installmentAmounts[installmentKey] = {
+      ...existingEntry,
       amount: amount,
       due_date: due_date,
-      created_at: new Date().toISOString(),
-      created_by: issuerId,
+      created_at: existingEntry.created_at || nowIso,
+      updated_at: nowIso,
+      created_by: existingEntry.created_by || issuerId,
       notes: notes,
+      status: "invoiced",
+      invoice_number: currentPayment.invoice_number,
+      invoice_issued_at: nowIso,
     };
 
     const newStatus = `installment_${installment_number}`;
@@ -954,6 +1072,61 @@ router.put("/:id/status", async (req, res) => {
       current_installment_number,
     ];
 
+let updatedInstallmentsJson = null;
+
+    if (receipt_number && newPaymentAmount > 0) {
+      const existingInstallments = parseInstallmentAmounts(currentPayment);
+      let effectiveInstallmentNumber = null;
+
+      if (finalStatus && finalStatus.startsWith("installment_")) {
+        effectiveInstallmentNumber = parseInt(finalStatus.split("_")[1]);
+      } else if (finalStatus === "paid") {
+        if (currentPayment.status?.startsWith("installment_")) {
+          effectiveInstallmentNumber = parseInt(
+            currentPayment.status.split("_")[1]
+          );
+        }
+
+        if (!effectiveInstallmentNumber || isNaN(effectiveInstallmentNumber)) {
+          effectiveInstallmentNumber =
+            currentPayment.current_installment_number || totalInstallments;
+        }
+      }
+
+      if (effectiveInstallmentNumber && !isNaN(effectiveInstallmentNumber)) {
+        const updatedInstallments = ensureInstallmentEntry(
+          existingInstallments,
+          effectiveInstallmentNumber
+        );
+
+        const key = `installment_${effectiveInstallmentNumber}`;
+        const nowIso = new Date().toISOString();
+        const entry = updatedInstallments[key] || {};
+
+        updatedInstallments[key] = {
+          ...entry,
+          amount: entry.amount || newPaymentAmount,
+          paid_amount: newPaymentAmount,
+          paid_at: nowIso,
+          receipt_number: receipt_number,
+          receipt_generated_at: nowIso,
+          verified_by: reviewerId,
+          verified_at: nowIso,
+          status: "paid",
+        };
+
+        if (!updatedInstallments[key].due_date && due_date) {
+          updatedInstallments[key].due_date = due_date;
+        }
+
+        if (updatedInstallments[key].proof_image) {
+          updatedInstallments[key].proof_verified_at = nowIso;
+        }
+
+        updatedInstallmentsJson = JSON.stringify(updatedInstallments);
+      }
+    }
+
     if (is_manual) {
       updateQuery += `, payment_method = ?, bank_name = ?, account_number = ?, payment_date = ?`;
       updateParams.push(
@@ -962,6 +1135,11 @@ router.put("/:id/status", async (req, res) => {
         account_number,
         payment_date || new Date()
       );
+    }
+
+    if (updatedInstallmentsJson) {
+      updateQuery += `, installment_amounts = ?`;
+      updateParams.push(updatedInstallmentsJson);
     }
 
     updateQuery += ` WHERE id = ?`;
@@ -1383,6 +1561,38 @@ router.get("/:id/invoice", async (req, res) => {
 
     const payment = payments[0];
 
+    const totalInstallments = getTotalInstallments(payment);
+    const { installment: installmentQuery, status: statusQuery } = req.query;
+
+    let requestedInstallment = null;
+    let targetStatus = statusQuery || null;
+
+    if (installmentQuery) {
+      if (
+        ["paid", "lunas", "final", "0"].includes(
+          installmentQuery.toString().toLowerCase()
+        )
+      ) {
+        targetStatus = "paid";
+      } else {
+        const parsedInstallment = parseInt(installmentQuery, 10);
+        if (!isNaN(parsedInstallment)) {
+          requestedInstallment = parsedInstallment;
+          targetStatus = `installment_${parsedInstallment}`;
+        }
+      }
+    }
+
+    if (
+      requestedInstallment &&
+      (requestedInstallment < 1 || requestedInstallment > totalInstallments)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Cicilan ${requestedInstallment} tidak valid untuk program ini`,
+      });
+    }
+
     if (!payment.invoice_number) {
       return res.status(400).json({
         success: false,
@@ -1394,26 +1604,57 @@ router.get("/:id/invoice", async (req, res) => {
     const amountPaid = parseFloat(payment.amount_paid || 0);
     const remaining = Math.max(totalAmount - amountPaid, 0);
 
-    const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount);
-    const paymentLabel = paymentContext.label || getStatusText(payment.status) || "Pembayaran";
+    const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount, {
+      status: targetStatus,
+      installmentNumber: requestedInstallment,
+    });
+
+    if (requestedInstallment && !paymentContext.installmentEntry) {
+      return res.status(404).json({
+        success: false,
+        message: `Data cicilan ${requestedInstallment} tidak ditemukan`,
+      });
+    }
+
+    if (requestedInstallment && !paymentContext.installmentEntry?.amount) {
+      return res.status(400).json({
+        success: false,
+        message: `Invoice untuk cicilan ${requestedInstallment} belum diterbitkan`,
+      });
+    }
+
+    const paymentLabel =
+      paymentContext.label ||
+      getStatusText(paymentContext.status || payment.status) ||
+      "Pembayaran";
     const paymentLabelLower = paymentLabel.toLowerCase();
     const invoiceAmount = paymentContext.amountValue || 0;
 
-    const invoiceDate = payment.created_at || payment.updated_at || new Date();
-    const formattedInvoiceDate = formatLongDate(invoiceDate);
-    const dueDateFormatted = payment.due_date ? formatLongDate(payment.due_date) : "-";
-    const dueTimeFormatted = payment.due_date ? formatTime(payment.due_date) : "";
+    const invoiceDateValue =
+      paymentContext.installmentEntry?.invoice_issued_at ||
+      payment.updated_at ||
+      payment.created_at ||
+      new Date();
+    const formattedInvoiceDate = formatLongDate(invoiceDateValue);
+    const dueDateSource = paymentContext.dueDate || payment.due_date;
+    const dueDateFormatted = dueDateSource ? formatLongDate(dueDateSource) : "-";
+    const dueTimeFormatted = dueDateSource ? formatTime(dueDateSource) : "";
     const dueDisplay =
-      payment.due_date && dueDateFormatted
+      dueDateSource && dueDateFormatted
         ? `${dueDateFormatted}${dueTimeFormatted ? `, pukul ${dueTimeFormatted} WIB` : ""}`
         : "-";
 
     const amountInWords = numberToBahasa(invoiceAmount);
 
     res.setHeader("Content-Type", "application/pdf");
+    const suffix = requestedInstallment
+      ? `-cicilan-${requestedInstallment}`
+      : targetStatus === "paid"
+      ? "-pelunasan"
+      : "";
     res.setHeader(
       "Content-Disposition",
-       `attachment; filename=invoice-${payment.invoice_number}.pdf`
+        `attachment; filename=invoice-${payment.invoice_number}${suffix}.pdf`
     );
 
     doc = new PDFDocument({ size: "A4", margin: 50 });
@@ -1703,11 +1944,35 @@ router.get("/:id/invoice", async (req, res) => {
     }
 
       const payment = payments[0];
+    const totalInstallments = getTotalInstallments(payment);
+    const { installment: installmentQuery, status: statusQuery } = req.query;
 
-    if (!payment.verified_by) {
+    let requestedInstallment = null;
+    let targetStatus = statusQuery || null;
+
+    if (installmentQuery) {
+      if (
+        ["paid", "lunas", "final", "0"].includes(
+          installmentQuery.toString().toLowerCase()
+        )
+      ) {
+        targetStatus = "paid";
+      } else {
+        const parsedInstallment = parseInt(installmentQuery, 10);
+        if (!isNaN(parsedInstallment)) {
+          requestedInstallment = parsedInstallment;
+          targetStatus = `installment_${parsedInstallment}`;
+        }
+      }
+    }
+
+   if (
+      requestedInstallment &&
+      (requestedInstallment < 1 || requestedInstallment > totalInstallments)
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Kwitansi hanya tersedia untuk pembayaran yang sudah diverifikasi",
+        message: `Cicilan ${requestedInstallment} tidak valid untuk program ini`,
       });
     }
 
@@ -1716,18 +1981,54 @@ router.get("/:id/invoice", async (req, res) => {
     const remaining = Math.max(totalAmount - amountPaid, 0);
     const progressPercentage = totalAmount > 0 ? (amountPaid / totalAmount) * 100 : 0;
 
-    const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount);
+    const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount, {
+      status: targetStatus,
+      installmentNumber: requestedInstallment,
+    });
+
+    if (requestedInstallment && !paymentContext.installmentEntry) {
+      return res.status(404).json({
+        success: false,
+        message: `Data cicilan ${requestedInstallment} tidak ditemukan`,
+      });
+    }
+
+    const receiptNumber = paymentContext.receiptNumber || payment.receipt_number;
+
+    if (requestedInstallment && !receiptNumber) {
+      return res.status(400).json({
+        success: false,
+        message: `Kwitansi untuk cicilan ${requestedInstallment} belum tersedia`,
+      });
+    }
+
+    if (!receiptNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Kwitansi belum tersedia untuk pembayaran ini",
+      });
+    }
+
     const receiptAmount = paymentContext.amountValue || 0;
     const amountInWords = numberToBahasa(receiptAmount);
-    const receiptDateValue = payment.payment_date || payment.verified_at || new Date();
+    const receiptDateValue =
+      paymentContext.installmentEntry?.paid_at ||
+      payment.payment_date ||
+      payment.verified_at ||
+      new Date();
     const receiptDate = formatLongDate(receiptDateValue);
 
     doc = new PDFDocument({ margin: 50, size: "A4" });
 
     res.setHeader("Content-Type", "application/pdf");
+     const suffix = requestedInstallment
+      ? `-cicilan-${requestedInstallment}`
+      : targetStatus === "paid"
+      ? "-pelunasan"
+      : "";
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=kwitansi-${payment.receipt_number || payment.invoice_number}.pdf`
+     `attachment; filename=kwitansi-${receiptNumber || payment.invoice_number}${suffix}.pdf`
     );
 
     doc.pipe(res);
@@ -1767,10 +2068,15 @@ router.get("/:id/invoice", async (req, res) => {
       .font("Helvetica")
       .fontSize(10)
       .fillColor(colors.text)
-      .text(`No. Kwitansi : ${payment.receipt_number || "-"}`)
+      .text(`No. Kwitansi : ${receiptNumber || "-"}`)
       .text(`No. Invoice  : ${payment.invoice_number || "-"}`)
       .text(`Tanggal      : ${receiptDate}`)
-      .text(`Status       : ${getStatusText(payment.status)}`);
+      .text(
+        `Status       : ${
+          getStatusText(paymentContext.status || payment.status) || "-"
+        }`
+      );
+
 
     doc.moveDown(1);
 
@@ -1807,7 +2113,9 @@ router.get("/:id/invoice", async (req, res) => {
         width: infoWidth - 30,
       })
       .text(
-        `Pembayaran  : ${paymentContext.label} (${getStatusText(payment.status)})`,
+       `Pembayaran  : ${paymentContext.label} (${getStatusText(
+          paymentContext.status || payment.status
+        )})`,
         65,
         doc.y + 6,
         {
