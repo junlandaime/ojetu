@@ -12,6 +12,71 @@ const paymentUtils = {
       : `Rp ${Math.round(numValue).toLocaleString("id-ID")}`;
   },
 
+  numberToWords: (value) => {
+    const units = [
+      "",
+      "Satu",
+      "Dua",
+      "Tiga",
+      "Empat",
+      "Lima",
+      "Enam",
+      "Tujuh",
+      "Delapan",
+      "Sembilan",
+      "Sepuluh",
+      "Sebelas",
+    ];
+
+    const convert = (number) => {
+      const n = Math.floor(number);
+      if (n === 0) return "";
+      if (n < 12) return units[n];
+      if (n < 20) return `${convert(n - 10)} Belas`;
+      if (n < 100) {
+        const tens = Math.floor(n / 10);
+        const remainder = n % 10;
+        return `${convert(tens)} Puluh ${convert(remainder)}`;
+      }
+      if (n < 200) return `Seratus ${convert(n - 100)}`;
+      if (n < 1000) {
+        const hundreds = Math.floor(n / 100);
+        const remainder = n % 100;
+        return `${convert(hundreds)} Ratus ${convert(remainder)}`;
+      }
+      if (n < 2000) return `Seribu ${convert(n - 1000)}`;
+      if (n < 1000000) {
+        const thousands = Math.floor(n / 1000);
+        const remainder = n % 1000;
+        return `${convert(thousands)} Ribu ${convert(remainder)}`;
+      }
+      if (n < 1000000000) {
+        const millions = Math.floor(n / 1000000);
+        const remainder = n % 1000000;
+        return `${convert(millions)} Juta ${convert(remainder)}`;
+      }
+      if (n < 1000000000000) {
+        const billions = Math.floor(n / 1000000000);
+        const remainder = n % 1000000000;
+        return `${convert(billions)} Miliar ${convert(remainder)}`;
+      }
+      if (n < 1000000000000000) {
+        const trillions = Math.floor(n / 1000000000000);
+        const remainder = n % 1000000000000;
+        return `${convert(trillions)} Triliun ${convert(remainder)}`;
+      }
+      return "";
+    };
+
+    const numericValue = Math.abs(Math.round(parseFloat(value) || 0));
+    if (numericValue === 0) {
+      return "Nol Rupiah";
+    }
+
+    const words = convert(numericValue).replace(/\s+/g, " ").trim();
+    return `${words} Rupiah`;
+  },
+
   parseFloatSafe: (value, defaultValue = 0) => {
     if (value === null || value === undefined || value === "") {
       return defaultValue;
@@ -739,6 +804,11 @@ const Payment = () => {
     );
   };
 
+  const canDownloadInvoice = (payment) => {
+    if (!payment) return false;
+    return Boolean(payment.invoice_number);
+  };
+
   const downloadReceipt = async (payment) => {
     const validation = paymentUtils.validatePayment(payment);
     if (!validation.isValid) {
@@ -748,6 +818,68 @@ const Payment = () => {
       });
       return;
     }
+
+    const totalAmount = paymentUtils.parseFloatSafe(
+      payment.program_training_cost || payment.amount || 0
+    );
+    const amountPaid = paymentUtils.parseFloatSafe(payment.amount_paid || 0);
+    const remaining = paymentUtils.calculateRemainingSafe(totalAmount, amountPaid);
+
+    const currentInstallmentAmount = getDisplayAmount(payment);
+    let highlightAmountValue =
+      currentInstallmentAmount && currentInstallmentAmount > 0
+        ? currentInstallmentAmount
+        : paymentUtils.parseFloatSafe(
+            payment.amount_paid || payment.amount || totalAmount
+          );
+
+    if (!highlightAmountValue || highlightAmountValue <= 0) {
+      highlightAmountValue = totalAmount;
+    }
+
+    const amountInWords = paymentUtils.numberToWords(highlightAmountValue);
+    const receiptDateObj = payment.payment_date
+      ? new Date(payment.payment_date)
+      : new Date();
+    const receiptDate = receiptDateObj.toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const progress = totalAmount > 0 ? Math.min(100, (amountPaid / totalAmount) * 100) : 0;
+    const statusText = paymentUtils.getStatusText(payment.status);
+    const paymentLabel = paymentUtils.getInstallmentText(payment);
+    const generatedAt = new Date().toLocaleString("id-ID");
+
+    const escapeHtml = (value) =>
+      (value ?? "-")
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const metadata = {
+      receiptNumber: escapeHtml(payment.receipt_number || payment.invoice_number || "-"),
+      invoiceNumber: escapeHtml(payment.invoice_number || "-"),
+      statusText: escapeHtml(statusText),
+      paymentLabel: escapeHtml(paymentLabel),
+      participantName: escapeHtml(payment.full_name || user?.full_name || "-"),
+      participantEmail: escapeHtml(payment.email || user?.email || "-"),
+      participantPhone: escapeHtml(payment.phone || user?.phone || "-"),
+      participantAddress: escapeHtml(payment.address || "-"),
+      programName: escapeHtml(payment.program_name || "-"),
+      notes: payment.notes ? escapeHtml(payment.notes) : "",
+    };
+
+    const totals = {
+      total: paymentUtils.formatCurrency(totalAmount),
+      paid: paymentUtils.formatCurrency(amountPaid),
+      remaining: paymentUtils.formatCurrency(remaining),
+      highlight: paymentUtils.formatCurrency(highlightAmountValue),
+      progress: progress.toFixed(1),
+      amountWords: escapeHtml(amountInWords),
+    };
+
 
     try {
       try {
@@ -777,7 +909,7 @@ const Payment = () => {
         });
         return;
       } catch (pdfError) {
-        console.log("PDF receipt not available, generating HTML receipt...");
+        console.log("PDF receipt not available, generating HTML receipt...", pdfError);
       }
 
       const receiptWindow = window.open("", "_blank");
@@ -789,576 +921,373 @@ const Payment = () => {
         return;
       }
 
-      const receiptDate = payment.payment_date
-        ? new Date(payment.payment_date).toLocaleDateString("id-ID")
-        : new Date().toLocaleDateString("id-ID");
-
-      const totalAmount = paymentUtils.parseFloatSafe(
-        payment.program_training_cost || 0
-      );
-      const amountPaid = paymentUtils.parseFloatSafe(payment.amount_paid || 0);
-      const remaining = paymentUtils.calculateRemainingSafe(
-        totalAmount,
-        amountPaid
-      );
-
-      const currentInstallmentAmount = getDisplayAmount(payment);
-      const installmentText = paymentUtils.getInstallmentText(payment);
-
-      receiptWindow.document.write(`
+      const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
-          <title>KWITANSI - ${payment.receipt_number || payment.invoice_number}</title>
-          <meta charset="UTF-8">
+          <title>KWITANSI - ${metadata.receiptNumber}</title>
+          <meta charset="UTF-8" />
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-            
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
-            body {
-              font-family: 'Inter', sans-serif;
-              margin: 0;
-              padding: 30px;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              min-height: 100vh;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-            }
-            
-            .receipt-container {
-              max-width: 800px;
-              margin: 0 auto;
-              background: white;
-              border-radius: 20px;
-              box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-              overflow: hidden;
-              position: relative;
-            }
-            
-            .receipt-header {
-              background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-              color: white;
-              padding: 40px 30px;
-              text-align: center;
-              position: relative;
-              overflow: hidden;
-            }
-            
-            .receipt-header::before {
-              content: '';
-              position: absolute;
-              top: -50%;
-              left: -50%;
-              width: 200%;
-              height: 200%;
-              background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-              background-size: 20px 20px;
-              animation: float 20s linear infinite;
-            }
-            
-            @keyframes float {
-              0% { transform: translate(0, 0) rotate(0deg); }
-              100% { transform: translate(-20px, -20px) rotate(360deg); }
-            }
-            
-            .receipt-title {
-              font-size: 2.5em;
-              font-weight: 700;
-              margin-bottom: 10px;
-              letter-spacing: 2px;
-              position: relative;
-              z-index: 1;
-            }
-            
-            .receipt-subtitle {
-              font-size: 1.2em;
-              font-weight: 300;
-              opacity: 0.9;
-              position: relative;
-              z-index: 1;
-            }
-            
-            .company-info {
-              background: #f8f9fa;
-              padding: 25px 30px;
-              border-bottom: 1px solid #e9ecef;
-              text-align: center;
-            }
-            
-            .company-name {
-              font-size: 1.4em;
-              font-weight: 700;
-              color: #2c3e50;
-              margin-bottom: 5px;
-            }
-            
-            .company-address {
-              color: #6c757d;
-              line-height: 1.5;
-            }
-            
-            .receipt-content {
-              padding: 40px 30px;
-            }
-            
-            .receipt-info-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-bottom: 30px;
-              background: #f8f9fa;
-              padding: 25px;
-              border-radius: 15px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .info-item {
-              display: flex;
-              flex-direction: column;
-              gap: 5px;
-            }
-            
-            .info-label {
-              font-size: 0.85em;
-              color: #6c757d;
-              font-weight: 500;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            
-            .info-value {
-              font-size: 1.1em;
-              font-weight: 600;
-              color: #2c3e50;
-            }
-            
-            .installment-highlight {
-              background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-              border: 2px solid #ffd43b;
-              border-radius: 15px;
-              padding: 25px;
-              margin: 30px 0;
-              text-align: center;
-              position: relative;
-              overflow: hidden;
-            }
-            
-            .installment-highlight::before {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              height: 3px;
-              background: linear-gradient(90deg, #ffd43b, #f08c00);
-            }
-            
-            .installment-text {
-              font-size: 1.1em;
-              color: #856404;
-              font-weight: 500;
-              margin-bottom: 10px;
-            }
-            
-            .installment-amount {
-              font-size: 1.8em;
-              font-weight: 700;
-              color: #e67700;
-            }
-            
-            .section {
-              margin-bottom: 35px;
-            }
-            
-            .section-title {
-              font-size: 1.1em;
-              font-weight: 600;
-              color: #007bff;
-              padding: 12px 20px;
-              background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-              border-radius: 10px;
-              margin-bottom: 20px;
-              border-left: 4px solid #007bff;
-            }
-            
-            .data-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 15px;
-            }
-            
-            .data-item {
-              display: flex;
-              flex-direction: column;
-              gap: 5px;
-              padding: 15px;
-              background: #f8f9fa;
-              border-radius: 10px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .progress-container {
-              background: #f8f9fa;
-              padding: 25px;
-              border-radius: 15px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .progress-header {
-              display: flex;
-              justify-content: between;
-              margin-bottom: 15px;
-              font-weight: 600;
-              color: #2c3e50;
-            }
-            
-            .progress-bar-container {
-              height: 12px;
-              background: #e9ecef;
-              border-radius: 10px;
-              overflow: hidden;
-              margin: 15px 0;
-            }
-            
-            .progress-bar {
-              height: 100%;
-              background: linear-gradient(90deg, #28a745, #20c997);
-              border-radius: 10px;
-              transition: width 0.5s ease;
-              position: relative;
-              overflow: hidden;
-            }
-            
-            .progress-bar::after {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: -100%;
-              width: 100%;
-              height: 100%;
-              background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-              animation: shimmer 2s infinite;
-            }
-            
-            @keyframes shimmer {
-              0% { left: -100%; }
-              100% { left: 100%; }
-            }
-            
-            .progress-text {
-              text-align: center;
-              font-weight: 600;
-              color: #495057;
-              font-size: 1.1em;
-            }
-            
-            .payment-table {
-              width: 100%;
-              border-collapse: collapse;
-              background: white;
-              border-radius: 15px;
-              overflow: hidden;
-              box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            }
-            
-            .payment-table th {
-              background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-              color: white;
-              padding: 18px 15px;
-              text-align: left;
-              font-weight: 600;
-              font-size: 0.9em;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            
-            .payment-table td {
-              padding: 18px 15px;
-              border-bottom: 1px solid #e9ecef;
-              font-weight: 500;
-            }
-            
-            .payment-table tr:last-child td {
-              border-bottom: none;
-            }
-            
-            .payment-table .amount {
-              text-align: right;
-              font-weight: 600;
-            }
-            
-            .payment-table .total-row {
-              background: #f8f9fa;
-              font-weight: 700;
-              font-size: 1.1em;
-            }
-            
-            .status-badge {
-              display: inline-block;
-              padding: 8px 20px;
-              background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-              color: white;
-              border-radius: 25px;
-              font-weight: 600;
-              font-size: 1.1em;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-            }
-            
-            .signature-area {
-              margin-top: 50px;
-              text-align: right;
-              padding: 30px;
-              background: #f8f9fa;
-              border-radius: 15px;
-              border: 1px solid #e9ecef;
-            }
-            
-            .signature-line {
-              width: 300px;
-              height: 1px;
-              background: #6c757d;
-              margin: 60px 0 10px auto;
-            }
-            
-            .footer {
-              background: #2c3e50;
-              color: white;
-              padding: 30px;
-              text-align: center;
-              margin-top: 40px;
-            }
-            
-            .footer-text {
-              font-size: 0.9em;
-              opacity: 0.8;
-              line-height: 1.6;
-            }
-            
-            .watermark {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) rotate(-45deg);
-              font-size: 8em;
-              font-weight: 900;
-              color: rgba(0, 123, 255, 0.03);
-              pointer-events: none;
-              z-index: 0;
-              white-space: nowrap;
-            }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            *, *::before, *::after { box-sizing: border-box; }
+            body { font-family: 'Inter', sans-serif; background: #eef2ff; margin: 0; padding: 40px; color: #1f2937; }
+            .document { max-width: 820px; margin: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 30px 60px rgba(15, 23, 42, 0.12); padding: 48px; position: relative; overflow: hidden; }
+            .accent-bar { height: 6px; background: linear-gradient(90deg, #0b4a99, #1b75bc); margin: -48px -48px 32px; border-radius: 0 0 16px 16px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; }
+            .title { font-size: 32px; font-weight: 700; letter-spacing: 0.08em; color: #0b4a99; text-transform: uppercase; }
+            .subtitle { margin-top: 6px; font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: #94a3b8; }
+            .company-info { text-align: right; font-size: 12px; color: #64748b; line-height: 1.6; }
+            .metadata { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+            .metadata div { background: #f5f8ff; border: 1px solid #dbe4ff; border-radius: 12px; padding: 14px 18px; font-size: 13px; line-height: 1.5; }
+            .metadata span { display: block; margin-top: 6px; font-weight: 600; color: #0f172a; }
+            .info-box { margin-top: 32px; padding: 28px; background: #f8fbff; border-radius: 16px; border: 1px solid #dbe5ff; }
+            .info-box h3 { margin: 0 0 12px; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: #0b4a99; }
+            .info-box p { margin: 6px 0; font-size: 14px; color: #1f2937; }
+            .amount-box { margin: 32px 0; background: linear-gradient(135deg, #0b4a99, #1b75bc); color: #ffffff; border-radius: 18px; padding: 32px; text-align: center; box-shadow: 0 22px 45px rgba(15, 76, 129, 0.35); }
+            .amount-box .label { text-transform: uppercase; letter-spacing: 0.3em; font-size: 12px; opacity: 0.75; margin-bottom: 12px; }
+            .amount-box .value { font-size: 32px; font-weight: 700; }
+            .amount-box .words { margin-top: 10px; font-size: 14px; opacity: 0.85; }
+            .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+            .summary .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
+            .summary .label { text-transform: uppercase; font-size: 11px; letter-spacing: 0.12em; color: #94a3b8; margin-bottom: 6px; }
+            .summary .value { font-size: 16px; font-weight: 600; color: #0f172a; }
+            .payment-info { margin-top: 28px; padding: 28px; border-radius: 16px; background: #fefce8; border: 1px solid #f5e6a7; font-size: 14px; line-height: 1.7; color: #92400e; }
+            .payment-info h4 { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: #b45309; }
+            .signature { margin-top: 48px; text-align: right; font-size: 14px; color: #0f172a; }
+            .signature .line { width: 220px; height: 1px; background: #cbd5f5; margin: 60px 0 12px auto; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6b7280; line-height: 1.6; }
+            .tagline { margin-top: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.32em; color: #0b4a99; }
             
             @media print {
-              body {
-                background: white !important;
-                padding: 0 !important;
-              }
-              .receipt-container {
-                box-shadow: none !important;
-                margin: 0 !important;
-                max-width: none !important;
+               body { background: #ffffff !important; padding: 0 !important; }
+              .document { box-shadow: none !important; margin: 0 !important; }
               }
             }
           </style>
         </head>
         <body>
-          <div class="receipt-container">
-            <div class="watermark">FITALENTA</div>
-            
-            <div class="receipt-header">
-              <h1 class="receipt-title">KWITANSI RESMI</h1>
-              <p class="receipt-subtitle">Program Magang Perusahaan</p>
-            </div>
-            
+          <div class="document">
+            <div class="accent-bar"></div>
+            <div class="header">
+              <div>
+                <div class="title">Kwitansi</div>
+                <div class="subtitle">PT FAST INDO TALENT</div>
+              </div>
             <div class="company-info">
-              <div class="company-name">FITALENTA</div>
-              <div class="company-address">
-                Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132<br>
-                Telp: (021) 123-4567 | Email: admin@fitalenta.com
+                <strong>FITALENTA</strong><br />
+                Empowering People<br />
+                Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132<br />
+                Telp: (021) 123-4567<br />
+                Email: admin@fitalenta.com
               </div>
+</div>
+            <div class="metadata">
+              <div>No. Kwitansi<span>${metadata.receiptNumber}</span></div>
+              <div>No. Invoice<span>${metadata.invoiceNumber}</span></div>
+              <div>Tanggal Kwitansi<span>${receiptDate}</span></div>
+              <div>Status Pembayaran<span>${metadata.statusText}</span></div>
             </div>
-            
-            <div class="receipt-content">
-              <div class="receipt-info-grid">
-                <div class="info-item">
-                  <span class="info-label">No. Kwitansi</span>
-                  <span class="info-value">${payment.receipt_number || payment.invoice_number}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">No. Invoice</span>
-                  <span class="info-value">${payment.invoice_number}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Tanggal Kwitansi</span>
-                  <span class="info-value">${receiptDate}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Status Pembayaran</span>
-                  <span class="info-value">${paymentUtils.getStatusText(payment.status)}</span>
-                </div>
-              </div>
-
-              <div class="installment-highlight">
-                <div class="installment-text">${installmentText}</div>
-                <div class="installment-amount">${paymentUtils.formatCurrency(currentInstallmentAmount)}</div>
-              </div>
-
-              <div class="section">
-                <div class="section-title">DATA PESERTA</div>
-                <div class="data-grid">
-                  <div class="data-item">
-                    <span class="info-label">Nama Lengkap</span>
-                    <span class="info-value">${user?.full_name || "N/A"}</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Email</span>
-                    <span class="info-value">${user?.email || "N/A"}</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Nomor Telepon</span>
-                    <span class="info-value">${user?.phone || "N/A"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="section">
-                <div class="section-title">DETAIL PROGRAM</div>
-                <div class="data-grid">
-                  <div class="data-item">
-                    <span class="info-label">Program Magang</span>
-                    <span class="info-value">${payment.program_name || "N/A"}</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Durasi Program</span>
-                    <span class="info-value">${payment.program_duration || "N/A"}</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Total Biaya Program</span>
-                    <span class="info-value">${paymentUtils.formatCurrency(totalAmount)}</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Plan Cicilan</span>
-                    <span class="info-value">${payment.program_installment_plan || "4 cicilan"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="section">
-                <div class="section-title">PROGRESS PEMBAYARAN</div>
-                <div class="progress-container">
-                  <div class="progress-header">
-                    <span>Progress Pembayaran</span>
-                    <span>${safeCalculateProgress(payment).toFixed(1)}%</span>
-                  </div>
-                  <div class="progress-bar-container">
-                    <div class="progress-bar" style="width: ${safeCalculateProgress(payment)}%"></div>
-                  </div>
-                  <div class="progress-text">
-                    ${paymentUtils.formatCurrency(amountPaid)} / ${paymentUtils.formatCurrency(totalAmount)}
-                  </div>
-                </div>
-              </div>
-
-              <div class="section">
-                <div class="section-title">RINCIAN PEMBAYARAN</div>
-                <table class="payment-table">
-                  <thead>
-                    <tr>
-                      <th>Keterangan</th>
-                      <th style="text-align: right;">Jumlah</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Biaya Program ${payment.program_name || ""}</td>
-                      <td class="amount">${paymentUtils.formatCurrency(totalAmount)}</td>
-                    </tr>
-                    <tr class="total-row">
-                      <td>TOTAL TAGIHAN</td>
-                      <td class="amount">${paymentUtils.formatCurrency(totalAmount)}</td>
-                    </tr>
-                    <tr class="total-row">
-                      <td>SUDAH DIBAYAR</td>
-                      <td class="amount">${paymentUtils.formatCurrency(amountPaid)}</td>
-                    </tr>
-                    ${remaining > 0 ? `
-                    <tr class="total-row">
-                      <td>SISA TAGIHAN</td>
-                      <td class="amount">${paymentUtils.formatCurrency(remaining)}</td>
-                    </tr>
-                    ` : ''}
-                  </tbody>
-                </table>
-              </div>
-
-              <div style="text-align: center; margin: 40px 0;">
-                <div class="status-badge">
-                  ${payment.status === "paid" ? "LUNAS" : paymentUtils.getInstallmentText(payment).toUpperCase()}
-                </div>
-              </div>
-
-              ${payment.status === "paid" ? `
-              <div class="section">
-                <div class="section-title">KONFIRMASI PEMBAYARAN</div>
-                <div class="data-grid">
-                  <div class="data-item">
-                    <span class="info-label">Status</span>
-                    <span class="info-value" style="color: #28a745; font-weight: 700;">LUNAS</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Tanggal Pembayaran</span>
-                    <span class="info-value">${receiptDate}</span>
-                  </div>
-                  <div class="data-item">
-                    <span class="info-label">Metode Pembayaran</span>
-                    <span class="info-value">${payment.payment_method || "Transfer Bank"}</span>
-                  </div>
-                  ${payment.bank_name ? `
-                  <div class="data-item">
-                    <span class="info-label">Bank</span>
-                    <span class="info-value">${payment.bank_name}</span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-              ` : ''}
-
-              <div class="signature-area">
-                <p>Bandung, ${receiptDate}</p>
-                <div class="signature-line"></div>
-                <p style="font-weight: 700; margin-top: 10px;">Admin FITALENTA</p>
-              </div>
+            <div class="info-box">
+              <h3>Telah diterima dari</h3>
+              <p><strong>${metadata.participantName}</strong></p>
+              <p>Alamat: ${metadata.participantAddress}</p>
+              <p>Email: ${metadata.participantEmail}</p>
+              <p>Telepon: ${metadata.participantPhone}</p>
+              <p>Program: ${metadata.programName}</p>
+              <p>Pembayaran: ${metadata.paymentLabel}</p>
+              <p>Jumlah dalam kata: ${totals.amountWords}</p>
             </div>
-
+            <div class="amount-box">
+              <div class="label">Jumlah diterima</div>
+              <div class="value">${totals.highlight}</div>
+              <div class="words">${totals.amountWords}</div>
+            </div>
+            <div class="summary">
+              <div class="card"><div class="label">Total Tagihan</div><div class="value">${totals.total}</div></div>
+              <div class="card"><div class="label">Total Dibayar</div><div class="value">${totals.paid}</div></div>
+              <div class="card"><div class="label">Sisa Tagihan</div><div class="value">${totals.remaining}</div></div>
+              <div class="card"><div class="label">Progress</div><div class="value">${totals.progress}%</div></div>
+            </div>
+            <div class="payment-info">
+              <h4>Informasi Pembayaran</h4>
+              <p>Bank: BCA Cab. Maranatha Bandung</p>
+              <p>No. Rekening: 2828339333 a.n PT FAST Indo Talent</p>
+              <p>Metode: ${escapeHtml(payment.payment_method || "Transfer Bank")}</p>
+              ${metadata.notes ? `<p>Catatan: ${metadata.notes}</p>` : ""}
+            </div>
+            <div class="signature">
+              <p>Bandung, ${receiptDate}</p>
+              <div class="line"></div>
+              <p><strong>Il Ratna Yanti Kosasih, S.Si., M.Sc.</strong></p>
+              <p>General Manager</p>
+            </div>
             <div class="footer">
-              <p class="footer-text">
-                ** Kwitansi ini sah dan dapat digunakan sebagai bukti pembayaran yang valid **<br>
-                Terima kasih telah mempercayai program magang kami<br>
-                Generated on: ${new Date().toLocaleString("id-ID")}
-              </p>
+              <p>Kwitansi ini sah dan dapat digunakan sebagai bukti pembayaran yang valid.</p>
+              <p>Terima kasih telah mempercayai program kami.</p>
+              <p class="tagline">FITALENTA | AMANAH | SHIDDIQ | TABLIGH</p>
+              <p style="margin-top: 6px; font-size: 11px;">Generated on: ${generatedAt}</p>
             </div>
           </div>
         </body>
         </html>
-      `);
-
+      `;
+              receiptWindow.document.write(htmlContent);
       receiptWindow.document.close();
 
-      setTimeout(() => {
-        receiptWindow.print();
-      }, 1000);
+              setMessage({
+        type: "success",
+        text: "Kwitansi HTML berhasil dibuka di tab baru. Silakan simpan atau cetak.",
+      });
     } catch (error) {
       console.error("❌ Error generating receipt:", error);
       setMessage({
         type: "error",
         text: "Gagal mengunduh kwitansi: " + (error.message || "Unknown error"),
+      });
+    }
+  };
+
+              
+
+              const downloadInvoice = async (payment) => {
+    const validation = paymentUtils.validatePayment(payment);
+    if (!validation.isValid) {
+      setMessage({
+        type: "error",
+        text: "Data pembayaran tidak valid: " + validation.error,
+      });
+      return;
+    }
+
+              if (!payment.invoice_number) {
+      setMessage({
+        type: "error",
+        text: "Invoice belum tersedia untuk pembayaran ini.",
+      });
+      return;
+    }
+
+              const totalAmount = paymentUtils.parseFloatSafe(
+      payment.program_training_cost || payment.amount || 0
+    );
+    const amountPaid = paymentUtils.parseFloatSafe(payment.amount_paid || 0);
+    const remaining = paymentUtils.calculateRemainingSafe(totalAmount, amountPaid);
+
+              const currentInstallmentAmount = getDisplayAmount(payment);
+    let invoiceAmountValue =
+      currentInstallmentAmount && currentInstallmentAmount > 0
+        ? currentInstallmentAmount
+        : paymentUtils.parseFloatSafe(payment.amount || remaining || totalAmount);
+
+    if (!invoiceAmountValue || invoiceAmountValue <= 0) {
+      invoiceAmountValue = remaining > 0 ? remaining : totalAmount;
+    }
+
+    const amountInWords = paymentUtils.numberToWords(invoiceAmountValue);
+    const invoiceDateObj = payment.updated_at
+      ? new Date(payment.updated_at)
+      : payment.created_at
+      ? new Date(payment.created_at)
+      : new Date();
+    const invoiceDate = invoiceDateObj.toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const dueDateObj = payment.due_date ? new Date(payment.due_date) : null;
+    const dueDate = dueDateObj
+      ? dueDateObj.toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "-";
+    const dueTime = dueDateObj
+      ? dueDateObj.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "";
+    const dueDisplay = dueDateObj
+      ? `${dueDate}${dueTime ? `, pukul ${dueTime} WIB` : ""}`
+      : "-";
+
+    const escapeHtml = (value) =>
+      (value ?? "-")
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const metadata = {
+      invoiceNumber: escapeHtml(payment.invoice_number || "-"),
+      participantName: escapeHtml(payment.full_name || user?.full_name || "-"),
+      participantAddress: escapeHtml(payment.address || "-"),
+      programName: escapeHtml(payment.program_name || "-"),
+      paymentLabel: escapeHtml(paymentUtils.getInstallmentText(payment)),
+      notes:
+        payment.notes
+          ? escapeHtml(payment.notes)
+          : "Mohon menyelesaikan pembayaran sebelum jatuh tempo dan unggah bukti pembayaran melalui dashboard peserta.",
+    };
+
+    const formatted = {
+      invoiceAmount: paymentUtils.formatCurrency(invoiceAmountValue),
+      totalAmount: paymentUtils.formatCurrency(totalAmount),
+      amountPaid: paymentUtils.formatCurrency(amountPaid),
+      remaining: paymentUtils.formatCurrency(remaining),
+      amountWords: escapeHtml(amountInWords),
+    };
+
+    try {
+      try {
+        const response = await axios.get(`/api/payments/${payment.id}/invoice`, {
+          responseType: "blob",
+          timeout: 15000,
+        });
+
+              const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `invoice-${payment.invoice_number}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        setMessage({
+          type: "success",
+          text: "Invoice PDF berhasil diunduh",
+        });
+        return;
+      } catch (pdfError) {
+        console.log("PDF invoice not available, generating HTML invoice...", pdfError);
+      }
+
+      const invoiceWindow = window.open("", "_blank");
+      if (!invoiceWindow) {
+        setMessage({
+          type: "error",
+          text: "Popup diblokir. Izinkan popup untuk generate invoice.",
+        });
+        return;
+      }
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>INVOICE - ${metadata.invoiceNumber}</title>
+          <meta charset="UTF-8" />
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            *, *::before, *::after { box-sizing: border-box; }
+            body { font-family: 'Inter', sans-serif; background: #f1f5ff; margin: 0; padding: 40px; color: #1f2937; }
+            .document { max-width: 820px; margin: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14); padding: 48px; position: relative; overflow: hidden; }
+            .accent-bar { height: 6px; background: linear-gradient(90deg, #0b4a99, #1b75bc); margin: -48px -48px 32px; border-radius: 0 0 18px 18px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; }
+            .brand { font-size: 34px; font-weight: 700; color: #0b4a99; letter-spacing: 0.12em; text-transform: uppercase; }
+            .tagline { margin-top: 6px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8; }
+            .company-info { text-align: right; font-size: 12px; line-height: 1.6; color: #64748b; }
+            .meta { margin-top: 24px; display: flex; justify-content: space-between; color: #1f2937; }
+            .recipient { margin-top: 32px; line-height: 1.8; font-size: 14px; }
+            .recipient strong { font-size: 16px; color: #0b4a99; }
+            .subject { margin-top: 28px; font-size: 15px; font-weight: 600; color: #0b4a99; text-transform: uppercase; letter-spacing: 0.12em; }
+            .paragraph { margin-top: 18px; line-height: 1.8; font-size: 14px; color: #1f2937; }
+            .detail-box { margin-top: 28px; border: 1px solid #dbe4ff; border-radius: 16px; padding: 24px; background: #f8fbff; font-size: 14px; }
+            .detail-row { display: grid; grid-template-columns: 180px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed #dbe4ff; }
+            .detail-row:last-child { border-bottom: none; }
+            .detail-label { font-weight: 600; color: #0f172a; text-transform: uppercase; font-size: 12px; letter-spacing: 0.08em; }
+            .detail-value { color: #1f2937; }
+            .amount-box { margin-top: 28px; background: linear-gradient(135deg, #0b4a99, #1b75bc); color: #ffffff; border-radius: 18px; padding: 32px; text-align: center; box-shadow: 0 22px 50px rgba(16, 76, 129, 0.3); }
+            .amount-box .label { text-transform: uppercase; letter-spacing: 0.28em; font-size: 12px; opacity: 0.75; }
+            .amount-box .value { margin-top: 12px; font-size: 34px; font-weight: 700; }
+            .amount-box .words { margin-top: 10px; font-size: 14px; opacity: 0.85; }
+            .closing { margin-top: 28px; line-height: 1.8; font-size: 14px; }
+            .signature { margin-top: 48px; text-align: right; font-size: 14px; color: #0f172a; }
+            .signature .line { width: 240px; height: 1px; background: #cbd5f5; margin: 60px 0 12px auto; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6b7280; line-height: 1.6; letter-spacing: 0.12em; }
+            @media print {
+              body { background: #ffffff !important; padding: 0 !important; }
+              .document { box-shadow: none !important; margin: 0 !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="document">
+            <div class="accent-bar"></div>
+            <div class="header">
+              <div>
+                <div class="brand">FITALENTA</div>
+                <div class="tagline">Empowering People</div>
+              </div>
+              <div class="company-info">
+                Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132<br />
+                Telp: (021) 123-4567<br />
+                Email: admin@fitalenta.com
+              </div>
+            </div>
+<div class="meta">
+              <div>Bandung, ${invoiceDate}</div>
+              <div><strong>No: ${metadata.invoiceNumber}</strong></div>
+            </div>
+            <div class="recipient">
+              <p>Kepada Yth,</p>
+              <p><strong>${metadata.participantName}</strong></p>
+              <p>${metadata.participantAddress}</p>
+              <p>di Tempat</p>
+            </div>
+            <div class="subject">Perihal: Invoice ${metadata.paymentLabel} Pelatihan dan Karantina Kerja Tokutei Ginou</div>
+            <div class="paragraph">
+              Assalamu'alaikum warahmatullahi wabarakatuh,<br /><br />
+              Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talent. Bersama surat ini kami sampaikan tagihan ${metadata.paymentLabel.toLowerCase()} untuk Program ${metadata.programName}. Adapun rincian tagihan adalah sebagai berikut:
+            </div>
+            <div class="detail-box">
+              <div class="detail-row"><span class="detail-label">Program</span><span class="detail-value">${metadata.programName}</span></div>
+              <div class="detail-row"><span class="detail-label">Nomor Invoice</span><span class="detail-value">${metadata.invoiceNumber}</span></div>
+              <div class="detail-row"><span class="detail-label">Jenis Pembayaran</span><span class="detail-value">${metadata.paymentLabel}</span></div>
+              <div class="detail-row"><span class="detail-label">Jumlah Tagihan</span><span class="detail-value">${formatted.invoiceAmount}</span></div>
+              <div class="detail-row"><span class="detail-label">Terbilang</span><span class="detail-value">${formatted.amountWords}</span></div>
+              <div class="detail-row"><span class="detail-label">Jatuh Tempo</span><span class="detail-value">${escapeHtml(dueDisplay)}</span></div>
+              <div class="detail-row"><span class="detail-label">Rekening Pembayaran</span><span class="detail-value">BCA Cab. Maranatha Bandung<br />No. Rekening: 2828339333 a.n PT FAST Indo Talent</span></div>
+              <div class="detail-row"><span class="detail-label">Catatan</span><span class="detail-value">${metadata.notes}</span></div>
+            </div>
+            <div class="amount-box">
+              <div class="label">Jumlah Tagihan</div>
+              <div class="value">${formatted.invoiceAmount}</div>
+              <div class="words">${formatted.amountWords}</div>
+            </div>
+            <div class="closing">
+              Mohon melakukan pembayaran sesuai informasi di atas. Setelah pembayaran dilakukan, unggah bukti pembayaran untuk proses verifikasi.<br /><br />
+              Total biaya program: ${formatted.totalAmount}. Sudah dibayar: ${formatted.amountPaid}. Sisa kewajiban: ${formatted.remaining}.<br /><br />
+              Demikian invoice ini kami sampaikan. Atas perhatian dan kerja sama Anda kami ucapkan terima kasih.
+            </div>
+            <div class="signature">
+              <p>Bandung, ${invoiceDate}</p>
+              <div class="line"></div>
+              <p><strong>Il Ratna Yanti Kosasih, S.Si., M.Sc.</strong></p>
+              <p>General Manager</p>
+            </div>
+            <div class="footer">FITALENTA | AMANAH | SHIDDIQ | TABLIGH</div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      invoiceWindow.document.write(htmlContent);
+      invoiceWindow.document.close();
+
+       setMessage({
+        type: "success",
+        text: "Invoice HTML berhasil dibuka di tab baru. Silakan simpan atau cetak.",
+      });
+    } catch (error) {
+      console.error("❌ Error generating invoice:", error);
+      setMessage({
+        type: "error",
+        text: "Gagal mengunduh invoice: " + (error.message || "Unknown error"),
       });
     }
   };
@@ -1664,6 +1593,17 @@ const Payment = () => {
                 <i className="bi bi-eye"></i>
               </button>
             )}
+
+            {canDownloadInvoice(payment) && (
+              <button
+                className="btn btn-outline-primary"
+                onClick={() => downloadInvoice(payment)}
+                title="Download Invoice"
+              >
+                <i className="bi bi-file-earmark-arrow-down"></i>
+              </button>
+            )}
+
 
             {/* Download Receipt Button */}
             {canDownloadReceipt(payment) && (

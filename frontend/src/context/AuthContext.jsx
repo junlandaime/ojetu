@@ -76,19 +76,34 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post("/api/auth/register", userData);
 
       if (response.data.success) {
-        const { token, user: newUser } = response.data.data;
+        const payload = response.data.data;
+        
+            if (payload?.token && payload?.user) {
+          const { token, user: newUser } = payload;
 
         localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(newUser));
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        setUser(newUser);
+          localStorage.setItem("user", JSON.stringify(newUser));
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          setUser(newUser);
 
-        return { success: true, user: newUser };
-      } else {
-        return { success: false, message: response.data.message };
+          return { success: true, user: newUser };
+        }
+
+        return {
+          success: true,
+          message:
+            response.data.message ||
+            "Registrasi berhasil. Silakan cek email Anda untuk verifikasi.",
+        };
       }
+      
+      return {
+        success: false,
+        message: response.data.message || "Registrasi gagal",
+      };
     } catch (error) {
-      const message = error.response?.data?.message || "Registration failed";
+      const message =
+        error.response?.data?.message || error.message || "Registration failed";
       return { success: false, message };
     }
   };

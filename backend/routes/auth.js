@@ -181,10 +181,11 @@ router.get("/verify-email/:token", async (req, res) => {
     }
 
     const verification = rows[0];
-    if (verification.used_at) {
-      return res.status(400).json({
-        success: false,
-       message: "Token verifikasi sudah digunakan",
+     if (verification.used_at || verification.is_verified) {
+      return res.json({
+        success: true,
+        message:
+          "Email sudah diverifikasi. Silakan login menggunakan akun Anda.",
       });
     }
 

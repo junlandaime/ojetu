@@ -13,6 +13,7 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+   const [successMessage, setSuccessMessage] = useState("");
 
   const { register, isAuthenticated, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccessMessage("");
 
     if (!formData.full_name || !formData.email || !formData.password) {
       setError("Semua field yang bertanda * harus diisi");
@@ -63,6 +65,12 @@ const Register = () => {
 
     if (result.success) {
       // Register berhasil, redirect sudah ditangani oleh useEffect
+       if (!result.user) {
+        setSuccessMessage(
+          result.message ||
+            "Registrasi berhasil. Silakan cek email Anda untuk melakukan verifikasi."
+        );
+      }
     } else {
       setError(result.message);
     }
@@ -102,6 +110,12 @@ const Register = () => {
                 <div className="alert alert-danger" role="alert">
                   <i className="bi bi-exclamation-triangle-fill me-2"></i>
                   {error}
+                </div>
+              )}
+ {successMessage && (
+                <div className="alert alert-success" role="alert">
+                  <i className="bi bi-check-circle-fill me-2"></i>
+                  {successMessage}
                 </div>
               )}
 

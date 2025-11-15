@@ -11,35 +11,127 @@ const resolveBoolean = (value, fallback = false) => {
   return fallback;
 };
 
+const getEnvValue = (...keys) => {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return value;
+    }
+  }
+  return undefined;
+};
+
+const resolvePort = () => {
+  const rawPort = process.env.SMTP_PORT;
+  if (rawPort !== undefined) {
+    const parsed = Number(rawPort);
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
+const resolveSecureOption = (port) => {
+  if (process.env.SMTP_SECURE !== undefined) {
+    return resolveBoolean(process.env.SMTP_SECURE, false);
+  }
+
+  const encryption = process.env.SMTP_ENCRYPTION;
+  if (typeof encryption === "string") {
+    const normalized = encryption.trim().toLowerCase();
+    if (normalized === "ssl") {
+      return true;
+    }
+    if (normalized === "tls") {
+      // STARTTLS connections should not use the `secure` flag
+      return false;
+    }
+  }
+
+  if (port === 465) {
+    // Implicit TLS (SMTPS) uses port 465 and requires secure=true
+    return true;
+  }
+
+  return false;
+};
+
+const resolveRequireTls = () => {
+  const encryption = process.env.SMTP_ENCRYPTION;
+  if (typeof encryption === "string") {
+    return encryption.trim().toLowerCase() === "tls";
+  }
+  return undefined;
+};
+
+const shouldAllowInvalidCertificates = () => {
+  if (process.env.SMTP_IGNORE_TLS !== undefined) {
+    return resolveBoolean(process.env.SMTP_IGNORE_TLS, false);
+  }
+
+  if (process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== undefined) {
+    // Historical configuration used the inverse naming convention
+    return !resolveBoolean(process.env.SMTP_TLS_REJECT_UNAUTHORIZED, true);
+  }
+
+  return false;
+};
+
+
 const buildTransporter = async () => {
   if (cachedTransporter) {
     return cachedTransporter;
   }
 
-  if (!process.env.SMTP_HOST) {
+  const smtpHost = getEnvValue("SMTP_HOST");
+  if (!smtpHost) {
     throw new Error(
       "SMTP_HOST is not configured. Please define SMTP_* environment variables before sending email."
     );
   }
 
+const smtpUser = getEnvValue("SMTP_USER", "SMTP_USERNAME");
+  const smtpPass = getEnvValue("SMTP_PASS", "SMTP_PASSWORD");
+  const auth = smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined;
+  const allowInvalidCertificates = shouldAllowInvalidCertificates();
+
+  const configuredPort = resolvePort();
+  const secure = resolveSecureOption(configuredPort);
+  const port = configuredPort ?? (secure ? 465 : 587);
+  const service = getEnvValue("SMTP_SERVICE");
+
+  if (secure === false && port === 465 && process.env.SMTP_SECURE !== undefined) {
+    throw new Error(
+      "SMTP_PORT is set to 465 but SMTP_SECURE is false. Port 465 requires an implicit TLS (secure) connection. " +
+        "Either set SMTP_SECURE=true or change the port to 587 for STARTTLS."
+    );
+  }
+
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: resolveBoolean(process.env.SMTP_SECURE, false),
-    auth:
-      process.env.SMTP_USER && process.env.SMTP_PASS
-        ? {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          }
-        : undefined,
-    tls:
-      resolveBoolean(process.env.SMTP_IGNORE_TLS, false)
-        ? { rejectUnauthorized: false }
-        : undefined,
+    host: smtpHost,
+    port,
+    secure,
+    requireTLS: resolveRequireTls(),
+    auth,
+    tls: allowInvalidCertificates ? { rejectUnauthorized: false } : undefined,
+    ...(service ? { service } : {}),
   });
 
-  await transporter.verify();
+  try {
+    await transporter.verify();
+  } catch (error) {
+    cachedTransporter = null;
+    const message =
+      "Failed to verify SMTP configuration: " +
+      (error instanceof Error ? error.message : String(error)) +
+      ". Please confirm SMTP_HOST, SMTP_PORT, SMTP_SECURE, and credential values.";
+    const wrappedError = new Error(message);
+    if (error instanceof Error) {
+      wrappedError.cause = error;
+    }
+    throw wrappedError;
+  }
   cachedTransporter = transporter;
   return cachedTransporter;
 };
@@ -47,7 +139,9 @@ const buildTransporter = async () => {
 export const sendEmail = async ({ to, subject, html, text, attachments }) => {
   const transporter = await buildTransporter();
 
-  const fromAddress = process.env.MAIL_FROM || process.env.SMTP_USER;
+  const fromAddress =
+    getEnvValue("MAIL_FROM", "SMTP_FROM", "SMTP_FROM_ADDRESS") ||
+    getEnvValue("SMTP_USER", "SMTP_USERNAME");
   if (!fromAddress) {
     throw new Error(
       "MAIL_FROM or SMTP_USER must be configured to send transactional emails"

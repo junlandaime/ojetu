@@ -1538,6 +1538,45 @@ const PaymentManagement = () => {
     </div>
   );
 
+  const renderPreviewModal = () => (
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      onClick={resetModals}
+    >
+      <div
+        className="modal-dialog modal-lg modal-dialog-centered"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Pratinjau Bukti Pembayaran</h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={resetModals}
+            ></button>
+          </div>
+          <div className="modal-body text-center">
+            {previewImage ? (
+              <img
+                src={previewImage}
+                alt="Pratinjau Bukti Pembayaran"
+                className="img-fluid rounded shadow"
+                style={{ maxHeight: "80vh" }}
+              />
+            ) : (
+              <div className="alert alert-warning mb-0" role="alert">
+                Bukti pembayaran tidak tersedia.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+
   const renderInvoiceModal = () => (
     <div
       className="modal fade show d-block"

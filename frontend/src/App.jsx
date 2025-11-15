@@ -19,6 +19,7 @@ import ProgramManagement from "./pages/ProgramManagement";
 import UserManagement from "./pages/UserManagement";
 import AboutUs from "./pages/AboutUs";
 import Contact from "./pages/Contact";
+import VerifyEmail from "./pages/VerifyEmail";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
@@ -128,6 +129,14 @@ function App() {
           element={
             <Layout>
               <Contact />
+            </Layout>
+          }
+        />
+        <Route
+          path="/verify-email/:token"
+          element={
+            <Layout>
+              <VerifyEmail />
             </Layout>
           }
         />

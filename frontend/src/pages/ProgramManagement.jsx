@@ -442,7 +442,7 @@ const ProgramManagement = () => {
                           name="schedule"
                           value={formData.schedule}
                           onChange={handleChange}
-                          placeholder="Contoh: Senin-Jumat, 09:00-17:00"
+                          placeholder="Contoh: Senin-Jumat"
                         />
                       </div>
                     </div>

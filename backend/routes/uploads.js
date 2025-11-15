@@ -4,10 +4,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 
-const getBaseUrl = () =>
-  process.env.FILE_BASE_URL?.replace(/\/$/, "") ||
-  process.env.BACKEND_URL?.replace(/\/$/, "") ||
-  `${req.protocol}://${req.get("host")}`;
+const normalizeBaseUrl = (value) =>
+  typeof value === "string" ? value.replace(/\/$/, "") : undefined;
+
+const getBaseUrl = (req) =>
+  normalizeBaseUrl(process.env.FILE_BASE_URL) ||
+  normalizeBaseUrl(process.env.BACKEND_URL) ||
+  (req?.protocol && req?.get("host")
+    ? `${req.protocol}://${req.get("host")}`
+    : undefined);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -131,6 +136,7 @@ router.post("/photo", uploadPhoto.single("file"), async (req, res) => {
       });
     }
 
+    const baseUrl = getBaseUrl(req);
     const filePath = `/uploads/photos/${req.file.filename}`;
 
     res.json({
@@ -143,7 +149,7 @@ router.post("/photo", uploadPhoto.single("file"), async (req, res) => {
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         // full_url: `http://localhost:5001${filePath}`,
-        full_url: `${baseUrl}${filePath}`
+        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
       },
     });
   } catch (error) {
@@ -174,6 +180,7 @@ router.post("/document", uploadDocument.single("file"), async (req, res) => {
     }
 
     const docType = req.body.type || "document";
+    const baseUrl = getBaseUrl(req);
     const filePath = `/uploads/documents/${req.file.filename}`;
 
     res.json({
@@ -186,8 +193,8 @@ router.post("/document", uploadDocument.single("file"), async (req, res) => {
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         document_type: docType,
-         // full_url: `http://localhost:5001${filePath}`,
-        full_url: `${baseUrl}${filePath}`
+        // full_url: `http://localhost:5001${filePath}`,
+        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
       },
     });
   } catch (error) {
@@ -217,6 +224,7 @@ router.post("/payment", uploadPayment.single("file"), async (req, res) => {
       });
     }
 
+    const baseUrl = getBaseUrl(req);
     const filePath = `/uploads/payments/${req.file.filename}`;
 
     res.json({
@@ -228,8 +236,8 @@ router.post("/payment", uploadPayment.single("file"), async (req, res) => {
         original_name: req.file.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
-         // full_url: `http://localhost:5001${filePath}`,
-        full_url: `${baseUrl}${filePath}`
+        // full_url: `http://localhost:5001${filePath}`,
+        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
       },
     });
   } catch (error) {
@@ -259,7 +267,8 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
       });
     }
 
-    const uploadedFiles = req.files.map(file => {
+    const baseUrl = getBaseUrl(req);
+    const uploadedFiles = req.files.map((file) => {
       const filePath = `/uploads/documents/${file.filename}`;
       return {
         file_path: filePath,
@@ -267,7 +276,7 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
         original_name: file.originalname,
         file_size: file.size,
         mime_type: file.mimetype,
-        full_url: `http://localhost:5001${filePath}`
+        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
       };
     });
 
