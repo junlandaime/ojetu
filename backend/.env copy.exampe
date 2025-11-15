@@ -1,0 +1,25 @@
+# Server Configuration
+PORT=5001
+NODE_ENV=development
+
+# Database Configuration
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=intern_registration
+DB_PORT=3306
+
+# JWT Configuration
+JWT_SECRET=$2a$12$6FfQ89XwzRZZG8zJnTu3xONk1TBPWSuH4rvTs2T8UAZWqb4aM/vBC
+JWT_EXPIRES_IN=24h
+
+# File Upload Configuration
+UPLOAD_PATH=./uploads
+MAX_FILE_SIZE=5242880
+
+# Application Configuration
+APP_URL=http://localhost:3000
+API_URL=http://localhost:5001/api
+
+# FILE_BASE_URL=https://try.fitalenta.co.id
+# .env.production dengan VITE_API_URL=https://try.fitalenta.co.id.
