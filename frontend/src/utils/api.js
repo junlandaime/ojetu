@@ -18,6 +18,20 @@ const resolveApiBaseUrl = () => {
 export const API_BASE_URL = resolveApiBaseUrl();
 
 const resolveFileBaseUrl = () => {
+    const explicitFileBaseUrl = trimTrailingSlash(
+    import.meta.env.VITE_FILE_BASE_URL
+  );
+
+  if (explicitFileBaseUrl) {
+    if (/^https?:\/\//i.test(explicitFileBaseUrl)) {
+      return explicitFileBaseUrl;
+    }
+
+    if (explicitFileBaseUrl.startsWith("/")) {
+      return `${trimTrailingSlash(window.location.origin)}${explicitFileBaseUrl}`;
+    }
+  }
+
   const apiBaseUrl = API_BASE_URL;
 
   if (/^https?:\/\//i.test(apiBaseUrl)) {
