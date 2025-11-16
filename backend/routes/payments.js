@@ -184,6 +184,66 @@ const formatCurrency = (value) => {
     : `Rp ${Math.round(numValue).toLocaleString("id-ID")}`;
 };
 
+const sanitizeAmountValue = (value, defaultValue = null) => {
+  if (value === null || value === undefined) {
+    return defaultValue;
+  }
+
+  if (typeof value === "number") {
+    return Number.isNaN(value) ? defaultValue : value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return defaultValue;
+    }
+
+    const filtered = trimmed.replace(/[^0-9,.-]/g, "");
+
+    if (!filtered) {
+      return defaultValue;
+    }
+
+    const decimalMatch = filtered.match(/[.,](\d{1,2})$/);
+    let integerPortion = filtered;
+    let fractionValue = 0;
+
+    if (decimalMatch && typeof decimalMatch.index === "number") {
+      integerPortion = filtered.slice(0, decimalMatch.index);
+      const fractionDigits = decimalMatch[1];
+      const fractionNumber = parseInt(fractionDigits, 10);
+
+      if (!Number.isNaN(fractionNumber)) {
+        fractionValue = fractionNumber / Math.pow(10, fractionDigits.length);
+      }
+    }
+
+    const integerDigits = integerPortion.replace(/[^0-9-]/g, "");
+
+    if (!integerDigits || integerDigits === "-") {
+      return defaultValue;
+    }
+
+    const integerValue = parseInt(integerDigits, 10);
+
+    if (Number.isNaN(integerValue)) {
+      return defaultValue;
+    }
+
+    if (fractionValue > 0) {
+      return integerValue >= 0
+        ? integerValue + fractionValue
+        : integerValue - fractionValue;
+    }
+
+    return integerValue;
+  }
+
+  return defaultValue;
+};
+
 const formatLongDate = (value) => {
   if (!value) {
     return new Date().toLocaleDateString("id-ID", {
@@ -334,15 +394,9 @@ const parseInstallmentAmount = (payment, installmentNumber) => {
   const installmentData = parseInstallmentAmounts(payment);
   const key = `installment_${installmentNumber}`;
   const amountValue = installmentData?.[key]?.amount;
+  const sanitizedAmount = sanitizeAmountValue(amountValue, 0);
 
-  if (amountValue) {
-    const parsed = parseFloat(amountValue);
-    if (!isNaN(parsed)) {
-      return parsed;
-    }
-  }
-
-  return 0;
+  return sanitizedAmount ?? 0;
 };
 
 const ensureInstallmentEntry = (installmentAmounts, installmentNumber) => {
@@ -642,7 +696,7 @@ router.post(
       }
 
       const proofImage = `/uploads/payments/${req.file.filename}`;
-const [payments] = await db
+      const [payments] = await db
         .promise()
         .query(
           `SELECT py.*, p.installment_plan as program_installment_plan
@@ -729,7 +783,8 @@ router.post("/:id/create-invoice", async (req, res) => {
 
     const { installment_number, amount, due_date, notes, verified_by } =
       req.body;
-      const issuerId = verified_by || req.user?.userId || null;
+    const issuerId = verified_by || req.user?.userId || null;
+    const sanitizedAmount = sanitizeAmountValue(amount, null);
     const paymentId = req.params.id;
 
     const [payments] = await connection.query(
@@ -798,7 +853,7 @@ router.post("/:id/create-invoice", async (req, res) => {
       }
     }
 
-    if (!amount || amount <= 0) {
+    if (!sanitizedAmount || sanitizedAmount <= 0) {
       await connection.rollback();
       return res.status(400).json({
         success: false,
@@ -841,7 +896,7 @@ router.post("/:id/create-invoice", async (req, res) => {
 
     installmentAmounts[installmentKey] = {
       ...existingEntry,
-      amount: amount,
+      amount: sanitizedAmount,
       due_date: due_date,
       created_at: existingEntry.created_at || nowIso,
       updated_at: nowIso,
@@ -871,7 +926,7 @@ router.post("/:id/create-invoice", async (req, res) => {
         due_date,
         installment_number,
         JSON.stringify(installmentAmounts),
-        ` | Manual Invoice: Cicilan ${installment_number} - Amount: Rp ${amount} - Due: ${due_date}`,
+         ` | Manual Invoice: Cicilan ${installment_number} - Amount: Rp ${sanitizedAmount} - Due: ${due_date}`,
         paymentId,
       ]
     );
@@ -884,7 +939,7 @@ router.post("/:id/create-invoice", async (req, res) => {
         paymentId,
         currentPayment.status,
         newStatus,
-        `Manual invoice created: Cicilan ${installment_number} - Amount: Rp ${amount} - Due: ${due_date} - ${notes || ""
+        `Manual invoice created: Cicilan ${installment_number} - Amount: Rp ${sanitizedAmount} - Due: ${due_date} - ${notes || ""
         }`,
        issuerId,
       ]
@@ -904,7 +959,7 @@ router.post("/:id/create-invoice", async (req, res) => {
             fullName: currentPayment.participant_name,
             programName: currentPayment.program_name || "Program Fitalenta",
             invoiceNumber: currentPayment.invoice_number || paymentId,
-            amount: formatCurrency(amount),
+            amount: formatCurrency(sanitizedAmount),
             dueDate: new Date(due_date).toLocaleDateString("id-ID"),
             paymentUrl,
           }),
@@ -985,9 +1040,15 @@ router.put("/:id/status", async (req, res) => {
 
     const currentPayment = currentPayments[0];
     const totalInstallments = getTotalInstallments(currentPayment);
-    const totalAmount = parseFloat(currentPayment.program_training_cost);
-    const currentAmountPaid = parseFloat(currentPayment.amount_paid || 0);
-    const newPaymentAmount = parseFloat(amount_paid || 0);
+    const totalAmount = sanitizeAmountValue(
+      currentPayment.program_training_cost,
+      0
+    );
+    const currentAmountPaid = sanitizeAmountValue(
+      currentPayment.amount_paid || 0,
+      0
+    );
+    const newPaymentAmount = sanitizeAmountValue(amount_paid || 0, 0);
     const newTotalPaid = currentAmountPaid + newPaymentAmount;
 
     const validation = await validateStatusProgression(
@@ -1103,9 +1164,12 @@ let updatedInstallmentsJson = null;
         const nowIso = new Date().toISOString();
         const entry = updatedInstallments[key] || {};
 
+        const existingAmount = sanitizeAmountValue(entry.amount, null);
+
         updatedInstallments[key] = {
           ...entry,
-          amount: entry.amount || newPaymentAmount,
+          amount:
+            existingAmount !== null ? existingAmount : newPaymentAmount,
           paid_amount: newPaymentAmount,
           paid_at: nowIso,
           receipt_number: receipt_number,
@@ -2076,7 +2140,6 @@ router.get("/:id/invoice", async (req, res) => {
           getStatusText(paymentContext.status || payment.status) || "-"
         }`
       );
-
 
     doc.moveDown(1);
 

@@ -3,6 +3,66 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { buildFileUrl } from "../utils/api";
 
+const normalizeAmountValue = (value) => {
+  if (value === null || value === undefined) {
+    return NaN;
+  }
+
+  if (typeof value === "number") {
+    return Number.isNaN(value) ? NaN : value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return NaN;
+    }
+
+    const filtered = trimmed.replace(/[^0-9,.-]/g, "");
+
+    if (!filtered) {
+      return NaN;
+    }
+
+    const decimalMatch = filtered.match(/[.,](\d{1,2})$/);
+    let integerPortion = filtered;
+    let fractionValue = 0;
+
+    if (decimalMatch && typeof decimalMatch.index === "number") {
+      integerPortion = filtered.slice(0, decimalMatch.index);
+      const fractionDigits = decimalMatch[1];
+      const fractionNumber = parseInt(fractionDigits, 10);
+
+      if (!Number.isNaN(fractionNumber)) {
+        fractionValue = fractionNumber / Math.pow(10, fractionDigits.length);
+      }
+    }
+
+    const integerDigits = integerPortion.replace(/[^0-9-]/g, "");
+
+    if (!integerDigits || integerDigits === "-") {
+      return NaN;
+    }
+
+    const integerValue = parseInt(integerDigits, 10);
+
+    if (Number.isNaN(integerValue)) {
+      return NaN;
+    }
+
+    if (fractionValue > 0) {
+      return integerValue >= 0
+        ? integerValue + fractionValue
+        : integerValue - fractionValue;
+    }
+
+    return integerValue;
+  }
+
+  return NaN;
+};
+
 const paymentUtils = {
   getStatusBadge: (status) => {
     const statusConfig = {
@@ -34,25 +94,19 @@ const paymentUtils = {
   },
 
   formatCurrency: (value, defaultValue = "0") => {
-    if (value === null || value === undefined || value === "") {
+    const normalized = normalizeAmountValue(value);
+    if (Number.isNaN(normalized)) {
       return defaultValue;
     }
-    const numValue = typeof value === "number" ? value : parseFloat(value);
-    if (isNaN(numValue)) {
-      return defaultValue;
-    }
-    return Math.round(numValue).toLocaleString("id-ID");
+    return Math.round(normalized).toLocaleString("id-ID");
   },
 
   parseFloatSafe: (value, defaultValue = 0) => {
-    if (value === null || value === undefined || value === "") {
+    const normalized = normalizeAmountValue(value);
+    if (Number.isNaN(normalized)) {
       return defaultValue;
     }
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
-      return defaultValue;
-    }
-    return Math.round(numValue * 100) / 100;
+    return Math.round(normalized * 100) / 100;
   },
 
   getInstallmentText: (payment) => {
@@ -448,7 +502,7 @@ const PaymentManagement = () => {
   const [activeModal, setActiveModal] = useState(MODAL_TYPES.NONE);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-const installmentRows = useMemo(
+  const installmentRows = useMemo(
     () =>
       selectedPayment
         ? paymentUtils.getInstallmentProgressRows(selectedPayment)
@@ -1180,7 +1234,7 @@ const installmentRows = useMemo(
                   </div>
                 </div>
 
-<div className="card mb-4">
+                <div className="card mb-4">
                   <div className="card-header bg-primary text-white">
                     <h6 className="mb-0">Progress Cicilan</h6>
                   </div>

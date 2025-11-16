@@ -3,13 +3,71 @@ import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import { buildFileUrl } from "../utils/api";
 
+const normalizeAmountValue = (value) => {
+  if (value === null || value === undefined) {
+    return NaN;
+  }
+
+  if (typeof value === "number") {
+    return Number.isNaN(value) ? NaN : value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return NaN;
+    }
+
+    const filtered = trimmed.replace(/[^0-9,.-]/g, "");
+
+    if (!filtered) {
+      return NaN;
+    }
+
+    const decimalMatch = filtered.match(/[.,](\d{1,2})$/);
+    let integerPortion = filtered;
+    let fractionValue = 0;
+
+    if (decimalMatch && typeof decimalMatch.index === "number") {
+      integerPortion = filtered.slice(0, decimalMatch.index);
+      const fractionDigits = decimalMatch[1];
+      const fractionNumber = parseInt(fractionDigits, 10);
+
+      if (!Number.isNaN(fractionNumber)) {
+        fractionValue = fractionNumber / Math.pow(10, fractionDigits.length);
+      }
+    }
+
+    const integerDigits = integerPortion.replace(/[^0-9-]/g, "");
+
+    if (!integerDigits || integerDigits === "-") {
+      return NaN;
+    }
+
+    const integerValue = parseInt(integerDigits, 10);
+
+    if (Number.isNaN(integerValue)) {
+      return NaN;
+    }
+
+    if (fractionValue > 0) {
+      return integerValue >= 0
+        ? integerValue + fractionValue
+        : integerValue - fractionValue;
+    }
+
+    return integerValue;
+  }
+
+  return NaN;
+};
+
 const paymentUtils = {
   formatCurrency: (value) => {
-    if (!value && value !== 0) return "Rp 0";
-    const numValue = parseFloat(value);
-    return isNaN(numValue)
-      ? "Rp 0"
-      : `Rp ${Math.round(numValue).toLocaleString("id-ID")}`;
+    const numericValue = normalizeAmountValue(value);
+    const safeValue = Number.isNaN(numericValue) ? 0 : numericValue;
+    return `Rp ${Math.round(safeValue).toLocaleString("id-ID")}`;
   },
 
   numberToWords: (value) => {
@@ -78,16 +136,17 @@ const paymentUtils = {
   },
 
   parseFloatSafe: (value, defaultValue = 0) => {
-    if (value === null || value === undefined || value === "") {
-      return defaultValue;
-    }
-    const numValue = parseFloat(value);
-    return isNaN(numValue) ? defaultValue : Math.round(numValue * 100) / 100;
+    const normalized = normalizeAmountValue(value);
+    return Number.isNaN(normalized)
+      ? defaultValue
+      : Math.round(normalized * 100) / 100;
   },
 
   calculateRemainingSafe: (total, paid) => {
-    const totalCents = Math.round(parseFloat(total || 0) * 100);
-    const paidCents = Math.round(parseFloat(paid || 0) * 100);
+    const totalValue = paymentUtils.parseFloatSafe(total, 0);
+    const paidValue = paymentUtils.parseFloatSafe(paid, 0);
+    const totalCents = Math.round(totalValue * 100);
+    const paidCents = Math.round(paidValue * 100);
     return Math.max(0, (totalCents - paidCents) / 100);
   },
 

@@ -348,10 +348,10 @@ const UserDashboard = () => {
                   </div>
                   <h5 className="text-muted">Data tidak tersedia</h5>
                   <p className="text-muted mb-4">
-                    Anda belum terdaftar dalam program magang.
+                    Anda belum terdaftar dalam program Pelatihan dan Penyaluran Tenaga Kerja Tokutei Genou.
                   </p>
                   <Link to="/registration" className="btn btn-primary">
-                    Daftar Program Magang
+                    Daftar Program Pelatihan dan Penyaluran Tenaga Kerja Tokutei Genou
                   </Link>
                 </div>
               )}
