@@ -22,6 +22,12 @@ const connection = mysql.createConnection({
 const schemaPath = path.join(__dirname, "../../database/schema2.sql"); 
 const schema = fs.readFileSync(schemaPath, "utf8");
 
+if (process.env.NODE_ENV === "production") {
+  // Patch collation supaya cocok dengan MySQL versi hosting
+  schema = schema.replace(/utf8mb4_0900_ai_ci/g, "utf8mb4_unicode_ci");
+}
+
+
 console.log("Setting up database...");
 console.log(`Environment: ${isProd ? "production" : "development"}`);
 console.log(`Target database: ${dbName}`);
