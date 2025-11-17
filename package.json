@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "db:setup": "node backend/scripts/setupDatabase.js",
+    "db:setup-pro": "node backend/scripts/setupDatabaseProd.js",
     "db:seed": "node backend/scripts/seedData.js",
     "db:reset": "npm run db:setup && npm run db:seed",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
