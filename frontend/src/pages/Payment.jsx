@@ -3,6 +3,10 @@ import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import { buildFileUrl } from "../utils/api";
 
+const INSTALLMENT_WEIGHT_MAP = {
+  4: [5, 5, 3, 3],
+};
+
 const normalizeAmountValue = (value) => {
   if (value === null || value === undefined) {
     return NaN;
@@ -212,7 +216,132 @@ const paymentUtils = {
     return payment.status;
   },
 
-   parseInstallmentAmounts: (payment) => {
+  // parseInstallmentAmounts: (payment) => {
+  //   if (!payment || !payment.installment_amounts) return {};
+
+  //   const bufferToString = (bufferLike) => {
+  //     const hasArrayBuffer = typeof ArrayBuffer !== "undefined";
+  //     try {
+  //       if (!bufferLike) return null;
+
+  //       if (
+  //         typeof window !== "undefined" &&
+  //         window.TextDecoder &&
+  //         hasArrayBuffer &&
+  //         (bufferLike instanceof ArrayBuffer || ArrayBuffer.isView(bufferLike))
+  //       ) {
+  //         const decoder = new window.TextDecoder();
+  //         const view =
+  //           bufferLike instanceof ArrayBuffer
+  //             ? new Uint8Array(bufferLike)
+  //             : new Uint8Array(bufferLike.buffer);
+  //         return decoder.decode(view);
+  //       }
+
+  //       if (
+  //         hasArrayBuffer &&
+  //         (bufferLike instanceof ArrayBuffer || ArrayBuffer.isView(bufferLike))
+  //       ) {
+  //         const view =
+  //           bufferLike instanceof ArrayBuffer
+  //             ? new Uint8Array(bufferLike)
+  //             : new Uint8Array(bufferLike.buffer);
+  //         let result = "";
+  //         view.forEach((byte) => {
+  //           result += String.fromCharCode(byte);
+  //         });
+  //         return result;
+  //       }
+
+  //       if (
+  //         typeof bufferLike === "object" &&
+  //         bufferLike !== null &&
+  //         bufferLike.type === "Buffer" &&
+  //         Array.isArray(bufferLike.data)
+  //       ) {
+  //         let result = "";
+  //         bufferLike.data.forEach((byte) => {
+  //           result += String.fromCharCode(byte);
+  //         });
+  //         return result;
+  //       }
+  //     } catch (error) {
+  //       console.error("❌ Failed to decode buffer-like installment data", error);
+  //     }
+
+  //     return null;
+  //   };
+
+  //   const parseJsonString = (value) => {
+  //     if (!value || typeof value !== "string") {
+  //       return {};
+  //     }
+
+  //     const trimmed = value.trim();
+  //     if (!trimmed) {
+  //       return {};
+  //     }
+
+  //     try {
+  //       let parsed = JSON.parse(trimmed);
+  //       if (typeof parsed === "string") {
+  //         parsed = JSON.parse(parsed);
+  //       }
+
+  //       if (
+  //         parsed &&
+  //         typeof parsed === "object" &&
+  //         !Array.isArray(parsed) &&
+  //         Object.keys(parsed).length > 0
+  //       ) {
+  //         return parsed;
+  //       }
+  //     } catch (error) {
+  //       console.error("❌ Error parsing installment_amounts string:", error);
+  //     }
+
+  //     return {};
+  //   };
+
+  //   try {
+  //     const rawValue = payment.installment_amounts;
+
+  //     if (
+  //       typeof rawValue === "object" &&
+  //       rawValue !== null &&
+  //       !Array.isArray(rawValue)
+  //     ) {
+  //       const keys = Object.keys(rawValue);
+  //       if (keys.some((key) => key.startsWith("installment_"))) {
+  //         return rawValue;
+  //       }
+
+  //       if (rawValue.type === "Buffer" && Array.isArray(rawValue.data)) {
+  //         const decoded = bufferToString(rawValue);
+  //         return decoded ? parseJsonString(decoded) : {};
+  //       }
+
+  //       const serialized = JSON.stringify(rawValue);
+  //       return serialized ? parseJsonString(serialized) : {};
+  //     }
+
+  //     if (
+  //       typeof rawValue === "string" &&
+  //       rawValue.trim().startsWith("{")
+  //     ) {
+  //       return parseJsonString(rawValue);
+  //     }
+
+  //     if (
+  //       typeof ArrayBuffer !== "undefined" &&
+  //       (rawValue instanceof ArrayBuffer || ArrayBuffer.isView(rawValue))
+  //     ) {
+  //       const decoded = bufferToString(rawValue);
+  //       return decoded ? parseJsonString(decoded) : {};
+  //     }
+
+  //     return {};
+  parseInstallmentAmounts: (payment) => {
     if (!payment || !payment.installment_amounts) return {};
 
     try {
@@ -224,6 +353,91 @@ const paymentUtils = {
       return {};
     }
   },
+
+parseInstallmentAmounts: (payment) => {
+    if (!payment || !payment.installment_amounts) return {};
+
+    try {
+      return typeof payment.installment_amounts === "string"
+        ? JSON.parse(payment.installment_amounts)
+        : payment.installment_amounts || {};
+    } catch (error) {
+      console.error("❌ Error parsing installment_amounts:", error);
+      return {};
+    }
+  },
+
+  getDefaultInstallmentAmounts: (payment) => {
+    const totalAmount = paymentUtils.parseFloatSafe(
+      payment?.program_training_cost || payment?.amount || 0
+    );
+    const totalInstallments = paymentUtils.getTotalInstallments(payment);
+
+    if (!totalInstallments || totalInstallments <= 0) {
+      return [];
+    }
+
+    const weights = INSTALLMENT_WEIGHT_MAP[totalInstallments];
+
+    if (!weights || weights.length !== totalInstallments) {
+      const evenShare = totalAmount / totalInstallments;
+      return Array.from({ length: totalInstallments }, () => evenShare);
+    }
+
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+    let remaining = totalAmount;
+
+    return weights.map((weight, index) => {
+      if (index === totalInstallments - 1) {
+        const amount = Math.max(0, Math.round(remaining));
+        remaining -= amount;
+        return amount;
+      }
+
+      const amount = Math.round((weight / totalWeight) * totalAmount);
+      remaining -= amount;
+      return amount;
+    });
+  },
+
+  getDefaultInstallmentAmount: (payment, installmentNumber) => {
+    if (!installmentNumber || installmentNumber < 1) return 0;
+    const amounts = paymentUtils.getDefaultInstallmentAmounts(payment);
+    return amounts[installmentNumber - 1] || 0;
+  },
+
+  getCumulativeInstallmentPaid: (payment, installmentNumber) => {
+    if (!payment || !installmentNumber) return 0;
+
+    const totalAmount = paymentUtils.parseFloatSafe(
+      payment.program_training_cost || payment.amount || 0
+    );
+    const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+
+    let cumulative = 0;
+
+    for (let i = 1; i <= installmentNumber; i++) {
+      const entry = installmentData[`installment_${i}`] || {};
+      const paidValue = paymentUtils.parseFloatSafe(entry.paid_amount, NaN);
+      const configuredAmount = paymentUtils.parseFloatSafe(entry.amount, NaN);
+      const defaultShare = paymentUtils.getDefaultInstallmentAmount(
+        payment,
+        i
+      );
+
+      if (!Number.isNaN(paidValue) && paidValue > 0) {
+        cumulative += paidValue;
+      } else if (!Number.isNaN(configuredAmount) && configuredAmount > 0) {
+        cumulative += configuredAmount;
+      } else {
+        cumulative += defaultShare;
+      }
+    }
+
+    return Math.min(totalAmount, cumulative);
+  },
+
+
 
   getInstallmentContext: (payment, installmentNumber) => {
     if (!payment || !installmentNumber) {
@@ -254,17 +468,30 @@ const paymentUtils = {
     const entry = installmentData[key] || {};
 
     const configuredAmount = paymentUtils.parseFloatSafe(entry.amount);
-    const defaultAmount =
-      totalInstallments > 0 ? totalAmount / totalInstallments : totalAmount;
-    const amount = configuredAmount > 0 ? configuredAmount : defaultAmount;
+    const paidAmountValue = paymentUtils.parseFloatSafe(entry.paid_amount);
+   const defaultAmount = paymentUtils.getDefaultInstallmentAmount(
+      payment,
+      installmentNumber
+    );
+    const amount =
+      configuredAmount > 0
+        ? configuredAmount
+        : paidAmountValue > 0
+        ? paidAmountValue
+        : defaultAmount;
 
     const currentInstallment = paymentUtils.getCurrentInstallmentNumber(payment);
     const proofImage = entry.proof_image || null;
     const proofUploadedAt = entry.proof_uploaded_at || null;
     const proofVerifiedAt = entry.proof_verified_at || null;
-    const receiptNumber = entry.receipt_number || null;
+    const receiptNumber =
+      entry.receipt_number || payment.receipt_number || payment.invoice_number || null;
     const receiptAvailable = Boolean(receiptNumber);
-    const invoiceAvailable = Boolean(entry.amount);
+    const invoiceNumber = entry.invoice_number || payment.invoice_number || null;
+    const invoiceIssuedAt = entry.invoice_issued_at || payment.invoice_issued_at || null;
+    const invoiceAvailable = Boolean(
+      invoiceNumber || invoiceIssuedAt || configuredAmount > 0 || paidAmountValue > 0
+    );
 
     let status = entry.status || null;
 
@@ -309,9 +536,10 @@ const paymentUtils = {
       receiptNumber,
       receiptAvailable,
       invoiceAvailable,
-      paidAmount: paymentUtils.parseFloatSafe(entry.paid_amount),
+      paidAmount: paidAmountValue,
       paidAt: entry.paid_at || null,
-      invoiceIssuedAt: entry.invoice_issued_at || null,
+      invoiceIssuedAt,
+      invoiceNumber,
       entry,
     };
   },
@@ -529,7 +757,10 @@ const paymentUtils = {
 
     if (paidAmount >= totalAmount) return true;
 
-    const installmentAmount = totalAmount / totalInstallments;
+    const installmentAmount = paymentUtils.getDefaultInstallmentAmount(
+      payment,
+      installmentNumber
+    );
     const expectedPaid = installmentAmount * installmentNumber;
 
     return paidAmount >= expectedPaid;
@@ -543,9 +774,11 @@ const paymentUtils = {
       return paymentUtils.parseFloatSafe(context.amount);
     }
 
-    const totalAmount = paymentUtils.parseFloatSafe(payment.program_training_cost);
-    const totalInstallments = paymentUtils.getTotalInstallments(payment);
-    return totalInstallments > 0 ? Math.round(totalAmount / totalInstallments) : 0;
+    const currentInstallment =
+      paymentUtils.getCurrentInstallmentNumber(payment) || 1;
+    return Math.round(
+      paymentUtils.getDefaultInstallmentAmount(payment, currentInstallment)
+    );
   },
 
   isOverdue: (payment) => {
@@ -1149,7 +1382,9 @@ const [detailLoading, setDetailLoading] = useState(false);
     const totalAmount = paymentUtils.parseFloatSafe(
       payment.program_training_cost || payment.amount || 0
     );
-    const amountPaid = paymentUtils.parseFloatSafe(payment.amount_paid || 0);
+    const amountPaid = installment
+      ? paymentUtils.getCumulativeInstallmentPaid(payment, installment)
+      : paymentUtils.parseFloatSafe(payment.amount_paid || 0);
     const remaining = paymentUtils.calculateRemainingSafe(totalAmount, amountPaid);
 
     let context = null;
@@ -1235,9 +1470,10 @@ const [detailLoading, setDetailLoading] = useState(false);
       amountWords: escapeHtml(amountInWords),
     };
 
-const params = new URLSearchParams();
-    if (installment) {
+    const params = new URLSearchParams();
+    if (installment !== undefined && installment !== null && installment !== "") {
       params.append("installment", installment);
+      params.append("status", `installment_${installment}`);
     }
     const queryString = params.toString();
 
@@ -1528,8 +1764,9 @@ const params = new URLSearchParams();
 
     try {
       const params = new URLSearchParams();
-      if (installment) {
+      if (installment !== undefined && installment !== null && installment !== "") {
         params.append("installment", installment);
+        params.append("status", `installment_${installment}`);
       }
       const queryString = params.toString();
 
@@ -2821,7 +3058,8 @@ const params = new URLSearchParams();
                                   )}
                                 </td>
                                 <td>
-                                  Rp {paymentUtils.formatCurrency(row.amount)}
+                                   {row.amount > 0 &&
+                                    `Rp ${paymentUtils.formatCurrency(row.amount)}`}
                                   {row.paidAt && (
                                     <div className="text-muted small">
                                       Dibayar: {formatDate(row.paidAt)}
