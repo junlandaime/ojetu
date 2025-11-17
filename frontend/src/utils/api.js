@@ -1,8 +1,15 @@
 // buat util tunggal, mis. frontend/src/utils/api.js
 const trimTrailingSlash = (value) => value?.replace(/\/+$/, "") || "";
 
+const getRuntimeConfig = (key) => {
+  if (typeof window === "undefined") return "";
+  return window.__APP_CONFIG__?.[key];
+};
+
 const resolveApiBaseUrl = () => {
-  const rawBaseUrl = trimTrailingSlash(import.meta.env.VITE_API_URL);
+  const rawBaseUrl = trimTrailingSlash(
+    getRuntimeConfig("VITE_API_URL") || import.meta.env.VITE_API_URL
+  );
 
   if (!rawBaseUrl) {
     const fallbackOrigin = trimTrailingSlash(window.location.origin);
@@ -29,7 +36,7 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 const resolveFileBaseUrl = () => {
     const explicitFileBaseUrl = trimTrailingSlash(
-    import.meta.env.VITE_FILE_BASE_URL
+    getRuntimeConfig("VITE_FILE_BASE_URL") || import.meta.env.VITE_FILE_BASE_URL
   );
 
   if (explicitFileBaseUrl) {
