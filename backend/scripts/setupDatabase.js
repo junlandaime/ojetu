@@ -32,7 +32,7 @@ const setupDatabase = async () => {
 
     await new Promise((resolve, reject) => {
       connection.query(
-        "CREATE DATABASE IF NOT EXISTS intern_registration",
+        "CREATE DATABASE IF NOT EXISTS u1722546_registration-prod",
         (err) => {
           if (err) reject(err);
           else resolve();
@@ -43,13 +43,13 @@ const setupDatabase = async () => {
     console.log("Database created or already exists");
 
     await new Promise((resolve, reject) => {
-      connection.query("USE intern_registration", (err) => {
+      connection.query("USE u1722546_registration-prod", (err) => {
         if (err) reject(err);
         else resolve();
       });
     });
 
-    console.log("Using database intern_registration");
+    console.log("Using database u1722546_registration-prod");
 
     await new Promise((resolve, reject) => {
       connection.query(schema, (err) => {
