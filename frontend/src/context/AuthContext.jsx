@@ -21,12 +21,16 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         }
          } catch (error) {
-        console.error("Auth check error:", error);
+        if (error.response?.status === 401) {
+          console.info("Auth session: not authenticated yet (401)");
+        } else {
+          console.error("Auth check error:", error);
+        }
         setUser(null);
       } finally {
         setLoading(false);
       }
-     };
+    };
 
     checkAuthStatus();
   }, []);
@@ -38,9 +42,9 @@ export const AuthProvider = ({ children }) => {
         ? { username: email, password }
         : { email, password };
 
-     const response = await axios.post(endpoint, payload);
+      const response = await axios.post(endpoint, payload);
 
-         if (response.data.success) {
+      if (response.data.success) {
         const { user: userData } = response.data.data;
         setUser(userData);
         return { success: true, user: userData };

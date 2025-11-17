@@ -24,6 +24,14 @@ axios.interceptors.response.use(
     const status = error.response?.status;
     const statusText = error.response?.statusText;
 
+    const isAuthSessionCheck =
+      typeof url === "string" && url.includes("/api/auth/session");
+
+    if (isAuthSessionCheck && status === 401) {
+      console.info("[API] Auth session check returned 401 (not logged in)");
+      return Promise.reject(error);
+    }
+
     const statusLabel =
       typeof status === "number"
         ? `${status}${statusText ? ` ${statusText}` : ""}`
@@ -37,6 +45,7 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 
 ReactDOM.createRoot(document.getElementById("root")).render(
