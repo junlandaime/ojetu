@@ -5,14 +5,24 @@ const resolveApiBaseUrl = () => {
   const rawBaseUrl = trimTrailingSlash(import.meta.env.VITE_API_URL);
 
   if (!rawBaseUrl) {
-    return trimTrailingSlash(window.location.origin);
+    const fallbackOrigin = trimTrailingSlash(window.location.origin);
+    console.warn(
+      "VITE_API_URL tidak ditemukan, fallback ke origin yang sama:",
+      fallbackOrigin
+    );
+    return fallbackOrigin;
   }
 
   if (/^https?:\/\//i.test(rawBaseUrl)) {
     return rawBaseUrl;
   }
 
-  return rawBaseUrl;
+  if (rawBaseUrl.startsWith("/")) {
+    return rawBaseUrl;
+  }
+
+  // Jika pengguna hanya mengisi domain tanpa slash di depan, jadikan path relatif
+  return `/${rawBaseUrl}`;
 };
 
 export const API_BASE_URL = resolveApiBaseUrl();
