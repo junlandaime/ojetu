@@ -8,6 +8,37 @@ import { API_BASE_URL } from "./utils/api";
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.withCredentials = true;
 
+if (typeof window !== "undefined") {
+  window.API_BASE_URL = API_BASE_URL;
+}
+
+if (import.meta.env.DEV || import.meta.env.PROD) {
+  console.info("[API] Using base URL:", API_BASE_URL);
+}
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const method = error.config?.method?.toUpperCase() || "UNKNOWN";
+    const url = error.config?.url || "(unknown URL)";
+    const status = error.response?.status;
+    const statusText = error.response?.statusText;
+
+    const statusLabel =
+      typeof status === "number"
+        ? `${status}${statusText ? ` ${statusText}` : ""}`
+        : "no-status";
+
+    console.error(
+      `[API] ${method} ${url} failed (${statusLabel})`,
+      error.response?.data || error.message || error
+    );
+
+    return Promise.reject(error);
+  }
+);
+
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
