@@ -353,13 +353,17 @@ const paymentUtils = {
     const proofImage = entry.proof_image || null;
     const proofUploadedAt = entry.proof_uploaded_at || null;
     const proofVerifiedAt = entry.proof_verified_at || null;
-    const receiptNumber =
-      entry.receipt_number || payment.receipt_number || payment.invoice_number || null;
-    const receiptAvailable = Boolean(receiptNumber);
-    const invoiceNumber = entry.invoice_number || payment.invoice_number || null;
-    const invoiceIssuedAt = entry.invoice_issued_at || payment.invoice_issued_at || null;
+    const receiptNumber = entry.receipt_number || null;
+    const receiptAvailable = Boolean(
+      receiptNumber || entry.proof_verified_at || entry.paid_at
+    );
+    const invoiceNumber = entry.invoice_number || null;
+    const invoiceIssuedAt = entry.invoice_issued_at || null;
     const invoiceAvailable = Boolean(
-      invoiceNumber || invoiceIssuedAt || configuredAmount > 0 || paidAmountValue > 0
+      invoiceNumber ||
+      invoiceIssuedAt ||
+      configuredAmount > 0 ||
+      paidAmountValue > 0
     );
 
     let status = entry.status || null;
@@ -419,6 +423,8 @@ const paymentUtils = {
     const totalInstallments = paymentUtils.getTotalInstallments(payment);
     const rows = [];
     const installmentData = paymentUtils.parseInstallmentAmounts(payment);
+    const currentInfo = paymentUtils.getCurrentInstallmentInfo(payment);
+    const waitingVerification = paymentUtils.isWaitingVerification(payment);
 
     for (let i = 1; i <= totalInstallments; i++) {
       const context = paymentUtils.getInstallmentContext(payment, i);
@@ -430,13 +436,23 @@ const paymentUtils = {
       if (context.status === "paid" || context.receiptAvailable) {
         statusLabel = "Sudah Dibayar";
         statusVariant = "success";
-      } else if (context.status === "waiting_verification") {
+      } else if (
+        context.status === "waiting_verification" ||
+        (waitingVerification && i === currentInfo.number)
+      ) {
         statusLabel = "Menunggu Verifikasi";
         statusVariant = "warning";
-      } else if (context.status === "active") {
+     } else if (
+        context.status === "active" ||
+        (paymentUtils.hasActiveInvoice(payment) && i === currentInfo.number)
+      ) {
         statusLabel = "Tagihan Aktif";
         statusVariant = "primary";
-      } else if (context.invoiceAvailable) {
+      } else if (
+        entry.amount ||
+        context.invoiceAvailable ||
+        (payment.due_date && i === currentInfo.number)
+      ) {
         statusLabel = "Tagihan Diterbitkan";
         statusVariant = "info";
       }
@@ -480,6 +496,71 @@ const paymentUtils = {
     }
 
     return paymentUtils.getInstallmentText({ status }) || status;
+    },
+
+  getCurrentInstallmentInfo: (payment) => {
+    if (!payment)
+      return {
+        number: 0,
+        text: "Unknown",
+        isPaid: false,
+        totalInstallments: 4,
+        isWaitingVerification: false,
+      };
+
+    const totalInstallments = paymentUtils.getTotalInstallments(payment);
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    const isWaitingVerification = paymentUtils.isWaitingVerification(payment);
+
+    if (payment.status === "paid") {
+      return {
+        number: totalInstallments,
+        text: "Lunas",
+        isPaid: true,
+        totalInstallments,
+        isWaitingVerification: false,
+      };
+    }
+
+    if (payment.status === "pending") {
+      return {
+        number: 1,
+        text: "Menunggu Cicilan 1",
+        isPaid: false,
+        totalInstallments,
+        isWaitingVerification,
+      };
+    }
+
+    if (payment.status.startsWith("installment_")) {
+      const currentNum = paymentUtils.getCurrentInstallmentNumber(payment) || 1;
+      const isPaid = context
+        ? context.status === "paid" || context.receiptAvailable
+        : false;
+
+      let text = `Cicilan ${currentNum}`;
+      if (isWaitingVerification) {
+        text += " (Menunggu Verifikasi)";
+      } else if (isPaid) {
+        text += " (Sudah Dibayar)";
+      }
+
+      return {
+        number: currentNum,
+        text: text,
+        isPaid,
+        totalInstallments,
+        isWaitingVerification,
+      };
+    }
+
+    return {
+      number: 0,
+      text: payment.status,
+      isPaid: false,
+      totalInstallments,
+      isWaitingVerification,
+    };
   },
 
   getCurrentInstallmentNumber: (payment) => {
@@ -643,7 +724,7 @@ const paymentUtils = {
     if (payment.status === "paid" || payment.status === "cancelled") {
       return false;
     }
-   if (!context || !context.proofImage) {
+    if (!context || !context.proofImage) {
       return false;
     }
 
@@ -661,6 +742,54 @@ const paymentUtils = {
     if (!payment.program_training_cost)
       return { isValid: false, error: "Data program tidak lengkap" };
     return { isValid: true, error: null };
+  },
+
+   isWaitingVerification: (payment) => {
+    if (!payment) return false;
+
+    if (payment.status === "paid" || payment.status === "cancelled") {
+      return false;
+    }
+
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    if (!context) return false;
+
+    if (context.status === "waiting_verification") {
+      return true;
+    }
+
+    const hasProof = Boolean(context.proofImage);
+    const proofVerified = Boolean(
+      context.proofVerifiedAt || context.receiptNumber
+    );
+
+    return hasProof && !proofVerified;
+  },
+
+  hasActiveInvoice: (payment) => {
+    if (!payment) return false;
+
+    const context = paymentUtils.getCurrentInstallmentContext(payment);
+    if (!context) return false;
+
+    const isNotPaid = payment.status !== "paid" && payment.status !== "cancelled";
+    if (!isNotPaid) return false;
+
+    const hasRemaining =
+      paymentUtils.parseFloatSafe(payment.amount_paid || 0) <
+      paymentUtils.parseFloatSafe(payment.program_training_cost || 0);
+
+    if (!hasRemaining) return false;
+
+    if (paymentUtils.isWaitingVerification(payment)) {
+      return false;
+    }
+
+    if (context.status === "paid" || context.receiptAvailable) {
+      return false;
+    }
+
+    return Boolean(context.dueDate) || Boolean(context.invoiceAvailable);
   },
 
   getImageUrl: (path) => {
