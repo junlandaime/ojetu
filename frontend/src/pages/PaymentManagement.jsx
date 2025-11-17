@@ -353,12 +353,17 @@ const paymentUtils = {
     const proofImage = entry.proof_image || null;
     const proofUploadedAt = entry.proof_uploaded_at || null;
     const proofVerifiedAt = entry.proof_verified_at || null;
-    const receiptNumber = entry.receipt_number || null;
+    const receiptNumber =
+      entry.receipt_number ||
+      payment.receipt_number ||
+      payment.invoice_number ||
+      null;
     const receiptAvailable = Boolean(
       receiptNumber || entry.proof_verified_at || entry.paid_at
     );
-    const invoiceNumber = entry.invoice_number || null;
-    const invoiceIssuedAt = entry.invoice_issued_at || null;
+    const invoiceNumber = entry.invoice_number || payment.invoice_number || null;
+    const invoiceIssuedAt =
+      entry.invoice_issued_at || payment.invoice_issued_at || null;
     const invoiceAvailable = Boolean(
       invoiceNumber ||
       invoiceIssuedAt ||
@@ -1029,16 +1034,13 @@ const PaymentManagement = () => {
       }
 
       const endpoint = type === "invoice" ? "invoice" : "receipt";
-      const url = `/api/payments/${payment.id}/${endpoint}${
-        params.toString() ? `?${params.toString()}` : ""
-      }`;
+      const buildUrl = (queryString) =>
+        `/api/payments/${payment.id}/${endpoint}${
+          queryString ? `?${queryString}` : ""
+        }`;
+      const url = buildUrl(params.toString());
 
-      try {
-        const response = await axios.get(url, {
-          responseType: "blob",
-          timeout: 15000,
-        });
-
+       const downloadFromResponse = (response) => {
         const blob = new Blob([response.data], {
           type: response.headers["content-type"] || "application/pdf",
         });
@@ -1063,7 +1065,41 @@ const PaymentManagement = () => {
         link.click();
         link.remove();
         window.URL.revokeObjectURL(blobUrl);
+        };
+
+      try {
+        const response = await axios.get(url, {
+          responseType: "blob",
+          timeout: 15000,
+        });
+
+        downloadFromResponse(response);
       } catch (error) {
+        const statusCode = error.response?.status;
+        const shouldFallbackToBaseInvoice =
+          type === "invoice" && hasInstallment && [400, 404].includes(statusCode);
+
+        if (shouldFallbackToBaseInvoice) {
+          try {
+            const fallbackParams = new URLSearchParams();
+            fallbackParams.append("status", `installment_${installment}`);
+
+            const fallbackResponse = await axios.get(
+              buildUrl(fallbackParams.toString()),
+              {
+                responseType: "blob",
+                timeout: 15000,
+              }
+            );
+
+            downloadFromResponse(fallbackResponse);
+            return;
+          } catch (fallbackError) {
+            console.error("❌ Invoice fallback failed:", fallbackError);
+          }
+        }
+
+
         console.error("❌ Error downloading document:", error);
         const errorMessage =
           error.response?.data?.message ||
