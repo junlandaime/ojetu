@@ -4,8 +4,8 @@ node_modules/
 
 # Production builds
 build/
-dist/
-*/dist/
+
+
 
 # Environment variables
 backend/.env
