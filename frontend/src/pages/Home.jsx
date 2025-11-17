@@ -134,7 +134,7 @@ const Home = () => {
                   lineHeight: 1.05,
                 }}
               >
-                Build your dream career
+                Build your dream career With Us
               </h1>
               <p
                 className="lead mb-4"
