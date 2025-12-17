@@ -58,48 +58,6 @@ const upload = multer({
   },
 });
 
-const INSTALLMENT_WEIGHT_MAP = {
-  4: [5, 5, 3, 3],
-};
-
-const getDefaultInstallmentAmounts = (totalAmount, totalInstallments) => {
-  const normalizedTotal = Math.round(parseFloat(totalAmount) || 0);
-  const installments = parseInt(totalInstallments, 10) || 0;
-
-  if (installments <= 0) {
-    return [];
-  }
-
-  const weights = INSTALLMENT_WEIGHT_MAP[installments];
-
-  if (!weights || weights.length !== installments) {
-    const evenShare = installments > 0 ? normalizedTotal / installments : normalizedTotal;
-    return Array.from({ length: installments }, () => evenShare);
-  }
-
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
-  let remaining = normalizedTotal;
-
-  return weights.map((weight, index) => {
-    if (index === installments - 1) {
-      const amount = Math.max(0, remaining);
-      remaining -= amount;
-      return amount;
-    }
-
-    const amount = Math.round((weight / totalWeight) * normalizedTotal);
-    remaining -= amount;
-    return amount;
-  });
-};
-
-const getDefaultInstallmentAmount = (totalAmount, totalInstallments, installmentNumber) => {
-  if (!installmentNumber || installmentNumber < 1) return 0;
-  const amounts = getDefaultInstallmentAmounts(totalAmount, totalInstallments);
-  return amounts[installmentNumber - 1] || 0;
-};
-
-
 const getTotalInstallments = (program) => {
   if (!program) return 4;
 
@@ -535,11 +493,8 @@ const resolveCurrentPaymentContext = async (
       if (historicalAmount > 0) {
         amountValue = historicalAmount;
       } else {
-        amountValue = getDefaultInstallmentAmount(
-          totalAmount,
-          totalInstallments,
-          installmentNumber
-        );
+        amountValue =
+          totalInstallments > 0 ? totalAmount / totalInstallments : totalAmount;
       }
     }
    } else if (targetStatus === "paid") {
@@ -558,11 +513,7 @@ const resolveCurrentPaymentContext = async (
       if (payment?.amount && parseFloat(payment.amount) > 0) {
         amountValue = parseFloat(payment.amount);
       } else if (totalInstallments > 0) {
-        amountValue = getDefaultInstallmentAmount(
-          totalAmount,
-          totalInstallments,
-          1
-        );
+      amountValue = totalAmount / totalInstallments;
       } else {
         amountValue = totalAmount;
       }
@@ -2089,46 +2040,15 @@ router.get("/:id/invoice", async (req, res) => {
       });
     }
 
-  const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
-  let amountPaid = parseFloat(payment.amount_paid || 0);
-  let remaining = Math.max(totalAmount - amountPaid, 0);
-  let progressPercentage = totalAmount > 0 ? (amountPaid / totalAmount) * 100 : 0;
-  const installmentData = parseInstallmentAmounts(payment);
-
+   const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
+    const amountPaid = parseFloat(payment.amount_paid || 0);
+    const remaining = Math.max(totalAmount - amountPaid, 0);
+    const progressPercentage = totalAmount > 0 ? (amountPaid / totalAmount) * 100 : 0;
 
     const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount, {
       status: targetStatus,
       installmentNumber: requestedInstallment,
     });
-
-    if (requestedInstallment) {
-      let cumulativePaid = 0;
-
-      for (let i = 1; i <= requestedInstallment; i++) {
-        const entry = installmentData[`installment_${i}`] || {};
-        const paidValue = sanitizeAmountValue(entry.paid_amount, null);
-        const configuredAmount = parseInstallmentAmount(payment, i);
-        const totalInstallments = getTotalInstallments(payment);
-        const defaultShare = getDefaultInstallmentAmount(
-          totalAmount,
-          totalInstallments,
-          i
-        );
-
-        const installmentPaid =
-          paidValue && paidValue > 0
-            ? paidValue
-            : configuredAmount && configuredAmount > 0
-            ? configuredAmount
-            : defaultShare;
-
-        cumulativePaid += installmentPaid;
-      }
-
-      amountPaid = Math.min(totalAmount, cumulativePaid);
-      remaining = Math.max(totalAmount - amountPaid, 0);
-      progressPercentage = totalAmount > 0 ? (amountPaid / totalAmount) * 100 : 0;
-    }
 
     if (requestedInstallment && !paymentContext.installmentEntry) {
       return res.status(404).json({

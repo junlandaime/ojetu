@@ -3,10 +3,6 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { buildFileUrl } from "../utils/api";
 
-const INSTALLMENT_WEIGHT_MAP = {
-  4: [5, 5, 3, 3],
-};
-
 const normalizeAmountValue = (value) => {
   if (value === null || value === undefined) {
     return NaN;
@@ -124,136 +120,136 @@ const paymentUtils = {
     return payment.status;
   },
 
-  // parseInstallmentAmounts: (payment) => {
-  //   if (!payment || !payment.installment_amounts) return {};
+  parseInstallmentAmounts: (payment) => {
+    if (!payment || !payment.installment_amounts) return {};
 
-  //   const bufferToString = (bufferLike) => {
-  //     const hasArrayBuffer = typeof ArrayBuffer !== "undefined";
-  //     try {
-  //       if (!bufferLike) return null;
+    const bufferToString = (bufferLike) => {
+      const hasArrayBuffer = typeof ArrayBuffer !== "undefined";
+      try {
+        if (!bufferLike) return null;
 
-  //       if (
-  //         typeof window !== "undefined" &&
-  //         window.TextDecoder &&
-  //         hasArrayBuffer &&
-  //         (bufferLike instanceof ArrayBuffer || ArrayBuffer.isView(bufferLike))
-  //       ) {
-  //         const decoder = new window.TextDecoder();
-  //         const view =
-  //           bufferLike instanceof ArrayBuffer
-  //             ? new Uint8Array(bufferLike)
-  //             : new Uint8Array(bufferLike.buffer);
-  //         return decoder.decode(view);
-  //       }
+        if (
+          typeof window !== "undefined" &&
+          window.TextDecoder &&
+          hasArrayBuffer &&
+          (bufferLike instanceof ArrayBuffer || ArrayBuffer.isView(bufferLike))
+        ) {
+          const decoder = new window.TextDecoder();
+          const view =
+            bufferLike instanceof ArrayBuffer
+              ? new Uint8Array(bufferLike)
+              : new Uint8Array(bufferLike.buffer);
+          return decoder.decode(view);
+        }
 
-  //       if (
-  //         hasArrayBuffer &&
-  //         (bufferLike instanceof ArrayBuffer || ArrayBuffer.isView(bufferLike))
-  //       ) {
-  //         const view =
-  //           bufferLike instanceof ArrayBuffer
-  //             ? new Uint8Array(bufferLike)
-  //             : new Uint8Array(bufferLike.buffer);
-  //         let result = "";
-  //         view.forEach((byte) => {
-  //           result += String.fromCharCode(byte);
-  //         });
-  //         return result;
-  //       }
+        if (
+          hasArrayBuffer &&
+          (bufferLike instanceof ArrayBuffer || ArrayBuffer.isView(bufferLike))
+        ) {
+          const view =
+            bufferLike instanceof ArrayBuffer
+              ? new Uint8Array(bufferLike)
+              : new Uint8Array(bufferLike.buffer);
+          let result = "";
+          view.forEach((byte) => {
+            result += String.fromCharCode(byte);
+          });
+          return result;
+        }
 
-  //       if (
-  //         typeof bufferLike === "object" &&
-  //         bufferLike !== null &&
-  //         bufferLike.type === "Buffer" &&
-  //         Array.isArray(bufferLike.data)
-  //       ) {
-  //         let result = "";
-  //         bufferLike.data.forEach((byte) => {
-  //           result += String.fromCharCode(byte);
-  //         });
-  //         return result;
-  //       }
-  //     } catch (error) {
-  //       console.error("❌ Failed to decode buffer-like installment data", error);
-  //     }
+        if (
+          typeof bufferLike === "object" &&
+          bufferLike !== null &&
+          bufferLike.type === "Buffer" &&
+          Array.isArray(bufferLike.data)
+        ) {
+          let result = "";
+          bufferLike.data.forEach((byte) => {
+            result += String.fromCharCode(byte);
+          });
+          return result;
+        }
+      } catch (error) {
+        console.error("❌ Failed to decode buffer-like installment data", error);
+      }
 
-  //     return null;
-  //   };
+      return null;
+    };
 
-  //   const parseJsonString = (value) => {
-  //     if (!value || typeof value !== "string") {
-  //       return {};
-  //     }
+    const parseJsonString = (value) => {
+      if (!value || typeof value !== "string") {
+        return {};
+      }
 
-  //     const trimmed = value.trim();
-  //     if (!trimmed) {
-  //       return {};
-  //     }
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return {};
+      }
 
-  //     try {
-  //       let parsed = JSON.parse(trimmed);
-  //       if (typeof parsed === "string") {
-  //         parsed = JSON.parse(parsed);
-  //       }
+      try {
+        let parsed = JSON.parse(trimmed);
+        if (typeof parsed === "string") {
+          parsed = JSON.parse(parsed);
+        }
 
-  //       if (
-  //         parsed &&
-  //         typeof parsed === "object" &&
-  //         !Array.isArray(parsed) &&
-  //         Object.keys(parsed).length > 0
-  //       ) {
-  //         return parsed;
-  //       }
-  //     } catch (error) {
-  //       console.error("❌ Error parsing installment_amounts string:", error);
-  //     }
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          !Array.isArray(parsed) &&
+          Object.keys(parsed).length > 0
+        ) {
+          return parsed;
+        }
+      } catch (error) {
+        console.error("❌ Error parsing installment_amounts string:", error);
+      }
 
-  //     return {};
-  //   };
+      return {};
+    };
 
-  //   try {
-  //     const rawValue = payment.installment_amounts;
+    try {
+      const rawValue = payment.installment_amounts;
 
-  //     if (
-  //       typeof rawValue === "object" &&
-  //       rawValue !== null &&
-  //       !Array.isArray(rawValue)
-  //     ) {
-  //       const keys = Object.keys(rawValue);
-  //       if (keys.some((key) => key.startsWith("installment_"))) {
-  //         return rawValue;
-  //       }
+      if (
+        typeof rawValue === "object" &&
+        rawValue !== null &&
+        !Array.isArray(rawValue)
+      ) {
+        const keys = Object.keys(rawValue);
+        if (keys.some((key) => key.startsWith("installment_"))) {
+          return rawValue;
+        }
 
-  //       if (rawValue.type === "Buffer" && Array.isArray(rawValue.data)) {
-  //         const decoded = bufferToString(rawValue);
-  //         return decoded ? parseJsonString(decoded) : {};
-  //       }
+        if (rawValue.type === "Buffer" && Array.isArray(rawValue.data)) {
+          const decoded = bufferToString(rawValue);
+          return decoded ? parseJsonString(decoded) : {};
+        }
 
-  //       const serialized = JSON.stringify(rawValue);
-  //       return serialized ? parseJsonString(serialized) : {};
-  //     }
+        const serialized = JSON.stringify(rawValue);
+        return serialized ? parseJsonString(serialized) : {};
+      }
 
-  //     if (
-  //       typeof rawValue === "string" &&
-  //       rawValue.trim().startsWith("{")
-  //     ) {
-  //       return parseJsonString(rawValue);
-  //     }
+      if (
+        typeof rawValue === "string" &&
+        rawValue.trim().startsWith("{")
+      ) {
+        return parseJsonString(rawValue);
+      }
 
-  //     if (
-  //       typeof ArrayBuffer !== "undefined" &&
-  //       (rawValue instanceof ArrayBuffer || ArrayBuffer.isView(rawValue))
-  //     ) {
-  //       const decoded = bufferToString(rawValue);
-  //       return decoded ? parseJsonString(decoded) : {};
-  //     }
+      if (
+        typeof ArrayBuffer !== "undefined" &&
+        (rawValue instanceof ArrayBuffer || ArrayBuffer.isView(rawValue))
+      ) {
+        const decoded = bufferToString(rawValue);
+        return decoded ? parseJsonString(decoded) : {};
+      }
 
-  //     return {};
-  //   } catch (error) {
-  //     console.error("❌ Error parsing installment_amounts:", error);
-  //     return {};
-  //   }
-  // },
+      return {};
+    } catch (error) {
+      console.error("❌ Error parsing installment_amounts:", error);
+      return {};
+    }
+  },
 
   parseInstallmentAmounts: (payment) => {
     if (!payment || !payment.installment_amounts) return {};
@@ -267,46 +263,6 @@ const paymentUtils = {
       return {};
     }
   },
-
-  getDefaultInstallmentAmounts: (payment) => {
-    const totalAmount = paymentUtils.parseFloatSafe(
-      payment?.program_training_cost || payment?.amount || 0
-    );
-    const totalInstallments = paymentUtils.getTotalInstallments(payment);
-
-    if (!totalInstallments || totalInstallments <= 0) {
-      return [];
-    }
-
-    const weights = INSTALLMENT_WEIGHT_MAP[totalInstallments];
-
-    if (!weights || weights.length !== totalInstallments) {
-      const evenShare = totalAmount / totalInstallments;
-      return Array.from({ length: totalInstallments }, () => evenShare);
-    }
-
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
-    let remaining = totalAmount;
-
-    return weights.map((weight, index) => {
-      if (index === totalInstallments - 1) {
-        const amount = Math.max(0, Math.round(remaining));
-        remaining -= amount;
-        return amount;
-      }
-
-      const amount = Math.round((weight / totalWeight) * totalAmount);
-      remaining -= amount;
-      return amount;
-    });
-  },
-
-  getDefaultInstallmentAmount: (payment, installmentNumber) => {
-    if (!installmentNumber || installmentNumber < 1) return 0;
-    const amounts = paymentUtils.getDefaultInstallmentAmounts(payment);
-    return amounts[installmentNumber - 1] || 0;
-  },
-
 
   getInstallmentContext: (payment, installmentNumber) => {
     if (!payment || !installmentNumber) {
@@ -337,30 +293,17 @@ const paymentUtils = {
     const entry = installmentData[key] || {};
 
     const configuredAmount = paymentUtils.parseFloatSafe(entry.amount);
-    const paidAmountValue = paymentUtils.parseFloatSafe(entry.paid_amount);
-    const defaultAmount = paymentUtils.getDefaultInstallmentAmount(
-      payment,
-      installmentNumber
-    );
-    const amount =
-      configuredAmount > 0
-        ? configuredAmount
-        : paidAmountValue > 0
-        ? paidAmountValue
-        : defaultAmount;
+     const defaultAmount =
+      totalInstallments > 0 ? totalAmount / totalInstallments : totalAmount;
+    const amount = configuredAmount > 0 ? configuredAmount : defaultAmount;
 
     const currentInstallment = paymentUtils.getCurrentInstallmentNumber(payment);
     const proofImage = entry.proof_image || null;
     const proofUploadedAt = entry.proof_uploaded_at || null;
     const proofVerifiedAt = entry.proof_verified_at || null;
-    const receiptNumber =
-      entry.receipt_number || payment.receipt_number || payment.invoice_number || null;
+    const receiptNumber = entry.receipt_number || null;
     const receiptAvailable = Boolean(receiptNumber);
-    const invoiceNumber = entry.invoice_number || payment.invoice_number || null;
-    const invoiceIssuedAt = entry.invoice_issued_at || payment.invoice_issued_at || null;
-    const invoiceAvailable = Boolean(
-     invoiceNumber || invoiceIssuedAt || configuredAmount > 0 || paidAmountValue > 0
-    );
+    const invoiceAvailable = Boolean(entry.amount);
 
     let status = entry.status || null;
 
@@ -405,10 +348,9 @@ const paymentUtils = {
       receiptNumber,
       receiptAvailable,
       invoiceAvailable,
-      paidAmount: paidAmountValue,
+      paidAmount: paymentUtils.parseFloatSafe(entry.paid_amount),
       paidAt: entry.paid_at || null,
-      invoiceIssuedAt,
-      invoiceNumber,
+      invoiceIssuedAt: entry.invoice_issued_at || null,
       entry,
     };
   },
@@ -555,7 +497,6 @@ const paymentUtils = {
       }
 
       const installmentCount = paymentUtils.getTotalInstallments(payment);
-      const plannedAmounts = paymentUtils.getDefaultInstallmentAmounts(payment);
 
       if (nextInstallmentNumber > installmentCount) {
         return {
@@ -567,11 +508,8 @@ const paymentUtils = {
 
       const remainingAmount = totalAmount - paidAmount;
       const remainingInstallments = installmentCount - currentInstallment;
-      const plannedAmount = plannedAmounts[nextInstallmentNumber - 1];
       const suggestedAmount =
-        plannedAmount && plannedAmount > 0
-          ? plannedAmount
-          : remainingInstallments > 0
+         remainingInstallments > 0
           ? Math.round(remainingAmount / remainingInstallments / 1000) * 1000
           : 0;
 
@@ -883,75 +821,6 @@ const PaymentManagement = () => {
   const handleOpenManualPayment = () => {
     setActiveModal(MODAL_TYPES.MANUAL);
   };
-
-  const downloadInstallmentDocument = useCallback(
-    async (payment, type, installment = null) => {
-      if (!payment || !payment.id) {
-        alert("Data pembayaran tidak valid.");
-        return;
-      }
-
-      const params = new URLSearchParams();
-      const hasInstallment =
-        installment !== undefined &&
-        installment !== null &&
-        installment !== "";
-
-      if (hasInstallment) {
-        params.append("installment", installment);
-        params.append("status", `installment_${installment}`);
-      }
-
-      const endpoint = type === "invoice" ? "invoice" : "receipt";
-      const url = `/api/payments/${payment.id}/${endpoint}${
-        params.toString() ? `?${params.toString()}` : ""
-      }`;
-
-      try {
-        const response = await axios.get(url, {
-          responseType: "blob",
-          timeout: 15000,
-        });
-
-      
-        const blob = new Blob([response.data], {
-          type: response.headers["content-type"] || "application/pdf",
-        });
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        const suffix = hasInstallment ? `-cicilan-${installment}` : "";
-        const documentPrefix = type === "invoice" ? "invoice" : "kwitansi";
-        const baseNumber =
-          type === "invoice"
-            ? payment.invoice_number || payment.registration_code || documentPrefix
-            : payment.receipt_number ||
-              payment.invoice_number ||
-              payment.registration_code ||
-              documentPrefix;
-
-        link.href = blobUrl;
-        link.setAttribute(
-          "download",
-          `${documentPrefix}-${baseNumber}${suffix}.pdf`
-        );
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(blobUrl);
-  
-      } catch (error) {
-
-
-        console.error("❌ Error downloading document:", error);
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          `Gagal mengunduh ${type === "invoice" ? "invoice" : "kwitansi"}`;
-        alert(errorMessage);
-      }
-    },
-    []
-  );
 
   const handlePreviewProof = (payment) => {
     if (payment.proof_image) {
@@ -1530,8 +1399,7 @@ const PaymentManagement = () => {
                                   )}
                                 </td>
                                 <td>
-                                   {row.amount > 0 &&
-                                    `Rp ${paymentUtils.formatCurrency(row.amount)}`}
+                                   Rp {paymentUtils.formatCurrency(row.amount)}
                                   {row.paidAt && (
                                     <div className="text-muted small">
                                       Dibayar: {new Date(row.paidAt).toLocaleDateString("id-ID")}
@@ -1560,10 +1428,9 @@ const PaymentManagement = () => {
                                       className="btn btn-outline-primary"
                                       disabled={!row.invoiceAvailable}
                                       onClick={() =>
-                                       downloadInstallmentDocument(
-                                          selectedPayment,
-                                          "invoice",
-                                          row.installment
+                                         window.open(
+                                          `/api/payments/${selectedPayment.id}/invoice?installment=${row.installment}`,
+                                          "_blank"
                                         )
                                       }
                                       title={`Unduh invoice cicilan ${row.installment}`}
@@ -1575,10 +1442,9 @@ const PaymentManagement = () => {
                                       className="btn btn-outline-primary"
                                       disabled={!row.receiptAvailable}
                                       onClick={() =>
-                                       downloadInstallmentDocument(
-                                          selectedPayment,
-                                          "receipt",
-                                          row.installment
+                                       window.open(
+                                          `/api/payments/${selectedPayment.id}/receipt?installment=${row.installment}`,
+                                          "_blank"
                                         )
                                       }
                                       title={`Unduh kwitansi cicilan ${row.installment}`}
@@ -1650,15 +1516,15 @@ const PaymentManagement = () => {
           <div className="modal-footer">
             <button className="btn btn-secondary" onClick={resetModals}>Tutup</button>
             {selectedPayment?.receipt_number && (
-              <button
-                type="button"
+              <a
+                href={`/api/payments/${selectedPayment.id}/receipt`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn btn-outline-primary"
-                onClick={() =>
-                  downloadInstallmentDocument(selectedPayment, "receipt")
-                }
+                
               >
                 <i className="bi bi-download me-1"></i>Download Kwitansi
-             </button>
+             </a>
             )}
           </div>
         </div>
