@@ -161,7 +161,7 @@ export const sendEmail = async ({ to, subject, html, text, attachments }) => {
 export const createVerificationEmailTemplate = ({ fullName, verifyUrl }) => `
   <div style="font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a;">
     <h2 style="color:#0f172a;">Halo ${fullName || "Peserta"},</h2>
-    <p>Terima kasih telah mendaftar pada platform Pelatihan dan Penyaluran Tenaga Kerja Tokutei Genou.</p>
+    <p>Terima kasih telah mendaftar pada platform Pelatihan dan Penyaluran Tenaga Kerja Fitalenta.</p>
     <p>Untuk mengaktifkan akun Anda, silakan klik tombol berikut ini dalam 24 jam:</p>
     <p style="margin: 24px 0;">
       <a href="${verifyUrl}" style="background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Verifikasi Akun</a>

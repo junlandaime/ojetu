@@ -1563,7 +1563,7 @@ const ProgramRegistration = () => {
         <div className="col-lg-10">
           {/* Header */}
           <div className="text-center mb-5">
-            <h2>Formulir Pendaftaran Pelatihan dan Penyaluran Tenaga Kerja Tokutei Genou</h2>
+            <h2>Formulir Pendaftaran Pelatihan dan Penyaluran Tenaga Kerja Fitalenta</h2>
             <p className="text-muted">
               Isi data diri Anda dengan lengkap dan benar
             </p>
