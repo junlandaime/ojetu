@@ -1804,7 +1804,7 @@ router.get("/:id/invoice", async (req, res) => {
       .text("Assalamu'alaikum warahmatullahi wabarakatuh,", { lineGap: 4 })
       .moveDown(0.5)
       .text(
-        `Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talent. Bersama surat ini kami sampaikan tagihan ${paymentLabelLower} untuk Program ${payment.program_name || "-"} dengan rincian sebagai berikut:`,
+        `Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talenta. Bersama surat ini kami sampaikan tagihan ${paymentLabelLower} untuk Program ${payment.program_name || "-"} dengan rincian sebagai berikut:`,
         { lineGap: 4 }
       );
 
@@ -1843,7 +1843,7 @@ router.get("/:id/invoice", async (req, res) => {
     drawDetailRow("Jatuh Tempo", dueDisplay);
     drawDetailRow(
       "Rekening Pembayaran",
-      "BCA Cab. Maranatha Bandung\nNo. Rekening: 2828339333 a.n PT FAST Indo Talent"
+      "BCA Cab. Maranatha Bandung\nNo. Rekening: 2828339333 a.n PT FAST Indo Talenta"
     );
     drawDetailRow(
       "Catatan",
@@ -2124,7 +2124,7 @@ router.get("/:id/invoice", async (req, res) => {
       .font("Helvetica")
       .fontSize(10)
       .fillColor(colors.muted)
-      .text("PT FAST Indo Talent", 50, doc.y + 4);
+      .text("PT FAST Indo Talenta", 50, doc.y + 4);
 
     doc.moveDown(1);
 
@@ -2268,7 +2268,7 @@ router.get("/:id/invoice", async (req, res) => {
       .fontSize(10)
       .fillColor(colors.text)
       .text("Bank          : BCA Cab. Maranatha Bandung", 50, doc.y + 6)
-      .text("No. Rekening  : 2828339333 a.n PT FAST Indo Talent", 50, doc.y + 6)
+      .text("No. Rekening  : 2828339333 a.n PT FAST Indo Talenta", 50, doc.y + 6)
       .text("Metode        : Transfer Bank", 50, doc.y + 6);
 
     if (payment.notes) {

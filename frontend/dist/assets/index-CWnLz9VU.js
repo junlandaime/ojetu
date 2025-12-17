@@ -114,7 +114,7 @@ Please change the parent <Route path="${G}"> to <Route path="${G==="/"?"*":`${G}
             <div class="header">
               <div>
                 <div class="title">Kwitansi</div>
-                <div class="subtitle">PT FAST INDO TALENT</div>
+                <div class="subtitle">PT FAST Indo Talenta</div>
               </div>
             <div class="company-info">
                 <strong>FITALENTA</strong><br />
@@ -154,7 +154,7 @@ Please change the parent <Route path="${G}"> to <Route path="${G==="/"?"*":`${G}
             <div class="payment-info">
               <h4>Informasi Pembayaran</h4>
               <p>Bank: BCA Cab. Maranatha Bandung</p>
-              <p>No. Rekening: 2828339333 a.n PT FAST Indo Talent</p>
+              <p>No. Rekening: 2828339333 a.n PT FAST Indo Talenta</p>
               <p>Metode: ${w(E.payment_method||"Transfer Bank")}</p>
               ${ae.notes?`<p>Catatan: ${ae.notes}</p>`:""}
             </div>
@@ -240,7 +240,7 @@ Please change the parent <Route path="${G}"> to <Route path="${G==="/"?"*":`${G}
             <div class="subject">Perihal: Invoice ${ae.paymentLabel} Pelatihan dan Karantina Kerja Tokutei Ginou</div>
             <div class="paragraph">
               Assalamu'alaikum warahmatullahi wabarakatuh,<br /><br />
-              Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talent. Bersama surat ini kami sampaikan tagihan ${ae.paymentLabel.toLowerCase()} untuk Program ${ae.programName}. Adapun rincian tagihan adalah sebagai berikut:
+              Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talenta. Bersama surat ini kami sampaikan tagihan ${ae.paymentLabel.toLowerCase()} untuk Program ${ae.programName}. Adapun rincian tagihan adalah sebagai berikut:
             </div>
             <div class="detail-box">
               <div class="detail-row"><span class="detail-label">Program</span><span class="detail-value">${ae.programName}</span></div>
@@ -249,7 +249,7 @@ Please change the parent <Route path="${G}"> to <Route path="${G==="/"?"*":`${G}
               <div class="detail-row"><span class="detail-label">Jumlah Tagihan</span><span class="detail-value">${xe.invoiceAmount}</span></div>
               <div class="detail-row"><span class="detail-label">Terbilang</span><span class="detail-value">${xe.amountWords}</span></div>
               <div class="detail-row"><span class="detail-label">Jatuh Tempo</span><span class="detail-value">${ce(w)}</span></div>
-              <div class="detail-row"><span class="detail-label">Rekening Pembayaran</span><span class="detail-value">BCA Cab. Maranatha Bandung<br />No. Rekening: 2828339333 a.n PT FAST Indo Talent</span></div>
+              <div class="detail-row"><span class="detail-label">Rekening Pembayaran</span><span class="detail-value">BCA Cab. Maranatha Bandung<br />No. Rekening: 2828339333 a.n PT FAST Indo Talenta</span></div>
               <div class="detail-row"><span class="detail-label">Catatan</span><span class="detail-value">${ae.notes}</span></div>
             </div>
             <div class="amount-box">

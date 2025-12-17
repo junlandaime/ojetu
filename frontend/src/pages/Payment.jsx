@@ -1333,7 +1333,7 @@ const [detailLoading, setDetailLoading] = useState(false);
             <div class="header">
               <div>
                 <div class="title">Kwitansi</div>
-                <div class="subtitle">PT FAST INDO TALENT</div>
+                <div class="subtitle">PT FAST Indo Talenta</div>
               </div>
             <div class="company-info">
                 <strong>FITALENTA</strong><br />
@@ -1373,7 +1373,7 @@ const [detailLoading, setDetailLoading] = useState(false);
             <div class="payment-info">
               <h4>Informasi Pembayaran</h4>
               <p>Bank: BCA Cab. Maranatha Bandung</p>
-              <p>No. Rekening: 2828339333 a.n PT FAST Indo Talent</p>
+              <p>No. Rekening: 2828339333 a.n PT FAST Indo Talenta</p>
               <p>Metode: ${escapeHtml(payment.payment_method || "Transfer Bank")}</p>
               ${metadata.notes ? `<p>Catatan: ${metadata.notes}</p>` : ""}
             </div>
@@ -1641,7 +1641,7 @@ const [detailLoading, setDetailLoading] = useState(false);
             <div class="subject">Perihal: Invoice ${metadata.paymentLabel} Pelatihan dan Karantina Kerja Tokutei Ginou</div>
             <div class="paragraph">
               Assalamu'alaikum warahmatullahi wabarakatuh,<br /><br />
-              Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talent. Bersama surat ini kami sampaikan tagihan ${metadata.paymentLabel.toLowerCase()} untuk Program ${metadata.programName}. Adapun rincian tagihan adalah sebagai berikut:
+              Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talenta. Bersama surat ini kami sampaikan tagihan ${metadata.paymentLabel.toLowerCase()} untuk Program ${metadata.programName}. Adapun rincian tagihan adalah sebagai berikut:
             </div>
             <div class="detail-box">
               <div class="detail-row"><span class="detail-label">Program</span><span class="detail-value">${metadata.programName}</span></div>
@@ -1650,7 +1650,7 @@ const [detailLoading, setDetailLoading] = useState(false);
               <div class="detail-row"><span class="detail-label">Jumlah Tagihan</span><span class="detail-value">${formatted.invoiceAmount}</span></div>
               <div class="detail-row"><span class="detail-label">Terbilang</span><span class="detail-value">${formatted.amountWords}</span></div>
               <div class="detail-row"><span class="detail-label">Jatuh Tempo</span><span class="detail-value">${escapeHtml(dueDisplay)}</span></div>
-              <div class="detail-row"><span class="detail-label">Rekening Pembayaran</span><span class="detail-value">BCA Cab. Maranatha Bandung<br />No. Rekening: 2828339333 a.n PT FAST Indo Talent</span></div>
+              <div class="detail-row"><span class="detail-label">Rekening Pembayaran</span><span class="detail-value">BCA Cab. Maranatha Bandung<br />No. Rekening: 2828339333 a.n PT FAST Indo Talenta</span></div>
               <div class="detail-row"><span class="detail-label">Catatan</span><span class="detail-value">${metadata.notes}</span></div>
             </div>
             <div class="amount-box">
