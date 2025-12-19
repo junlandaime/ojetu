@@ -134,13 +134,13 @@ const Home = () => {
                   lineHeight: 1.05,
                 }}
               >
-                Build your dream career With Us
+                Build your dream career and study With Us
               </h1>
               <p
                 className="lead mb-4"
                 style={{ fontSize: "clamp(1rem, 2.2vw, 1.25rem)" }}
               >
-                Bergabung dengan program magang kami - dapatkan pengalaman
+                Bergabung dengan program Work and Study Abroad kami - dapatkan pengalaman
                 nyata, mentorship profesional, dan mulai perjalanan karir yang
                 Anda impikan.
               </p>

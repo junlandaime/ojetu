@@ -1950,7 +1950,7 @@ router.get("/:id/invoice", async (req, res) => {
       .font("Helvetica")
       .fontSize(9)
       .fillColor(colors.muted)
-      .text("Fitalenta | Amanah | Shiddiq | Tabligh", {
+      .text("FITALENTA | Amanah | Shiddiq | Tabligh", {
         align: "center",
       });
 
@@ -2330,7 +2330,7 @@ router.get("/:id/invoice", async (req, res) => {
       .text("Terima kasih telah mempercayai program kami.", {
         align: "center",
       })
-      .text("Fitalenta | Amanah | Shiddiq | Tabligh", {
+      .text("FITALENTA | Amanah | Shiddiq | Tabligh", {
         align: "center",
       })
 

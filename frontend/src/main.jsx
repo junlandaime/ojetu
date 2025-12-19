@@ -13,7 +13,7 @@ if (typeof window !== "undefined") {
 }
 
 if (import.meta.env.DEV || import.meta.env.PROD) {
-  console.info("[API] Using base URL:", API_BASE_URL);
+  // console.info("[API] Using base URL:", API_BASE_URL);
 }
 
 axios.interceptors.response.use(

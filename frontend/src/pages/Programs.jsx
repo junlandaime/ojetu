@@ -73,7 +73,7 @@ const Programs = () => {
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
-              <h2 className="mb-1">Program Magang Tersedia</h2>
+              <h2 className="mb-1">Work and Study Abroad</h2>
               <p className="text-muted">
                 Pilih program yang sesuai dengan minat dan kemampuan Anda
               </p>
