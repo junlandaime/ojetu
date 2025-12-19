@@ -794,6 +794,56 @@ const PaymentManagement = () => {
     });
   }, []);
 
+  // Tambahkan state untuk loading download jika belum ada
+const [downloadingId, setDownloadingId] = useState(null);
+
+const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') => {
+  try {
+    // Set loading indicator khusus untuk baris ini (opsional)
+    setDownloadingId(`${type}-${installment}`);
+
+    // Tentukan endpoint berdasarkan tipe (invoice atau receipt)
+    const endpoint = type === 'invoice' 
+      ? `/api/payments/${paymentId}/invoice?installment=${installment}`
+      : `/api/payments/${paymentId}/receipt?installment=${installment}`;
+
+    // Gunakan axios yang sudah ada (yang otomatis menyertakan Token)
+    const response = await axios.get(endpoint, {
+      responseType: 'blob', // PENTING: Agar axios membaca response sebagai file binary
+    });
+
+    // Buat URL sementara untuk file blob tersebut
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Set nama file download
+    const fileName = `${type}-cicilan-${installment}-${paymentId}.pdf`;
+    link.setAttribute('download', fileName);
+    
+    // Trigger klik otomatis
+    document.body.appendChild(link);
+    link.click();
+    
+    // Bersihkan elemen
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error(`Gagal download ${type}:`, error);
+    
+    // Cek jika errornya karena token/auth atau file tidak ada
+    if (error.response && error.response.status === 401) {
+       alert("Sesi habis atau tidak memiliki akses. Silakan login ulang.");
+    } else {
+       alert("Gagal mengunduh file. Pastikan file tersedia.");
+    }
+  } finally {
+    setDownloadingId(null);
+  }
+};
+
+
   const handleViewDetails = async (payment) => {
     const validation = paymentUtils.validatePayment(payment);
     if (!validation.isValid) {
@@ -1424,33 +1474,33 @@ const PaymentManagement = () => {
                                 <td className="text-center">
                                   <div className="btn-group btn-group-sm">
                                     <button
-                                      type="button"
-                                      className="btn btn-outline-primary"
-                                      disabled={!row.invoiceAvailable}
-                                      onClick={() =>
-                                         window.open(
-                                          `/api/payments/${selectedPayment.id}/invoice?installment=${row.installment}`,
-                                          "_blank"
-                                        )
-                                      }
-                                      title={`Unduh invoice cicilan ${row.installment}`}
-                                    >
-                                      <i className="bi bi-file-earmark-arrow-down"></i>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-outline-primary"
-                                      disabled={!row.receiptAvailable}
-                                      onClick={() =>
-                                       window.open(
-                                          `/api/payments/${selectedPayment.id}/receipt?installment=${row.installment}`,
-                                          "_blank"
-                                        )
-                                      }
-                                      title={`Unduh kwitansi cicilan ${row.installment}`}
-                                    >
-                                      <i className="bi bi-download"></i>
-                                    </button>
+  type="button"
+  className="btn btn-outline-primary"
+  disabled={!row.invoiceAvailable || downloadingId === `invoice-${row.installment}`}
+  onClick={() => handleDownloadInvoice(selectedPayment.id, row.installment, 'invoice')}
+  title={`Unduh invoice cicilan ${row.installment}`}
+>
+  {downloadingId === `invoice-${row.installment}` ? (
+     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+  ) : (
+     <i className="bi bi-file-earmark-arrow-down"></i>
+  )}
+</button>
+
+{/* Tombol Receipt/Kwitansi */}
+<button
+  type="button"
+  className="btn btn-outline-primary"
+  disabled={!row.receiptAvailable || downloadingId === `receipt-${row.installment}`}
+  onClick={() => handleDownloadInvoice(selectedPayment.id, row.installment, 'receipt')}
+  title={`Unduh kwitansi cicilan ${row.installment}`}
+>
+  {downloadingId === `receipt-${row.installment}` ? (
+     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+  ) : (
+     <i className="bi bi-download"></i>
+  )}
+</button>
                                   </div>
                                 </td>
                               </tr>
