@@ -8,6 +8,9 @@ const AdminDashboard = () => {
   const [registrations, setRegistrations] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
+  // State baru untuk loading export
+  const [exportLoading, setExportLoading] = useState(false);
+  
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({
     program: "all",
@@ -209,6 +212,99 @@ const AdminDashboard = () => {
       placementStats,
     }));
   };
+
+  // --- FUNGSI EKSPOR BARU ---
+  const handleExportExcel = async () => {
+    try {
+      setExportLoading(true);
+      setError("");
+
+      // Mengambil parameter filter saat ini agar hasil export sesuai filter
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach((key) => {
+        if (filters[key] !== "all" && filters[key] !== "") {
+          params.append(key, filters[key]);
+        }
+      });
+
+      const response = await axios.get(
+        `/api/registrations/export/excel?${params}`,
+        {
+          responseType: "blob",
+          timeout: 30000,
+        }
+      );
+
+      if (response.status === 200) {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute(
+          "download",
+          `data-pendaftar-${new Date().toISOString().split("T")[0]}.xlsx`
+        );
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      const errorMessage =
+        error.response?.status === 404
+          ? "Fitur export Excel belum tersedia di server"
+          : "Gagal mengekspor ke Excel. Silakan coba lagi.";
+      setError(errorMessage);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      setExportLoading(true);
+      setError("");
+
+      const params = new URLSearchParams();
+      Object.keys(filters).forEach((key) => {
+        if (filters[key] !== "all" && filters[key] !== "") {
+          params.append(key, filters[key]);
+        }
+      });
+
+      const response = await axios.get(
+        `/api/registrations/export/pdf?${params}`,
+        {
+          responseType: "blob",
+          timeout: 30000,
+        }
+      );
+
+      if (response.status === 200) {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute(
+          "download",
+          `data-pendaftar-${new Date().toISOString().split("T")[0]}.pdf`
+        );
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Error exporting to PDF:", error);
+      const errorMessage =
+        error.response?.status === 404
+          ? "Fitur export PDF belum tersedia di server"
+          : "Gagal mengekspor ke PDF. Silakan coba lagi.";
+      setError(errorMessage);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+  // --------------------------
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({
@@ -691,6 +787,64 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* --- EXPORT BUTTONS SECTION START --- */}
+      <div className="row mb-4">
+          <div className="col">
+              <div className="card shadow-sm border-0">
+                  <div className="card-body">
+                      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                          <div>
+                              <h5 className="mb-1 text-primary">
+                                  <i className="bi bi-download me-2"></i>
+                                  Ekspor Data Pendaftar
+                              </h5>
+                              <p className="text-muted mb-0 small">
+                                  Download data pendaftar dalam format Excel atau PDF sesuai filter di atas
+                              </p>
+                          </div>
+                          <div className="d-flex gap-2">
+                              <button
+                                  className="btn btn-success text-white"
+                                  onClick={handleExportExcel}
+                                  disabled={exportLoading || registrations.length === 0}
+                              >
+                                  {exportLoading ? (
+                                      <>
+                                          <span className="spinner-border spinner-border-sm me-2"></span>
+                                          Exporting...
+                                      </>
+                                  ) : (
+                                      <>
+                                          <i className="bi bi-file-earmark-excel me-2"></i>
+                                          Excel
+                                      </>
+                                  )}
+                              </button>
+                              <button
+                                  className="btn btn-danger text-white"
+                                  onClick={handleExportPDF}
+                                  disabled={exportLoading || registrations.length === 0}
+                              >
+                                  {exportLoading ? (
+                                      <>
+                                          <span className="spinner-border spinner-border-sm me-2"></span>
+                                          Exporting...
+                                      </>
+                                  ) : (
+                                      <>
+                                          <i className="bi bi-file-earmark-pdf me-2"></i>
+                                          PDF
+                                      </>
+                                  )}
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      {/* --- EXPORT BUTTONS SECTION END --- */}
+
       {/* Registrations Table */}
       <div className="card">
         <div className="card-header d-flex justify-content-between align-items-center">
@@ -858,7 +1012,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Detail Modal & Status Modal (Tetap Sama) */}
       {showDetailModal && selectedRegistration && (
         <div
           className="modal fade show d-block"
@@ -870,6 +1024,7 @@ const AdminDashboard = () => {
             className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
             onClick={(e) => e.stopPropagation()}
           >
+             {/* Konten Modal Detail (Sama seperti sebelumnya) */}
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Detail Lengkap Peserta</h5>
@@ -1143,7 +1298,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Modal Update Status Pendaftaran */}
+      {/* Modal Update Status Pendaftaran (Tetap Sama) */}
       {showStatusModal && selectedRegistration && (
         <div
           className="modal fade show d-block"
@@ -1151,6 +1306,7 @@ const AdminDashboard = () => {
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
           onClick={handleCloseModal}
         >
+           {/* Konten Modal Update Status */}
           <div
             className="modal-dialog modal-md modal-dialog-centered"
             onClick={(e) => e.stopPropagation()}
