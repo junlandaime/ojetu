@@ -4,6 +4,9 @@ import axios from "axios";
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    // State baru untuk loading export
+    const [exportLoading, setExportLoading] = useState(false);
+    
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [showModal, setShowModal] = useState(false);
@@ -53,6 +56,82 @@ const UserManagement = () => {
         setError(message);
         setSuccess("");
     };
+
+    // --- FUNGSI EKSPOR BARU ---
+    const handleExportExcel = async () => {
+        try {
+            setExportLoading(true);
+            // Menggunakan endpoint user export (sesuaikan route backend Anda)
+            const response = await axios.get(
+                `/api/admin/users/export/excel`, 
+                {
+                    responseType: "blob", // Penting untuk download file
+                    timeout: 30000,
+                }
+            );
+
+            if (response.status === 200) {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute(
+                    "download",
+                    `data-user-${new Date().toISOString().split("T")[0]}.xlsx`
+                );
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+                showSuccess("Berhasil mengunduh laporan Excel");
+            }
+        } catch (error) {
+            console.error("Error exporting to Excel:", error);
+            const errorMessage = error.response?.status === 404
+                    ? "Fitur export Excel belum tersedia di server"
+                    : "Gagal mengekspor ke Excel.";
+            showError(errorMessage);
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    const handleExportPDF = async () => {
+        try {
+            setExportLoading(true);
+            // Menggunakan endpoint user export (sesuaikan route backend Anda)
+            const response = await axios.get(
+                `/api/admin/users/export/pdf`,
+                {
+                    responseType: "blob", // Penting untuk download file
+                    timeout: 30000,
+                }
+            );
+
+            if (response.status === 200) {
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute(
+                    "download",
+                    `data-user-${new Date().toISOString().split("T")[0]}.pdf`
+                );
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+                showSuccess("Berhasil mengunduh laporan PDF");
+            }
+        } catch (error) {
+            console.error("Error exporting to PDF:", error);
+            const errorMessage = error.response?.status === 404
+                    ? "Fitur export PDF belum tersedia di server"
+                    : "Gagal mengekspor ke PDF.";
+            showError(errorMessage);
+        } finally {
+            setExportLoading(false);
+        }
+    };
+    // --------------------------
 
     const handleEdit = (user) => {
         setEditingUser(user);
@@ -235,18 +314,76 @@ const UserManagement = () => {
                 </div>
             </div>
 
-            <div className="card">
-                <div className="card-header">
+            {/* --- EXPORT BUTTONS SECTION START --- */}
+            <div className="row mb-4">
+                <div className="col">
+                    <div className="card shadow-sm border-0">
+                        <div className="card-body">
+                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <h5 className="mb-1 text-primary">
+                                        <i className="bi bi-download me-2"></i>
+                                        Ekspor Data User
+                                    </h5>
+                                    <p className="text-muted mb-0 small">
+                                        Download daftar seluruh user dalam format Excel atau PDF
+                                    </p>
+                                </div>
+                                <div className="d-flex gap-2">
+                                    <button
+                                        className="btn btn-success text-white"
+                                        onClick={handleExportExcel}
+                                        disabled={exportLoading || users.length === 0}
+                                    >
+                                        {exportLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Exporting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-file-earmark-excel me-2"></i>
+                                                Excel
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        className="btn btn-danger text-white"
+                                        onClick={handleExportPDF}
+                                        disabled={exportLoading || users.length === 0}
+                                    >
+                                        {exportLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Exporting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-file-earmark-pdf me-2"></i>
+                                                PDF
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {/* --- EXPORT BUTTONS SECTION END --- */}
+
+            <div className="card shadow-sm border-0">
+                <div className="card-header bg-white py-3">
                     <h5 className="card-title mb-0">
                         Daftar User ({users.length})
                     </h5>
                 </div>
-                <div className="card-body">
+                <div className="card-body p-0">
                     <div className="table-responsive">
-                        <table className="table table-hover table-striped mb-0">
+                        <table className="table table-hover table-striped mb-0 align-middle">
                             <thead className="table-light">
                                 <tr>
-                                    <th className="ps-4">Nama</th>
+                                    <th className="ps-4 py-3">Nama</th>
                                     <th>Email</th>
                                     <th>Telepon</th>
                                     <th>Tipe User</th>
@@ -256,7 +393,7 @@ const UserManagement = () => {
                             </thead>
                             <tbody>
                                 {users.map((user) => (
-                                    <tr key={user.id} className="align-middle">
+                                    <tr key={user.id}>
                                         <td className="ps-4">
                                             <div className="d-flex align-items-center">
                                                 <div className="user-avatar bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
@@ -264,34 +401,34 @@ const UserManagement = () => {
                                                     <i className="bi bi-person-fill text-white"></i>
                                                 </div>
                                                 <div>
-                                                    <div className="fw-semibold">{user.full_name}</div>
+                                                    <div className="fw-bold text-dark">{user.full_name}</div>
                                                     {user.user_type === 'admin' && (
-                                                        <small className="text-muted">Administrator</small>
+                                                        <small className="text-danger fw-semibold" style={{fontSize: '0.75rem'}}>Administrator</small>
                                                     )}
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <div className="text-truncate" style={{ maxWidth: '200px' }} title={user.email}>
+                                            <div className="text-truncate text-secondary" style={{ maxWidth: '200px' }} title={user.email}>
                                                 {user.email}
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={user.phone ? '' : 'text-muted'}>
-                                                {user.phone || '-'}
+                                            <span className={user.phone ? 'text-dark' : 'text-muted fst-italic'}>
+                                                {user.phone || 'Tidak ada'}
                                             </span>
                                         </td>
                                         <td>
-                                            <span className={`badge ${user.user_type === 'admin' ? 'bg-danger' : 'bg-primary'}`}>
-                                                <i className={`bi ${user.user_type === 'admin' ? 'bi-shield-check' : 'bi-person'} me-1`}></i>
+                                            <span className={`badge rounded-pill ${user.user_type === 'admin' ? 'bg-danger' : 'bg-primary'}`}>
+                                                <i className={`bi ${user.user_type === 'admin' ? 'bi-shield-lock' : 'bi-person'} me-1`}></i>
                                                 {user.user_type === 'admin' ? 'Admin' : 'Peserta'}
                                             </span>
                                         </td>
                                         <td>
-                                            <div>
+                                            <div className="text-dark">
                                                 {new Date(user.created_at).toLocaleDateString('id-ID', {
                                                     day: '2-digit',
-                                                    month: '2-digit',
+                                                    month: 'short',
                                                     year: 'numeric'
                                                 })}
                                             </div>
@@ -302,17 +439,17 @@ const UserManagement = () => {
                                                 })}
                                             </small>
                                         </td>
-                                        <td className="text-center">
-                                            <div className="btn-group" role="group">
+                                        <td className="text-center pe-4">
+                                            <div className="btn-group shadow-sm" role="group">
                                                 <button
-                                                    className="btn btn-sm btn-outline-primary me-1"
+                                                    className="btn btn-sm btn-light border text-primary"
                                                     onClick={() => handleEdit(user)}
                                                     title="Edit User"
                                                 >
-                                                    <i className="bi bi-pencil"></i>
+                                                    <i className="bi bi-pencil-square"></i>
                                                 </button>
                                                 <button
-                                                    className="btn btn-sm btn-outline-danger"
+                                                    className="btn btn-sm btn-light border text-danger"
                                                     onClick={() => handleDelete(user.id)}
                                                     disabled={user.user_type === 'admin'}
                                                     title={user.user_type === 'admin' ? 'Tidak dapat menghapus admin' : 'Hapus user'}
@@ -329,9 +466,11 @@ const UserManagement = () => {
 
                     {users.length === 0 && !loading && (
                         <div className="text-center py-5">
-                            <i className="bi bi-people display-1 text-muted"></i>
-                            <h5 className="text-muted mt-3">Belum ada user terdaftar</h5>
-                            <p className="text-muted">Klik tombol "Tambah User" untuk menambahkan user pertama</p>
+                            <div className="mb-3">
+                                <i className="bi bi-people display-1 text-muted opacity-50"></i>
+                            </div>
+                            <h5 className="text-muted">Belum ada user terdaftar</h5>
+                            <p className="text-muted small">Klik tombol "Tambah User" untuk menambahkan user pertama</p>
                         </div>
                     )}
                 </div>
