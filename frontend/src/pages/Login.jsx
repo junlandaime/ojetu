@@ -188,22 +188,7 @@ const Login = () => {
                 </p>
               </div>
 
-              <div className="mt-4">
-                <div className="alert alert-info">
-                  <strong>
-                    <i className="bi bi-info-circle-fill me-2"></i>
-                    Demo Credentials:
-                  </strong>
-                  <br />
-                  <div className="mt-2">
-                    <strong>Admin:</strong> admin@gmail.com / admin
-                    <br />
-                    <strong>User 1:</strong> user1@gmail.com / user123
-                    <br />
-                    <strong>User 2:</strong> user2@gmail.com / user321
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>

@@ -818,7 +818,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
     link.href = url;
     
     // Set nama file download
-    const fileName = `${type}-cicilan-${installment}-${paymentId}.pdf`;
+    const fileName = `${type}-${payment.invoice_number}-cicilan-${installment}-${paymentId}.pdf`;
     link.setAttribute('download', fileName);
     
     // Trigger klik otomatis
