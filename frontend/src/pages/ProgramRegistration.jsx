@@ -7,6 +7,13 @@ import helpers from "../utils/helpers";
 const ProgramRegistration = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [programs, setPrograms] = useState([]);
+  
+  // --- STATE BARU UNTUK KATEGORI & AGREEMENT ---
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [paymentAgreement, setPaymentAgreement] = useState(false);
+  // ---------------------------------------------
+
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState({});
   const [loading, setLoading] = useState(false);
@@ -69,34 +76,24 @@ const ProgramRegistration = () => {
     phone: user?.phone || "",
     last_education: "",
     parent_phone: "",
-
     parent_relationship: "",
-
     major: "",
-
     education_institution: "",
-
     current_activity: "",
-
     marital_status: "",
-
     ktp_province: "",
     ktp_province_name: "",
     ktp_city: "",
     ktp_city_name: "",
     ktp_address: "",
-
     domicile_province: "",
     domicile_province_name: "",
     domicile_city: "",
     domicile_city_name: "",
     domicile_address: "",
-
     photo_file: null,
     photo_preview: null,
-
     program_id: "",
-
     n4_file: null,
     n4_preview: null,
     ssw_file: null,
@@ -105,6 +102,7 @@ const ProgramRegistration = () => {
 
   useEffect(() => {
     fetchPrograms();
+    fetchCategories(); // Ambil data kategori saat mount
     fetchProvinces();
   }, []);
 
@@ -168,6 +166,19 @@ const ProgramRegistration = () => {
       setError("Gagal memuat data program");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- FUNGSI FETCH KATEGORI ---
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get("/api/program-categories");
+      if (response.data.success) {
+        setCategories(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      // Tidak set error global agar tidak memblokir flow jika kategori gagal load
     }
   };
 
@@ -413,6 +424,7 @@ const ProgramRegistration = () => {
     }
 
     if (step === 2) {
+      if (!selectedCategory) errors.push("Kategori program harus dipilih");
       if (!formData.program_id) errors.push("Program harus dipilih");
 
       const selectedProgram = programs.find((p) => p.id == formData.program_id);
@@ -424,8 +436,10 @@ const ProgramRegistration = () => {
       }
     }
 
+    // --- UPDATE VALIDASI STEP 3 ---
     if (step === 3) {
-      if (!agreement) errors.push("Anda harus menyetujui syarat dan ketentuan");
+      if (!agreement) errors.push("Anda harus menyetujui syarat dan ketentuan data");
+      if (!paymentAgreement) errors.push("Anda harus menyetujui komitmen pembayaran");
     }
 
     if (errors.length > 0) {
@@ -471,6 +485,9 @@ const ProgramRegistration = () => {
 
       let n4Path = null;
       let sswPath = null;
+      
+      const selectedProgram = programs.find((p) => p.id == formData.program_id);
+      const isFastTrack = selectedProgram?.name?.toLowerCase().includes("fast track");
 
       if (isFastTrack) {
         if (formData.n4_file) {
@@ -560,8 +577,6 @@ const ProgramRegistration = () => {
         },
       };
 
-      // console.log("Sending registration data:", registrationData);
-
       const response = await axios.post("/api/registrations", registrationData);
 
       if (response.data.success) {
@@ -593,11 +608,6 @@ const ProgramRegistration = () => {
   const isUploading = (fieldName) => {
     return uploadingFiles[fieldName] || false;
   };
-
-  const selectedProgram = programs.find((p) => p.id == formData.program_id);
-  const isFastTrack = selectedProgram?.name
-    ?.toLowerCase()
-    .includes("fast track");
 
   const renderStep1 = () => (
     <div className="row">
@@ -807,8 +817,6 @@ const ProgramRegistration = () => {
         </select>
       </div>
 
-      {/* FIELD BARU: Baris 5 - Data Tambahan */}
-
       <div className="col-md-6 mb-3">
         <label htmlFor="major" className="form-label">
           Jurusan <span className="text-danger">*</span>
@@ -825,7 +833,6 @@ const ProgramRegistration = () => {
         />
       </div>
 
-      {/* FIELD BARU: Baris 6 - Data Tambahan */}
       <div className="col-md-6 mb-3">
         <label htmlFor="education_institution" className="form-label">
           Asal Institusi Pendidikan Terakhir{" "}
@@ -864,7 +871,6 @@ const ProgramRegistration = () => {
         </select>
       </div>
 
-      {/* FIELD BARU: Baris 7 - Data Tambahan */}
       <div className="col-md-6 mb-3">
         <label htmlFor="marital_status" className="form-label">
           Status Pernikahan <span className="text-danger">*</span>
@@ -925,7 +931,6 @@ const ProgramRegistration = () => {
         <h5>Alamat Sesuai KTP</h5>
       </div>
 
-      {/* Baris 8 - Alamat KTP */}
       <div className="col-md-6 mb-3">
         <label htmlFor="ktp_province" className="form-label">
           Provinsi <span className="text-danger">*</span>
@@ -1022,7 +1027,6 @@ const ProgramRegistration = () => {
         </div>
       </div>
 
-      {/* Baris 9 - Alamat Domisili */}
       <div className="col-md-6 mb-3">
         <label htmlFor="domicile_province" className="form-label">
           Provinsi <span className="text-danger">*</span>
@@ -1108,401 +1112,501 @@ const ProgramRegistration = () => {
     </div>
   );
 
-  const renderStep2 = () => (
-    <div className="row">
-      <div className="col-12">
-        <h4 className="mb-4">Pemilihan Program dan Dokumen</h4>
+  const renderStep2 = () => {
+    // Filter program berdasarkan kategori yang dipilih
+    // Asumsi: field kategori di database program adalah `program_category_id`
+    const filteredPrograms = selectedCategory
+      ? programs.filter((p) => p.category_id === parseInt(selectedCategory)) // Sesuaikan dengan nama kolom database
+      : [];
 
-        {/* Pilihan Program dengan Radio Button */}
-        <div className="card mb-4">
-          <div className="card-header">
-            <h5>
-              1. Pilih Program <span className="text-danger">*</span>
-            </h5>
-          </div>
-          <div className="card-body">
-            {loading ? (
-              <div className="text-center">
-                <div className="spinner-border" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p className="mt-2">Memuat data program...</p>
-              </div>
-            ) : programs.length === 0 ? (
-              <div className="alert alert-warning">
-                <p>Tidak ada program yang tersedia saat ini.</p>
-              </div>
-            ) : (
-              <div className="row">
-                {programs.map((program) => (
-                  <div key={program.id} className="col-md-6 mb-3">
-                    <div className="card h-100">
-                      <div className="card-body">
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name="program_selection"
-                            id={`program-${program.id}`}
-                            value={program.id}
-                            checked={formData.program_id == program.id}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                program_id: e.target.value,
-                              }))
-                            }
-                          />
-                          <label
-                            className="form-check-label w-100"
-                            htmlFor={`program-${program.id}`}
-                          >
-                            <h5 className="card-title">{program.name}</h5>
-                            <p className="card-text text-muted small">
-                              {program.description?.substring(0, 150)}...
-                            </p>
-                            <div className="mb-2">
-                              <strong>Durasi:</strong> {program.duration}
-                            </div>
-                            <div className="mb-2">
-                              <strong>Biaya:</strong>{" "}
-                              {helpers.formatCurrency(program.training_cost)}
-                            </div>
-                            <div className="mb-2">
-                              <strong>Jadwal:</strong> {program.schedule}
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+    const selectedProgram = programs.find((p) => p.id == formData.program_id);
+    const isFastTrack = selectedProgram?.name?.toLowerCase().includes("fast track");
 
-            {formData.program_id && (
-              <div className="alert alert-info mt-3">
-                <strong>Program Terpilih:</strong>{" "}
-                {programs.find((p) => p.id == formData.program_id)?.name}
-              </div>
-            )}
-          </div>
-        </div>
+    return (
+      <div className="row">
+        <div className="col-12">
+          <h4 className="mb-4">Pemilihan Program dan Dokumen</h4>
 
-        {/* Dokumen Tambahan untuk Fast Track */}
-        {isFastTrack && (
-          <div className="card">
-            <div className="card-header">
-              <h5>
-                2. Dokumen Tambahan (Fast Track){" "}
-                <span className="text-danger">*</span>
+          {/* 1. PILIH KATEGORI TERLEBIH DAHULU */}
+          <div className="card mb-4">
+            <div className="card-header bg-light">
+              <h5 className="mb-0">
+                1. Pilih Kategori Program <span className="text-danger">*</span>
               </h5>
             </div>
             <div className="card-body">
-              <div className="row">
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="n4" className="form-label">
-                    Sertifikat N4 <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    id="n4"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) => handleFileChange("n4", e.target.files[0])}
-                    disabled={isUploading("n4")}
-                    required={isFastTrack}
-                  />
-                  <div className="form-text">
-                    Format: JPG, PNG, PDF (Maksimal 10MB)
-                  </div>
-                  {formData.n4_preview && (
-                    <div className="mt-2">
-                      {formData.n4_file.type.startsWith("image/") ? (
-                        <img
-                          src={formData.n4_preview}
-                          alt="Preview N4"
-                          className="img-thumbnail"
-                          style={{ maxWidth: "200px" }}
-                        />
-                      ) : (
-                        <div className="text-center">
-                          <i className="bi bi-file-pdf fs-1 text-danger"></i>
-                          <p className="small">{formData.n4_file.name}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="col-md-6 mb-3">
-                  <label htmlFor="ssw" className="form-label">
-                    Sertifikat SSW <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    id="ssw"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) => handleFileChange("ssw", e.target.files[0])}
-                    disabled={isUploading("ssw")}
-                    required={isFastTrack}
-                  />
-                  <div className="form-text">
-                    Format: JPG, PNG, PDF (Maksimal 10MB)
-                  </div>
-                  {formData.ssw_preview && (
-                    <div className="mt-2">
-                      {formData.ssw_file.type.startsWith("image/") ? (
-                        <img
-                          src={formData.ssw_preview}
-                          alt="Preview SSW"
-                          className="img-thumbnail"
-                          style={{ maxWidth: "200px" }}
-                        />
-                      ) : (
-                        <div className="text-center">
-                          <i className="bi bi-file-pdf fs-1 text-danger"></i>
-                          <p className="small">{formData.ssw_file.name}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderStep3 = () => (
-    <div className="row">
-      <div className="col-12">
-        <h4 className="mb-4">Konfirmasi Pendaftaran</h4>
-
-        {/* Foto */}
-        <div className="card mb-3">
-          <div className="card-header">
-            <h5>Foto</h5>
-          </div>
-          <div className="card-body">
-            {formData.photo_preview ? (
-              <div className="text-center">
-                <img
-                  src={formData.photo_preview}
-                  alt="Foto Peserta"
-                  className="img-thumbnail"
-                  style={{
-                    maxWidth: "200px",
-                    maxHeight: "200px",
-                    objectFit: "cover",
+              <div className="mb-3">
+                <label className="form-label">
+                  Silakan pilih kategori program yang diminati:
+                </label>
+                <select
+                  className="form-select"
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setFormData((prev) => ({ ...prev, program_id: "" })); // Reset program
                   }}
-                />
-              </div>
-            ) : (
-              <p className="text-muted">Foto belum diupload</p>
-            )}
-          </div>
-        </div>
-
-        <div className="card mb-3">
-          <div className="card-header">
-            <h5>Data Diri</h5>
-          </div>
-          <div className="card-body">
-            <div className="row">
-              <div className="col-md-6">
-                <p>
-                  <strong>Nama Lengkap:</strong> {formData.full_name}
-                </p>
-                <p>
-                  <strong>NIK:</strong> {formData.nik}
-                </p>
-                <p>
-                  <strong>Jenis Kelamin:</strong>{" "}
-                  {formData.gender === "L" ? "Laki-laki" : "Perempuan"}
-                </p>
-                <p>
-                  <strong>Tempat, Tanggal Lahir:</strong> {formData.birth_place}
-                  , {formData.birth_date}
-                </p>
-                <p>
-                  <strong>Email:</strong> {formData.email}
-                </p>
-                <p>
-                  <strong>No. Handphone:</strong> {formData.phone}
-                </p>
-                <p>
-                  <strong>Pendidikan Terakhir:</strong>{" "}
-                  {getDisplayLabel("last_education", formData.last_education)}
-                </p>
-              </div>
-              <div className="col-md-6">
-
-                <p>
-                  <strong>Jurusan:</strong> {formData.major}
-                </p>
-                <p>
-                  <strong>Asal Institusi Pendidikan:</strong>{" "}
-                  {formData.education_institution}
-                </p>
-                <p>
-                  <strong>Pekerjaan/Aktivitas Saat Ini:</strong>{" "}
-                  {getDisplayLabel(
-                    "current_activity",
-                    formData.current_activity
-                  )}
-                </p>
-                <p>
-                  <strong>Status Pernikahan:</strong>{" "}
-                  {getDisplayLabel("marital_status", formData.marital_status)}
-                </p>
-                <p>
-                  <strong>Hubungan dengan Orang Tua/Wali:</strong>{" "}
-                  {getDisplayLabel(
-                    "parent_relationship",
-                    formData.parent_relationship
-                  )}
-                </p>
-                <p>
-                  <strong>No. HP Orang Tua/Wali:</strong>{" "}
-                  {formData.parent_phone}
-                </p>
+                >
+                  <option value="">-- Pilih Kategori --</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Alamat */}
-        <div className="card mb-3">
-          <div className="card-header">
-            <h5>Alamat</h5>
-          </div>
-          <div className="card-body">
-            <div className="row">
-              <div className="col-md-6">
-                <h6>Alamat KTP</h6>
-                <p>
-                  <strong>Provinsi:</strong> {formData.ktp_province_name}
-                </p>
-                <p>
-                  <strong>Kota/Kabupaten:</strong> {formData.ktp_city_name}
-                </p>
-                <p>
-                  <strong>Alamat:</strong> {formData.ktp_address}
-                </p>
+          {/* 2. PILIH PROGRAM (Hanya muncul jika kategori sudah dipilih) */}
+          {selectedCategory && (
+            <div className="card mb-4 animate__animated animate__fadeIn">
+              <div className="card-header">
+                <h5>
+                  2. Pilih Program Tersedia <span className="text-danger">*</span>
+                </h5>
               </div>
-              <div className="col-md-6">
-                <h6>Alamat Domisili</h6>
-                <p>
-                  <strong>Provinsi:</strong> {formData.domicile_province_name}
-                </p>
-                <p>
-                  <strong>Kota/Kabupaten:</strong> {formData.domicile_city_name}
-                </p>
-                <p>
-                  <strong>Alamat:</strong> {formData.domicile_address}
-                </p>
-                {isSameAsKTP && (
-                  <div className="alert alert-info mt-2 p-2">
-                    <small>
-                      <i className="bi bi-info-circle"></i> Alamat domisili sama
-                      dengan alamat KTP
-                    </small>
+              <div className="card-body">
+                {loading ? (
+                  <div className="text-center">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p className="mt-2">Memuat data program...</p>
+                  </div>
+                ) : filteredPrograms.length === 0 ? (
+                  <div className="alert alert-warning">
+                    <i className="bi bi-exclamation-circle me-2"></i>
+                    Tidak ada program yang tersedia untuk kategori ini saat ini.
+                  </div>
+                ) : (
+                  <div className="row">
+                    {filteredPrograms.map((program) => (
+                      <div key={program.id} className="col-md-6 mb-3">
+                        <div
+                          className={`card h-100 ${
+                            formData.program_id == program.id
+                              ? "border-primary shadow-sm"
+                              : ""
+                          }`}
+                        >
+                          <div className="card-body">
+                            <div className="form-check">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="program_selection"
+                                id={`program-${program.id}`}
+                                value={program.id}
+                                checked={formData.program_id == program.id}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    program_id: e.target.value,
+                                  }))
+                                }
+                              />
+                              <label
+                                className="form-check-label w-100 cursor-pointer"
+                                htmlFor={`program-${program.id}`}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <h5 className="card-title text-primary">
+                                  {program.name}
+                                </h5>
+                                <p className="card-text text-muted small">
+                                  {program.description?.substring(0, 150)}...
+                                </p>
+                                <div className="d-flex flex-column gap-1 mt-2 text-sm">
+                                  <div className="d-flex align-items-center">
+                                    <i className="bi bi-clock me-2 text-muted"></i>
+                                    <span>{program.duration}</span>
+                                  </div>
+                                  <div className="d-flex align-items-center">
+                                    <i className="bi bi-cash-stack me-2 text-muted"></i>
+                                    <span className="fw-bold text-success">
+                                      {helpers.formatCurrency(
+                                        program.training_cost
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="d-flex align-items-center">
+                                    <i className="bi bi-calendar-event me-2 text-muted"></i>
+                                    <span>{program.schedule}</span>
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Program */}
-        <div className="card mb-3">
-          <div className="card-header">
-            <h5>Program yang Dipilih</h5>
-          </div>
-          <div className="card-body">
-            <p>
-              <strong>Program:</strong>{" "}
-              {programs.find((p) => p.id == formData.program_id)?.name}
-            </p>
-            <p>
-              <strong>Durasi:</strong>{" "}
-              {programs.find((p) => p.id == formData.program_id)?.duration}
-            </p>
-            <p>
-              <strong>Biaya:</strong>{" "}
-              {helpers.formatCurrency(
-                programs.find((p) => p.id == formData.program_id)?.training_cost
-              )}
-            </p>
-          </div>
-        </div>
+          {/* 3. DOKUMEN TAMBAHAN (Fast Track) */}
+          {isFastTrack && (
+            <div className="card">
+              <div className="card-header">
+                <h5>
+                  3. Dokumen Tambahan (Fast Track){" "}
+                  <span className="text-danger">*</span>
+                </h5>
+              </div>
+              <div className="card-body">
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label htmlFor="n4" className="form-label">
+                      Sertifikat N4 <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      className="form-control"
+                      id="n4"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) =>
+                        handleFileChange("n4", e.target.files[0])
+                      }
+                      disabled={isUploading("n4")}
+                      required={isFastTrack}
+                    />
+                    <div className="form-text">
+                      Format: JPG, PNG, PDF (Maksimal 10MB)
+                    </div>
+                    {formData.n4_preview && (
+                      <div className="mt-2">
+                        {formData.n4_file.type.startsWith("image/") ? (
+                          <img
+                            src={formData.n4_preview}
+                            alt="Preview N4"
+                            className="img-thumbnail"
+                            style={{ maxWidth: "200px" }}
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <i className="bi bi-file-pdf fs-1 text-danger"></i>
+                            <p className="small">{formData.n4_file.name}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
-        {/* Dokumen - HANYA untuk Fast Track */}
-        {isFastTrack && (
+                  <div className="col-md-6 mb-3">
+                    <label htmlFor="ssw" className="form-label">
+                      Sertifikat SSW <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      className="form-control"
+                      id="ssw"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) =>
+                        handleFileChange("ssw", e.target.files[0])
+                      }
+                      disabled={isUploading("ssw")}
+                      required={isFastTrack}
+                    />
+                    <div className="form-text">
+                      Format: JPG, PNG, PDF (Maksimal 10MB)
+                    </div>
+                    {formData.ssw_preview && (
+                      <div className="mt-2">
+                        {formData.ssw_file.type.startsWith("image/") ? (
+                          <img
+                            src={formData.ssw_preview}
+                            alt="Preview SSW"
+                            className="img-thumbnail"
+                            style={{ maxWidth: "200px" }}
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <i className="bi bi-file-pdf fs-1 text-danger"></i>
+                            <p className="small">{formData.ssw_file.name}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep3 = () => {
+    const selectedProgram = programs.find((p) => p.id == formData.program_id);
+    const programCost = selectedProgram ? selectedProgram.training_cost : 0;
+    
+    // Logic untuk dokumen fast track di summary
+    const isFastTrack = selectedProgram?.name?.toLowerCase().includes("fast track");
+
+    return (
+      <div className="row">
+        <div className="col-12">
+          <h4 className="mb-4">Konfirmasi Pendaftaran</h4>
+
+          {/* Foto */}
           <div className="card mb-3">
             <div className="card-header">
-              <h5>Dokumen Tambahan (Fast Track)</h5>
+              <h5>Foto</h5>
+            </div>
+            <div className="card-body">
+              {formData.photo_preview ? (
+                <div className="text-center">
+                  <img
+                    src={formData.photo_preview}
+                    alt="Foto Peserta"
+                    className="img-thumbnail"
+                    style={{
+                      maxWidth: "200px",
+                      maxHeight: "200px",
+                      objectFit: "cover",
+                    }}
+                  />
+                </div>
+              ) : (
+                <p className="text-muted">Foto belum diupload</p>
+              )}
+            </div>
+          </div>
+
+          <div className="card mb-3">
+            <div className="card-header">
+              <h5>Data Diri</h5>
             </div>
             <div className="card-body">
               <div className="row">
                 <div className="col-md-6">
                   <p>
-                    <strong>Sertifikat N4:</strong>{" "}
-                    {formData.n4_file
-                      ? formData.n4_file.name
-                      : "Belum diupload"}
+                    <strong>Nama Lengkap:</strong> {formData.full_name}
+                  </p>
+                  <p>
+                    <strong>NIK:</strong> {formData.nik}
+                  </p>
+                  <p>
+                    <strong>Jenis Kelamin:</strong>{" "}
+                    {formData.gender === "L" ? "Laki-laki" : "Perempuan"}
+                  </p>
+                  <p>
+                    <strong>Tempat, Tanggal Lahir:</strong>{" "}
+                    {formData.birth_place}, {formData.birth_date}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {formData.email}
+                  </p>
+                  <p>
+                    <strong>No. Handphone:</strong> {formData.phone}
+                  </p>
+                  <p>
+                    <strong>Pendidikan Terakhir:</strong>{" "}
+                    {getDisplayLabel("last_education", formData.last_education)}
                   </p>
                 </div>
                 <div className="col-md-6">
                   <p>
-                    <strong>Sertifikat SSW:</strong>{" "}
-                    {formData.ssw_file
-                      ? formData.ssw_file.name
-                      : "Belum diupload"}
+                    <strong>Jurusan:</strong> {formData.major}
+                  </p>
+                  <p>
+                    <strong>Asal Institusi Pendidikan:</strong>{" "}
+                    {formData.education_institution}
+                  </p>
+                  <p>
+                    <strong>Pekerjaan/Aktivitas Saat Ini:</strong>{" "}
+                    {getDisplayLabel(
+                      "current_activity",
+                      formData.current_activity
+                    )}
+                  </p>
+                  <p>
+                    <strong>Status Pernikahan:</strong>{" "}
+                    {getDisplayLabel("marital_status", formData.marital_status)}
+                  </p>
+                  <p>
+                    <strong>Hubungan dengan Orang Tua/Wali:</strong>{" "}
+                    {getDisplayLabel(
+                      "parent_relationship",
+                      formData.parent_relationship
+                    )}
+                  </p>
+                  <p>
+                    <strong>No. HP Orang Tua/Wali:</strong>{" "}
+                    {formData.parent_phone}
                   </p>
                 </div>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Agreement Checkbox */}
-        <div className="card">
-          <div className="card-body">
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="agreement"
-                checked={agreement}
-                onChange={(e) => setAgreement(e.target.checked)}
-                required
-              />
-              <label className="form-check-label" htmlFor="agreement">
-                Saya menyatakan bahwa semua data yang tercera di atas adalah
-                benar dan valid. Saya juga telah membaca, memahami, dan
-                menyetujui semua Syarat dan Ketentuan Program yang berlaku di
-                FITALENTA. <span className="text-danger">*</span>
-              </label>
+          {/* Alamat */}
+          <div className="card mb-3">
+            <div className="card-header">
+              <h5>Alamat</h5>
+            </div>
+            <div className="card-body">
+              <div className="row">
+                <div className="col-md-6">
+                  <h6>Alamat KTP</h6>
+                  <p>
+                    <strong>Provinsi:</strong> {formData.ktp_province_name}
+                  </p>
+                  <p>
+                    <strong>Kota/Kabupaten:</strong> {formData.ktp_city_name}
+                  </p>
+                  <p>
+                    <strong>Alamat:</strong> {formData.ktp_address}
+                  </p>
+                </div>
+                <div className="col-md-6">
+                  <h6>Alamat Domisili</h6>
+                  <p>
+                    <strong>Provinsi:</strong> {formData.domicile_province_name}
+                  </p>
+                  <p>
+                    <strong>Kota/Kabupaten:</strong>{" "}
+                    {formData.domicile_city_name}
+                  </p>
+                  <p>
+                    <strong>Alamat:</strong> {formData.domicile_address}
+                  </p>
+                  {isSameAsKTP && (
+                    <div className="alert alert-info mt-2 p-2">
+                      <small>
+                        <i className="bi bi-info-circle"></i> Alamat domisili
+                        sama dengan alamat KTP
+                      </small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Program */}
+          <div className="card mb-3">
+            <div className="card-header">
+              <h5>Program yang Dipilih</h5>
+            </div>
+            <div className="card-body">
+              <p>
+                <strong>Program:</strong> {selectedProgram?.name}
+              </p>
+              <p>
+                <strong>Durasi:</strong> {selectedProgram?.duration}
+              </p>
+              <p>
+                <strong>Biaya:</strong>{" "}
+                {helpers.formatCurrency(selectedProgram?.training_cost)}
+              </p>
+            </div>
+          </div>
+
+          {/* Dokumen - HANYA untuk Fast Track */}
+          {isFastTrack && (
+            <div className="card mb-3">
+              <div className="card-header">
+                <h5>Dokumen Tambahan (Fast Track)</h5>
+              </div>
+              <div className="card-body">
+                <div className="row">
+                  <div className="col-md-6">
+                    <p>
+                      <strong>Sertifikat N4:</strong>{" "}
+                      {formData.n4_file
+                        ? formData.n4_file.name
+                        : "Belum diupload"}
+                    </p>
+                  </div>
+                  <div className="col-md-6">
+                    <p>
+                      <strong>Sertifikat SSW:</strong>{" "}
+                      {formData.ssw_file
+                        ? formData.ssw_file.name
+                        : "Belum diupload"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PERNYATAAN PERSETUJUAN (UPDATE BARU) */}
+          <div className="card border-primary mb-3">
+            <div className="card-header bg-primary text-white">
+              <h5 className="mb-0">Pernyataan Persetujuan</h5>
+            </div>
+            <div className="card-body">
+              {/* Checkbox 1: Validitas Data & Syarat Umum */}
+              <div className="form-check mb-3">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="agreement"
+                  checked={agreement}
+                  onChange={(e) => setAgreement(e.target.checked)}
+                  required
+                  style={{ transform: "scale(1.2)", marginTop: "0.2rem" }}
+                />
+                <label className="form-check-label ms-2" htmlFor="agreement">
+                  Saya menyatakan bahwa semua data yang tertera di atas adalah
+                  benar dan valid. Saya juga telah membaca, memahami, dan
+                  menyetujui semua Syarat dan Ketentuan Program yang berlaku di
+                  FITALENTA. <span className="text-danger">*</span>
+                </label>
+              </div>
+
+              <hr />
+
+              {/* Checkbox 2: Komitmen Pembayaran (BARU) */}
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="paymentAgreement"
+                  checked={paymentAgreement}
+                  onChange={(e) => setPaymentAgreement(e.target.checked)}
+                  required
+                  style={{ transform: "scale(1.2)", marginTop: "0.2rem" }}
+                />
+                <label
+                  className="form-check-label ms-2 fw-bold text-dark"
+                  htmlFor="paymentAgreement"
+                >
+                  Saya menyatakan KOMITMEN dan KESANGGUPAN untuk melunasi
+                  seluruh biaya program sebesar{" "}
+                  <span className="text-primary">
+                    {helpers.formatCurrency(programCost)}
+                  </span>{" "}
+                  sesuai dengan skema pembayaran yang telah ditentukan oleh
+                  FITALENTA. Saya mengerti bahwa pendaftaran ini adalah bukti
+                  keseriusan saya untuk mengikuti program hingga selesai.{" "}
+                  <span className="text-danger">*</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="alert alert-warning mt-4 d-flex align-items-center">
+            <i className="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+            <div>
+              <strong>Perhatian!</strong>
+              <p className="mb-0">
+                Pastikan semua data yang Anda isi sudah benar. Data yang sudah
+                dikirim tidak dapat diubah. Setelah mengirim formulir, Anda akan
+                masuk ke proses seleksi interview.
+              </p>
             </div>
           </div>
         </div>
-
-        <div className="alert alert-warning mt-4">
-          <h6>Perhatian!</h6>
-          <p className="mb-0">
-            Pastikan semua data yang Anda isi sudah benar. Data yang sudah
-            dikirim tidak dapat diubah. Setelah mengirim formulir, Anda akan
-            masuk ke proses seleksi interview.
-          </p>
-        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const SuccessModal = () => (
     <div
@@ -1563,7 +1667,10 @@ const ProgramRegistration = () => {
         <div className="col-lg-10">
           {/* Header */}
           <div className="text-center mb-5">
-            <h2>Formulir Pendaftaran Pelatihan dan Penyaluran Tenaga Kerja Fitalenta</h2>
+            <h2>
+              Formulir Pendaftaran Pelatihan dan Penyaluran Tenaga Kerja
+              Fitalenta
+            </h2>
             <p className="text-muted">
               Isi data diri Anda dengan lengkap dan benar
             </p>
@@ -1576,10 +1683,11 @@ const ProgramRegistration = () => {
                 {[1, 2, 3].map((step) => (
                   <div key={step} className="text-center flex-fill">
                     <div
-                      className={`rounded-circle d-inline-flex align-items-center justify-content-center ${step <= currentStep
+                      className={`rounded-circle d-inline-flex align-items-center justify-content-center ${
+                        step <= currentStep
                           ? "bg-primary text-white"
                           : "bg-light text-muted"
-                        }`}
+                      }`}
                       style={{ width: "40px", height: "40px" }}
                     >
                       {step}
