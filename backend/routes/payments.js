@@ -1975,39 +1975,26 @@ router.get("/:id/invoice", async (req, res) => {
     router.get("/:id/receipt", async (req, res) => {
   let doc;
   try {
+    // --- 1. DATA FETCHING (SAMA SEPERTI SEBELUMNYA) ---
     const [payments] = await db.promise().query(
-      `
-      SELECT
-        py.*,
-        r.registration_code,
-        u.full_name,
-        u.email,
-        u.phone,
-        u.address,
-        p.name as program_name,
-        p.training_cost as program_training_cost,
-        p.departure_cost as program_departure_cost,
-        p.duration as program_duration,
-        p.installment_plan as program_installment_plan,
-        verifier.full_name as verified_by_name
+      `SELECT py.*, r.registration_code, u.full_name, u.email, u.phone, u.address, 
+      p.name as program_name, p.training_cost as program_training_cost, 
+      p.departure_cost as program_departure_cost, p.duration as program_duration, 
+      p.installment_plan as program_installment_plan, verifier.full_name as verified_by_name
       FROM payments py
       LEFT JOIN registrations r ON py.registration_id = r.id
       LEFT JOIN users u ON r.user_id = u.id
       LEFT JOIN programs p ON r.program_id = p.id
       LEFT JOIN users verifier ON py.verified_by = verifier.id
-      WHERE py.id = ?
-    `,
+      WHERE py.id = ?`,
       [req.params.id]
     );
 
-       if (payments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found",
-      });
+    if (payments.length === 0) {
+      return res.status(404).json({ success: false, message: "Payment not found" });
     }
 
-      const payment = payments[0];
+    const payment = payments[0];
     const totalInstallments = getTotalInstallments(payment);
     const { installment: installmentQuery, status: statusQuery } = req.query;
 
@@ -2015,11 +2002,7 @@ router.get("/:id/invoice", async (req, res) => {
     let targetStatus = statusQuery || null;
 
     if (installmentQuery) {
-      if (
-        ["paid", "lunas", "final", "0"].includes(
-          installmentQuery.toString().toLowerCase()
-        )
-      ) {
+      if (["paid", "lunas", "final", "0"].includes(installmentQuery.toString().toLowerCase())) {
         targetStatus = "paid";
       } else {
         const parsedInstallment = parseInt(installmentQuery, 10);
@@ -2030,316 +2013,276 @@ router.get("/:id/invoice", async (req, res) => {
       }
     }
 
-   if (
-      requestedInstallment &&
-      (requestedInstallment < 1 || requestedInstallment > totalInstallments)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `Cicilan ${requestedInstallment} tidak valid untuk program ini`,
-      });
+    if (requestedInstallment && (requestedInstallment < 1 || requestedInstallment > totalInstallments)) {
+      return res.status(400).json({ success: false, message: `Cicilan ${requestedInstallment} tidak valid` });
     }
 
-   const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
+    const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
     const amountPaid = parseFloat(payment.amount_paid || 0);
-    const remaining = Math.max(totalAmount - amountPaid, 0);
-    const progressPercentage = totalAmount > 0 ? (amountPaid / totalAmount) * 100 : 0;
-
+    
     const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount, {
       status: targetStatus,
       installmentNumber: requestedInstallment,
     });
 
     if (requestedInstallment && !paymentContext.installmentEntry) {
-      return res.status(404).json({
-        success: false,
-        message: `Data cicilan ${requestedInstallment} tidak ditemukan`,
-      });
+      return res.status(404).json({ success: false, message: `Data cicilan tidak ditemukan` });
     }
 
     const receiptNumber = paymentContext.receiptNumber || payment.receipt_number;
-
-    if (requestedInstallment && !receiptNumber) {
-      return res.status(400).json({
-        success: false,
-        message: `Kwitansi untuk cicilan ${requestedInstallment} belum tersedia`,
-      });
-    }
-
     if (!receiptNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Kwitansi belum tersedia untuk pembayaran ini",
-      });
+      return res.status(400).json({ success: false, message: "Nomor kwitansi belum tersedia" });
     }
 
     const receiptAmount = paymentContext.amountValue || 0;
-    const amountInWords = numberToBahasa(receiptAmount);
-    const receiptDateValue =
-      paymentContext.installmentEntry?.paid_at ||
-      payment.payment_date ||
-      payment.verified_at ||
-      new Date();
+    const amountInWords = numberToBahasa(receiptAmount) + " Rupiah";
+    const receiptDateValue = paymentContext.installmentEntry?.paid_at || payment.payment_date || payment.verified_at || new Date();
     const receiptDate = formatLongDate(receiptDateValue);
 
-    doc = new PDFDocument({ margin: 50, size: "A4" });
+
+    // --- 2. SETUP GAMBAR (PUBLIC FOLDER) ---
+    // Menggunakan path.resolve(process.cwd(), 'public') untuk memastikan root project
+    const publicDir = path.resolve(process.cwd(), 'public');
+    
+    // Sesuaikan nama file persis dengan yang ada di folder public Anda
+    const signaturePath = () => {
+    const candidates = [
+      path.join(__dirname, "../../frontend/public/signature.jpg"),
+      
+    ];
+    // const logoPath = path.join(publicDir, 'logo-fitalenta.png');
+    // const signaturePath = path.join(publicDir, 'image_eaf745.png'); // Pastikan ini file PNG/JPG
+          for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      }
+
+      return null;
+    };
+
+    // DEBUG: Cek path di console server untuk memastikan file terbaca
+    // console.log("Mencari Logo di:", logoPath, fs.existsSync(logoPath) ? "(DITEMUKAN)" : "(TIDAK DITEMUKAN)");
+    // console.log("Mencari TTD di:", signaturePath, fs.existsSync(signaturePath) ? "(DITEMUKAN)" : "(TIDAK DITEMUKAN)");
+
+
+    // --- 3. PDF GENERATION (LANDSCAPE) ---
+    doc = new PDFDocument({ 
+        size: "A4", 
+        layout: "landscape", // SETTING LANDSCAPE
+        margin: 50 
+    });
 
     res.setHeader("Content-Type", "application/pdf");
-     const suffix = requestedInstallment
-      ? `-cicilan-${requestedInstallment}`
-      : targetStatus === "paid"
-      ? "-pelunasan"
-      : "";
-    res.setHeader(
-      "Content-Disposition",
-     `attachment; filename=kwitansi-${receiptNumber || payment.invoice_number}${suffix}.pdf`
-    );
+    const suffix = requestedInstallment ? `-cicilan-${requestedInstallment}` : targetStatus === "paid" ? "-pelunasan" : "";
+    res.setHeader("Content-Disposition", `attachment; filename=kwitansi-${receiptNumber}${suffix}.pdf`);
 
     doc.pipe(res);
 
-    const colors = {
-      primary: "#0B4A99",
-      accent: "#1B75BC",
-      text: "#1F2937",
-      muted: "#6B7280",
-      border: "#C9DFFF",
-      highlight: "#F5F8FF",
-      soft: "#E9F1FF",
+    // --- SETUP LAYOUT VARIABELS ---
+    // A4 Landscape lebar ~841pt, tinggi ~595pt
+    const startX = 60;
+    const pageWidth = doc.page.width; 
+    const rightMarginX = pageWidth - 60;
+    const contentWidth = rightMarginX - startX;
+
+    // ================= HEADER =================
+    const headerY = 50;
+
+    // Judul "KWITANSI"
+    doc
+      .font("Times-Bold") 
+      .fontSize(42) // Font lebih besar untuk landscape
+      .fillColor("#000000")
+      .text("KWITANSI", startX, headerY);
+
+    // Nomor Referensi
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .text(`No: ${receiptNumber}`, startX, headerY + 45);
+
+    // Logo (Kanan Atas)
+    // if (fs.existsSync(logoPath)) {
+    //   // Posisi X digeser menyesuaikan lebar landscape
+    //   doc.image(logoPath, rightMarginX - 130, headerY - 10, { width: 130 });
+    // }
+        const logoPath2 = findLogoPath();
+
+        if (logoPath2) {
+
+          doc.image(logoPath2, doc.page.width - 280, 25, { width: 220 });
+
+        }
+
+    // Garis Tebal Hitam
+    doc
+      .moveTo(startX, headerY + 70)
+      .lineTo(rightMarginX, headerY + 70)
+      .lineWidth(2)
+      .strokeColor("#000000")
+      .stroke();
+
+
+    // ================= BODY CONTENT =================
+    // Menggunakan koordinat relatif yang lebih lebar
+    const contentY = headerY + 100;
+    
+    // Layout Kolom: Label (kiri), Titik Dua (tengah dikit), Value (panjang ke kanan)
+    const labelX = startX;
+    const colonX = startX + 180; 
+    const valueX = startX + 200;
+    const rowGap = 35; // Jarak vertikal antar baris lebih renggang
+
+    const drawRow = (label, value, y, options = {}) => {
+      // Label
+      doc.font("Helvetica").fontSize(14).fillColor("#000000").text(label, labelX, y);
+      // Titik Dua
+      doc.text(":", colonX, y);
+      // Value
+      doc
+        .font(options.italic ? "Helvetica-Oblique" : "Helvetica-Bold")
+        .fontSize(14) // Font isi lebih besar
+        .text(value, valueX, y, { 
+          width: contentWidth - 220, // Lebar value menyesuaikan sisa kertas
+          align: "left" 
+        });
     };
 
-    doc.rect(50, 40, doc.page.width - 100, 3).fill(colors.accent);
+    // 1. Telah diterima dari
+    drawRow("Telah diterima dari", payment.full_name || "-", contentY);
 
-    const logoPath = findLogoPath();
-    if (logoPath) {
-      doc.image(logoPath, doc.page.width - 180, 55, { width: 120 });
-    }
+    // 2. Uang sejumlah
+    const amountHeight = doc.heightOfString(amountInWords, { width: contentWidth - 220 });
+    drawRow("Uang sejumlah", amountInWords, contentY + rowGap, { italic: true });
 
+    // 3. Untuk Pembayaran
+    // Hitung posisi Y baris ke-3 secara dinamis
+    let currentY = contentY + rowGap + (amountHeight > 25 ? amountHeight : 25) + 15;
+    const purposeText = `${payment.program_name || "-"}`;
+    drawRow("Untuk", purposeText, currentY);
+
+
+    // ================= SEPARATOR =================
+    // Geser ke bawah sedikit
+    currentY += 60;
+    
     doc
-      .font("Helvetica-Bold")
-      .fontSize(26)
-      .fillColor(colors.primary)
-      .text("KWITANSI", 50, 60);
+      .moveTo(startX, currentY)
+      .lineTo(rightMarginX, currentY)
+      .lineWidth(1)
+      .dash(5, { space: 5 })
+      .stroke();
+    
+    doc.undash(); 
 
+
+    // ================= FOOTER =================
+    const footerY = currentY + 40;
+
+    // --- AREA KIRI: Bank & Nominal ---
+    
+    // Info Bank
     doc
       .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.muted)
-      .text("PT FAST Indo Talenta", 50, doc.y + 4);
-
-    doc.moveDown(1);
-
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.text)
-      .text(`No. Kwitansi : ${receiptNumber || "-"}`)
-      .text(`No. Invoice  : ${payment.invoice_number || "-"}`)
-      .text(`Tanggal      : ${receiptDate}`)
-      .text(
-        `Status       : ${
-          getStatusText(paymentContext.status || payment.status) || "-"
-        }`
-      );
-
-    doc.moveDown(1);
-
-    const infoTop = doc.y + 10;
-    const infoWidth = doc.page.width - 100;
-    const infoHeight = 150;
-
-    doc
-      .roundedRect(50, infoTop, infoWidth, infoHeight, 12)
-      .fillAndStroke(colors.highlight, colors.border);
-
-    doc
-      .font("Helvetica-Bold")
       .fontSize(12)
-      .fillColor(colors.primary)
-      .text("Telah diterima dari", 65, infoTop + 16);
+      .text("Rekening BCA Cab. Maranatha Bandung", startX, footerY)
+      .text("2828339333 a.n PT FAST Indo Talenta", startX, footerY + 20);
 
+    // Kotak Nominal
+    const boxTop = footerY + 60;
+    const boxWidth = 250;
+    const boxHeight = 60;
+
+    // Gambar Kotak
     doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .fillColor(colors.text)
-      .text(payment.full_name || "-", 65, infoTop + 32);
+      .lineWidth(2)
+      .rect(startX, boxTop, boxWidth, boxHeight)
+      .stroke();
 
-    const participantY = infoTop + 52;
-
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.text)
-      .text(`Alamat      : ${payment.address || "-"}`, 65, participantY, {
-        width: infoWidth - 30,
-      })
-      .text(`Program     : ${payment.program_name || "-"}`, 65, doc.y + 6, {
-        width: infoWidth - 30,
-      })
-      .text(
-       `Pembayaran  : ${paymentContext.label} (${getStatusText(
-          paymentContext.status || payment.status
-        )})`,
-        65,
-        doc.y + 6,
-        {
-          width: infoWidth - 30,
-        }
-      )
-      .text(
-        `Jumlah Kata : ${amountInWords}`,
-        65,
-        doc.y + 6,
-        {
-          width: infoWidth - 30,
-        }
-      );
-
-    doc.y = infoTop + infoHeight + 20;
-
-    const highlightBoxTop = doc.y;
-
-    doc
-      .roundedRect(50, highlightBoxTop, infoWidth, 70, 12)
-      .fill(colors.primary);
-
+    // Teks Nominal
     doc
       .font("Helvetica-Bold")
       .fontSize(22)
-      .fillColor("#ffffff")
-      .text(formatCurrency(receiptAmount), 50, highlightBoxTop + 18, {
-        width: infoWidth,
-        align: "center",
-      });
+      .text(
+        formatCurrency(receiptAmount), 
+        startX, 
+        boxTop + 20, // Center vertical manual
+        { width: boxWidth, align: "center" }
+      );
 
-       doc
+
+    // --- AREA KANAN: Tanggal & Tanda Tangan ---
+    // Geser area tanda tangan lebih ke kanan karena landscape
+    const signAreaWidth = 250;
+    const signStartX = rightMarginX - signAreaWidth;
+
+    // Tanggal
+    doc
       .font("Helvetica")
-      .fontSize(11)
-      .fillColor("#ffffff")
-      .text(amountInWords, 50, highlightBoxTop + 42, {
-        width: infoWidth,
-        align: "center",
+      .fontSize(12)
+      .text(`Bandung, ${receiptDate}`, signStartX, footerY, {
+        width: signAreaWidth,
+        align: "center"
       });
 
-    doc.y = highlightBoxTop + 90;
+    // Gambar Tanda Tangan
+    // if (fs.existsSync(signaturePath)) {
+      const signPath2 = signaturePath();
 
+        if (signPath2) {
+
+          doc.image(signPath2, doc.page.width - 270, 360, { width: 220 });
+
+        }
+       // Offset Y disesuaikan supaya tidak menumpuk tanggal
+      //  doc.image(signaturePath, signStartX + 50, footerY + 20, { 
+      //    width: 150, 
+      //    align: "center"
+      //  });
+    // } else {
+    //    // Fallback text
+    //    doc.text("(Tanda Tangan)", signStartX, footerY + 50, { align: "center", color: "#ccc" });
+    // }
+
+    // Nama & Jabatan
+    const nameY = footerY + 120; // Jarak untuk tanda tangan
     doc
       .font("Helvetica-Bold")
       .fontSize(12)
-      .fillColor(colors.primary)
-      .text("Ringkasan Pembayaran", 50, doc.y);
-
-    doc.moveDown(0.5);
-
-    const summaryRows = [
-      { label: "Total Tagihan", value: formatCurrency(totalAmount) },
-      { label: "Total Dibayar", value: formatCurrency(amountPaid) },
-      { label: "Sisa Tagihan", value: formatCurrency(remaining) },
-      { label: "Progress", value: `${progressPercentage.toFixed(1)}%` },
-    ];
-
-    summaryRows.forEach((row) => {
-      const rowTop = doc.y + 6;
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor(colors.muted)
-        .text(row.label, 50, rowTop);
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(10)
-        .fillColor(colors.text)
-        .text(row.value, doc.page.width - 200, rowTop, {
-          width: 150,
-          align: "right",
-        });
-      doc.y = Math.max(doc.y, rowTop + 16);
-    });
-
-      doc.moveDown(1);
-
-       doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .fillColor(colors.primary)
-      .text("Informasi Pembayaran", 50, doc.y);
-
-      doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.text)
-      .text("Bank          : BCA Cab. Maranatha Bandung", 50, doc.y + 6)
-      .text("No. Rekening  : 2828339333 a.n PT FAST Indo Talenta", 50, doc.y + 6)
-      .text("Metode        : Transfer Bank", 50, doc.y + 6);
-
-    if (payment.notes) {
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor(colors.text)
-        .text(`Catatan       : ${payment.notes}`, 50, doc.y + 6, {
-          width: infoWidth,
-        });
-    }
-
-    doc.moveDown(1.2);
-
-    const signatureY = Math.max(doc.y, doc.page.height - 200);
-
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.text)
-      .text(`Bandung, ${receiptDate}`, doc.page.width - 220, signatureY, {
-        width: 170,
+      .fillColor("#000000")
+      .text("Ii Ratna Yanti Kosasih", signStartX, nameY, {
+        width: signAreaWidth,
         align: "center",
+        underline: true
       });
 
     doc
-      .moveTo(doc.page.width - 220, signatureY + 60)
-      .lineTo(doc.page.width - 50, signatureY + 60)
-      .strokeColor(colors.accent)
-      .stroke();
-
-    doc
-      .font("Helvetica-Bold")
+      .font("Helvetica")
       .fontSize(11)
-      .fillColor(colors.primary)
-      .text("Il Ratna Yanti Kosasih, S.Si., M.Sc.", doc.page.width - 220, signatureY + 70, {
-        width: 170,
-        align: "center",
+      .text("General Manager", signStartX, nameY + 20, {
+        width: signAreaWidth,
+        align: "center"
       });
 
-     doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.muted)
-      .text("General Manager", doc.page.width - 220, signatureY + 90, {
-        width: 170,
-        align: "center",
-      });
 
-    doc.moveDown(2);
-
+    // ================= TAGLINE (BOTTOM) =================
+    const pageHeight = doc.page.height;
     doc
-      .font("Helvetica")
-      .fontSize(9)
-      .fillColor(colors.muted)
-      .text("Kwitansi ini sah dan dapat digunakan sebagai bukti pembayaran yang valid.", {
-        align: "center",
-      })
-      .text("Terima kasih telah mempercayai program kami.", {
-        align: "center",
-      })
-      .text("FITALENTA | Amanah | Shiddiq | Tabligh", {
-        align: "center",
-      })
+      .font("Times-Roman")
+      .fontSize(10)
+      .fillColor("#666666")
+      .text("FATHANAH | AMANAH | SHIDDIQ | TABLIGH", 0, pageHeight - 80, {
+        align: "center"
+      });
 
     doc.end();
+
   } catch (error) {
     console.error("Error generating receipt PDF:", error);
 
     if (doc) {
-      doc.end();
+     // doc.end() berisiko jika stream error, biarkan res.end() menangani di bawah
     }
 
     if (!res.headersSent) {
@@ -2347,6 +2290,8 @@ router.get("/:id/invoice", async (req, res) => {
         success: false,
         message: "Gagal membuat PDF kwitansi: " + error.message,
       });
+    } else {
+      res.end();
     }
   }
 });

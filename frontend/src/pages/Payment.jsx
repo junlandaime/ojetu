@@ -1284,115 +1284,250 @@ const [detailLoading, setDetailLoading] = useState(false);
       }
 
       const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>KWITANSI - ${metadata.receiptNumber}</title>
-          <meta charset="UTF-8" />
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-            *, *::before, *::after { box-sizing: border-box; }
-            body { font-family: 'Inter', sans-serif; background: #eef2ff; margin: 0; padding: 40px; color: #1f2937; }
-            .document { max-width: 820px; margin: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 30px 60px rgba(15, 23, 42, 0.12); padding: 48px; position: relative; overflow: hidden; }
-            .accent-bar { height: 6px; background: linear-gradient(90deg, #0b4a99, #1b75bc); margin: -48px -48px 32px; border-radius: 0 0 16px 16px; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; }
-            .title { font-size: 32px; font-weight: 700; letter-spacing: 0.08em; color: #0b4a99; text-transform: uppercase; }
-            .subtitle { margin-top: 6px; font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: #94a3b8; }
-            .company-info { text-align: right; font-size: 12px; color: #64748b; line-height: 1.6; }
-            .metadata { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-            .metadata div { background: #f5f8ff; border: 1px solid #dbe4ff; border-radius: 12px; padding: 14px 18px; font-size: 13px; line-height: 1.5; }
-            .metadata span { display: block; margin-top: 6px; font-weight: 600; color: #0f172a; }
-            .info-box { margin-top: 32px; padding: 28px; background: #f8fbff; border-radius: 16px; border: 1px solid #dbe5ff; }
-            .info-box h3 { margin: 0 0 12px; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: #0b4a99; }
-            .info-box p { margin: 6px 0; font-size: 14px; color: #1f2937; }
-            .amount-box { margin: 32px 0; background: linear-gradient(135deg, #0b4a99, #1b75bc); color: #ffffff; border-radius: 18px; padding: 32px; text-align: center; box-shadow: 0 22px 45px rgba(15, 76, 129, 0.35); }
-            .amount-box .label { text-transform: uppercase; letter-spacing: 0.3em; font-size: 12px; opacity: 0.75; margin-bottom: 12px; }
-            .amount-box .value { font-size: 32px; font-weight: 700; }
-            .amount-box .words { margin-top: 10px; font-size: 14px; opacity: 0.85; }
-            .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-            .summary .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
-            .summary .label { text-transform: uppercase; font-size: 11px; letter-spacing: 0.12em; color: #94a3b8; margin-bottom: 6px; }
-            .summary .value { font-size: 16px; font-weight: 600; color: #0f172a; }
-            .payment-info { margin-top: 28px; padding: 28px; border-radius: 16px; background: #fefce8; border: 1px solid #f5e6a7; font-size: 14px; line-height: 1.7; color: #92400e; }
-            .payment-info h4 { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: #b45309; }
-            .signature { margin-top: 48px; text-align: right; font-size: 14px; color: #0f172a; }
-            .signature .line { width: 220px; height: 1px; background: #cbd5f5; margin: 60px 0 12px auto; }
-            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6b7280; line-height: 1.6; }
-            .tagline { margin-top: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.32em; color: #0b4a99; }
-            
-            @media print {
-               body { background: #ffffff !important; padding: 0 !important; }
-              .document { box-shadow: none !important; margin: 0 !important; }
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="document">
-            <div class="accent-bar"></div>
-            <div class="header">
-              <div>
-                <div class="title">Kwitansi</div>
-                <div class="subtitle">PT FAST Indo Talenta</div>
-              </div>
-            <div class="company-info">
-                <strong>FITALENTA</strong><br />
-                Empowering People<br />
-                Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132<br />
-                Telp: (021) 123-4567<br />
-                Email: admin@fitalenta.com
-              </div>
-</div>
-            <div class="metadata">
-              <div>No. Kwitansi<span>${metadata.receiptNumber}</span></div>
-              <div>No. Invoice<span>${metadata.invoiceNumber}</span></div>
-              <div>Tanggal Kwitansi<span>${receiptDate}</span></div>
-              <div>Status Pembayaran<span>${metadata.statusText}</span></div>
-            </div>
-            <div class="info-box">
-              <h3>Telah diterima dari</h3>
-              <p><strong>${metadata.participantName}</strong></p>
-              <p>Alamat: ${metadata.participantAddress}</p>
-              <p>Email: ${metadata.participantEmail}</p>
-              <p>Telepon: ${metadata.participantPhone}</p>
-              <p>Program: ${metadata.programName}</p>
-              <p>Pembayaran: ${metadata.paymentLabel}</p>
-              <p>Jumlah dalam kata: ${totals.amountWords}</p>
-            </div>
-            <div class="amount-box">
-              <div class="label">Jumlah diterima</div>
-              <div class="value">${totals.highlight}</div>
-              <div class="words">${totals.amountWords}</div>
-            </div>
-            <div class="summary">
-              <div class="card"><div class="label">Total Tagihan</div><div class="value">${totals.total}</div></div>
-              <div class="card"><div class="label">Total Dibayar</div><div class="value">${totals.paid}</div></div>
-              <div class="card"><div class="label">Sisa Tagihan</div><div class="value">${totals.remaining}</div></div>
-              <div class="card"><div class="label">Progress</div><div class="value">${totals.progress}%</div></div>
-            </div>
-            <div class="payment-info">
-              <h4>Informasi Pembayaran</h4>
-              <p>Bank: BCA Cab. Maranatha Bandung</p>
-              <p>No. Rekening: 2828339333 a.n PT FAST Indo Talenta</p>
-              <p>Metode: ${escapeHtml(payment.payment_method || "Transfer Bank")}</p>
-              ${metadata.notes ? `<p>Catatan: ${metadata.notes}</p>` : ""}
-            </div>
-            <div class="signature">
-              <p>Bandung, ${receiptDate}</p>
-              <div class="line"></div>
-              <p><strong>Il Ratna Yanti Kosasih, S.Si., M.Sc.</strong></p>
-              <p>General Manager</p>
-            </div>
-            <div class="footer">
-              <p>Kwitansi ini sah dan dapat digunakan sebagai bukti pembayaran yang valid.</p>
-              <p>Terima kasih telah mempercayai program kami.</p>
-              <p class="tagline">FITALENTA | AMANAH | SHIDDIQ | TABLIGH</p>
-              <p style="margin-top: 6px; font-size: 11px;">Generated on: ${generatedAt}</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KWITANSI - ${metadata.receiptNumber}</title>
+  <meta charset="UTF-8" />
+  <style>
+    /* Reset & Base Style */
+    *, *::before, *::after { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      padding: 40px;
+      background: #eee;
+      font-family: Arial, Helvetica, sans-serif; /* Font utama Sans-Serif */
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Container utama (Kertas Putih) */
+    .receipt-box {
+      width: 210mm; /* Lebar A4 */
+      background: #fff;
+      border: 2px solid #000; /* Border luar hitam tipis seperti gambar */
+      padding: 30px 40px;
+      position: relative;
+      color: #000;
+    }
+
+    /* --- HEADER --- */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end; /* Align bottom supaya logo sejajar teks bawah */
+      padding-bottom: 15px;
+      border-bottom: 2px solid #000; /* Garis hitam tebal di bawah header */
+      margin-bottom: 25px;
+    }
+
+    .header-left h1 {
+      font-family: 'Times New Roman', Times, serif; /* Font Serif untuk Judul */
+      font-size: 42px;
+      font-weight: 900;
+      margin: 0;
+      letter-spacing: 1px;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .header-left .ref-number {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      margin-top: 5px;
+      font-weight: normal;
+    }
+
+    .header-right img {
+      height: 50px; /* Sesuaikan tinggi logo */
+      object-fit: contain;
+    }
+
+    /* --- CONTENT BODY --- */
+    .content {
+      margin-bottom: 30px;
+      padding-left: 10px;
+    }
+
+    /* Menggunakan tabel agar titik dua lurus rapi */
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .info-table td {
+      padding: 8px 0;
+      vertical-align: top;
+      font-size: 16px;
+      color: #000;
+    }
+
+    .info-table .label {
+      width: 180px; /* Lebar kolom label */
+      font-weight: normal;
+    }
+
+    .info-table .colon {
+      width: 20px;
+      text-align: center;
+    }
+
+    .info-table .value {
+      font-weight: bold; /* Isian dibuat tebal */
+    }
+
+    /* --- SEPARATOR --- */
+    .dashed-line {
+      border: 0;
+      border-top: 1px dashed #000; /* Garis putus-putus */
+      margin: 20px 0 30px 0;
+    }
+
+    /* --- FOOTER --- */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    /* Footer Kiri (Bank & Nominal) */
+    .footer-left {
+      flex: 1;
+    }
+
+    .bank-info {
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .amount-box {
+      border: 3px solid #000; /* Kotak tebal */
+      padding: 15px 30px;
+      display: inline-block;
+      font-size: 24px;
+      font-weight: 800;
+      min-width: 250px;
+      text-align: center;
+      background: #fff; /* Pastikan background putih */
+    }
+
+    /* Footer Kanan (Tanda Tangan) */
+    .footer-right {
+      text-align: center;
+      width: 300px; /* Area tanda tangan */
+      position: relative;
+    }
+
+    .date-text {
+      font-size: 14px;
+      margin-bottom: 10px;
+      text-align: left; /* Tanggal rata kiri sesuai area tanda tangan */
+      padding-left: 20px;
+    }
+
+    .signature-area {
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 5px;
+    }
+
+    .signature-img {
+      max-height: 90px;
+      max-width: 200px;
+      /* Sedikit rotasi atau geser jika perlu, tapi default lurus */
+    }
+
+    .signer-name {
+      font-weight: bold;
+      text-decoration: underline; /* Garis bawah nama */
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .signer-title {
+      font-size: 14px;
+      margin-top: 5px;
+      font-weight: normal;
+    }
+
+    /* Print settings */
+    @media print {
+      body { padding: 0; background: #fff; }
+      .receipt-box { border: 2px solid #000; margin: 0; width: 100%; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="receipt-box">
+    
+    <div class="header">
+      <div class="header-left">
+        <h1>KWITANSI</h1>
+        <div class="ref-number">No: ${metadata.receiptNumber}</div>
+      </div>
+      <div class="header-right">
+        <img src="logo-fitalenta.png" alt="Logo Fitalenta" />
+      </div>
+    </div>
+
+    <div class="content">
+      <table class="info-table">
+        <tr>
+          <td class="label">Telah diterima dari</td>
+          <td class="colon">:</td>
+          <td class="value">${metadata.participantName}</td>
+        </tr>
+        <tr>
+          <td class="label">Uang sejumlah</td>
+          <td class="colon">:</td>
+          <td class="value" style="font-style: italic;">${totals.amountWords}</td>
+        </tr>
+        <tr>
+          <td class="label">Untuk</td>
+          <td class="colon">:</td>
+          <td class="value">${metadata.programName}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="dashed-line"></div>
+
+    <div class="footer">
+      
+      <div class="footer-left">
+        <div class="bank-info">
+          Rekening BCA Cab. Maranatha Bandung<br>
+          2828339333 a.n PT FAST Indo Talenta
+        </div>
+        
+        <div class="amount-box">
+          ${totals.highlight}
+        </div>
+      </div>
+
+      <div class="footer-right">
+        <div class="date-text">Bandung, ${receiptDate}</div>
+        
+        <div class="signature-area">
+          <img src="signature.jpg" alt="Signature" class="signature-img" />
+        </div>
+        
+        <p class="signer-name">Ii Ratna Yanti Kosasih</p>
+        <p class="signer-title">General Manager</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
+`;
       receiptWindow.document.write(htmlContent);
       receiptWindow.document.close();
 
