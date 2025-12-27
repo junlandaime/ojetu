@@ -1606,7 +1606,7 @@ router.get("/:id/invoice", async (req, res) => {
         p.training_cost as program_training_cost,
         p.departure_cost as program_departure_cost,
         p.duration as program_duration,
-         p.installment_plan as program_installment_plan
+        p.installment_plan as program_installment_plan
       FROM payments py
       LEFT JOIN registrations r ON py.registration_id = r.id
       LEFT JOIN users u ON r.user_id = u.id
@@ -1625,6 +1625,7 @@ router.get("/:id/invoice", async (req, res) => {
 
     const payment = payments[0];
 
+    // --- LOGIC PERHITUNGAN CICILAN (Sama seperti sebelumnya) ---
     const totalInstallments = getTotalInstallments(payment);
     const { installment: installmentQuery, status: statusQuery } = req.query;
 
@@ -1664,7 +1665,7 @@ router.get("/:id/invoice", async (req, res) => {
       });
     }
 
-     const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
+    const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
     const amountPaid = parseFloat(payment.amount_paid || 0);
     const remaining = Math.max(totalAmount - amountPaid, 0);
 
@@ -1680,18 +1681,10 @@ router.get("/:id/invoice", async (req, res) => {
       });
     }
 
-    if (requestedInstallment && !paymentContext.installmentEntry?.amount) {
-      return res.status(400).json({
-        success: false,
-        message: `Invoice untuk cicilan ${requestedInstallment} belum diterbitkan`,
-      });
-    }
-
     const paymentLabel =
       paymentContext.label ||
       getStatusText(paymentContext.status || payment.status) ||
       "Pembayaran";
-    const paymentLabelLower = paymentLabel.toLowerCase();
     const invoiceAmount = paymentContext.amountValue || 0;
 
     const invoiceDateValue =
@@ -1702,14 +1695,16 @@ router.get("/:id/invoice", async (req, res) => {
     const formattedInvoiceDate = formatLongDate(invoiceDateValue);
     const dueDateSource = paymentContext.dueDate || payment.due_date;
     const dueDateFormatted = dueDateSource ? formatLongDate(dueDateSource) : "-";
-    const dueTimeFormatted = dueDateSource ? formatTime(dueDateSource) : "";
-    const dueDisplay =
-      dueDateSource && dueDateFormatted
-        ? `${dueDateFormatted}${dueTimeFormatted ? `, pukul ${dueTimeFormatted} WIB` : ""}`
+    
+    // Format "26 November 2025, pukul 23.59"
+    const dueTimeFormatted = dueDateSource ? formatTime(dueDateSource) : ""; 
+    const dueDisplay = dueDateSource && dueDateFormatted
+        ? `${dueDateFormatted}${dueTimeFormatted ? `, pukul ${dueTimeFormatted}` : ""}`
         : "-";
 
     const amountInWords = numberToBahasa(invoiceAmount);
 
+    // --- MULAI GENERATE PDF ---
     res.setHeader("Content-Type", "application/pdf");
     const suffix = requestedInstallment
       ? `-cicilan-${requestedInstallment}`
@@ -1718,251 +1713,226 @@ router.get("/:id/invoice", async (req, res) => {
       : "";
     res.setHeader(
       "Content-Disposition",
-        `attachment; filename=invoice-${payment.invoice_number}${suffix}.pdf`
+      `attachment; filename=invoice-${payment.invoice_number}${suffix}.pdf`
     );
 
+    // Margin kiri kanan standar surat resmi (misal 2.5cm = ~70pt, atau 50pt)
     doc = new PDFDocument({ size: "A4", margin: 50 });
     doc.pipe(res);
 
-    const colors = {
-      primary: "#0B4A99",
-      accent: "#1B75BC",
-      border: "#C9DFFF",
-      text: "#1F2937",
-      muted: "#6B7280",
-      highlight: "#F5F8FF",
-    };
+    // Definisikan Font dan Warna Dasar
+    const fontRegular = "Helvetica";
+    const fontBold = "Helvetica-Bold";
+    const fontItalic = "Helvetica-Oblique";
+    const black = "#000000";
 
-    doc.rect(50, 40, doc.page.width - 100, 3).fill(colors.accent);
-
-    const logoPath = findLogoPath();
+    // --- HEADER (Logo Kiri, Alamat Kanan) ---
+    const logoPath = findLogoPath(); // Pastikan fungsi ini return path valid
     if (logoPath) {
-      doc.image(logoPath, 50, 55, { width: 130 });
+        // Logo di kiri
+        doc.image(logoPath, 50, 40, { width: 150 });
     }
 
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .fillColor(colors.primary)
-      .text("FITALENTA", { align: "right" });
+    // Alamat di kanan (menyesuaikan koordinat X agar di sebelah logo)
+    // Asumsi lebar logo 150, kita mulai teks di x=220
+    const headerTextX = 220;
+    const headerTopY = 45;
 
     doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.muted)
-      .text("Empowering People", { align: "right" })
-      .text("Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132", {
-        align: "right",
+      .font(fontBold)
+      .fontSize(11)
+      .fillColor(black)
+      .text("PT FAST Indo Talenta", headerTextX, headerTopY);
+
+    doc
+      .font(fontRegular)
+      .fontSize(9) // Font alamat lebih kecil
+      .text("Gedung Science and Techno Park ITB", headerTextX, doc.y + 2)
+      .text("Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132")
+      .text("Telp: +62 81110119273") // Sesuaikan nomor dgn gambar
+      .text("fitalenta.co.id");
+
+    // Pindah ke bawah header
+    doc.y = 130; 
+
+    // --- TANGGAL DAN NOMOR SURAT ---
+    doc
+      .font(fontRegular)
+      .fontSize(11)
+      .text(`Bandung, ${formattedInvoiceDate}`, 50, doc.y);
+    
+    doc.moveDown(0.5);
+    
+    doc.text(`No: ${payment.invoice_number}`);
+
+    doc.moveDown(1);
+
+    // --- PENERIMA (KEPADA YTH) ---
+    doc.text("Kepada Yth.");
+    doc.font(fontBold).text(payment.full_name || "-");
+    
+    // Alamat Penerima (Normal font)
+    // doc.font(fontRegular);
+    // if (payment.address) {
+    //     // Limit width agar tidak terlalu panjang ke kanan
+    //     doc.text(payment.address, { width: 300 }); 
+    // }
+    // doc.text("Di tempat");
+
+    doc.moveDown(1.5);
+
+    // --- PERIHAL (Underline & Bold) ---
+    doc
+      .font(fontBold) // Set font bold untuk kedua bagian
+      // Bagian 1: "Perihal: " (Tanpa underline, kursor tetap di baris yang sama)
+      .text("Perihal: ", {
+        continued: true, 
+        underline: false
       })
-      .text("Telp: (021) 123-4567 | Email: admin@fitalenta.com", {
-        align: "right",
+      // Bagian 2: Sisanya (Dengan underline)
+      .text(`Invoice ${paymentLabel} ${payment.program_name}`, {
+        underline: true
       });
 
+    doc.moveDown(1.5);
 
-    doc.moveDown(1);
-
-     doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(colors.text)
-      .text(`Bandung, ${formattedInvoiceDate}`, { align: "right" })
-      .text(`No: ${payment.invoice_number}`, { align: "right" });
-
-    doc.moveDown(1);
-
+    // --- SALAM PEMBUKA (Italic) ---
     doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(colors.text)
-      .text("Kepada Yth,")
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .text(payment.full_name || "-");
+      .font(fontItalic)
+      .text("Assalamu’alaikum Warahmatullahi Wabarakatuh.");
+    
+    doc.moveDown(1);
 
-    if (payment.address) {
-      doc.font("Helvetica").fontSize(11).text(payment.address);
+    // --- PARAGRAF PEMBUKA (Justified) ---
+doc
+  .font(fontRegular)
+  // 1. Tulis Salam Hormat terlebih dahulu (tanpa indent)
+  .text("Salam hormat,", { 
+      lineGap: 5 // Memberi sedikit jarak ke paragraf di bawahnya
+  })
+  // 2. Tulis Paragraf isinya dengan properti 'indent'
+  .text(
+    `Terimakasih atas kepercayaan yang diberikan kepada PT FAST Indo Talenta untuk ikut serta dalam pengiriman tenaga kerja melalui ${payment.program_name}. Bersama ini kami sampaikan tagihan biaya ${payment.program_name} melalui skema cicilan.`,
+    { 
+      align: "justify", 
+      lineGap: 3,
+      indent: 30 // <--- INI SOLUSINYA. Sesuaikan angka 30 dengan kedalaman indentasi yang Anda mau.
     }
+  );
 
-    doc.font("Helvetica").fontSize(11).text("di Tempat");
+    // --- KOTAK INVOICE (Manual Draw) ---
+    // Kita akan menggambar teks dulu untuk menghitung tinggi, baru menggambar kotak
+    const boxX = 50;
+    const boxWidth = doc.page.width - 100;
+    const col1X = boxX + 10;          // Margin kiri dalam kotak
+    const col2X = col1X + 150;        // Posisi titik dua (:)
+    const col3X = col2X + 15;         // Posisi value
+    const col3Width = boxWidth - 175; // Sisa lebar untuk value
+    
+    const boxStartY = doc.y;
+    let currentY = boxStartY + 15; // Padding atas dalam kotak
 
-    doc.moveDown(1);
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(11)
-      .fillColor(colors.primary)
-      .text(
-        `Perihal: Invoice ${paymentLabel} Pelatihan dan Karantina Kerja Tokutei Ginou`
-      );
-
-       doc.moveDown(0.5);
-
-      doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(colors.text)
-      .text("Assalamu'alaikum warahmatullahi wabarakatuh,", { lineGap: 4 })
-      .moveDown(0.5)
-      .text(
-        `Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talenta. Bersama surat ini kami sampaikan tagihan ${paymentLabelLower} untuk Program ${payment.program_name || "-"} dengan rincian sebagai berikut:`,
-        { lineGap: 4 }
-      );
-
-
-      const detailTop = doc.y + 15;
-    const detailWidth = doc.page.width - 100;
-    const detailHeight = 260;
-
-      doc
-      .roundedRect(50, detailTop, detailWidth, detailHeight, 12)
-      .fillAndStroke(colors.highlight, colors.border);
-
-    let cursorY = detailTop + 18;
-    const drawDetailRow = (label, value) => {
-      doc
-        .font("Helvetica")
-        .fontSize(10)
-        .fillColor(colors.muted)
-        .text(label, 65, cursorY, { width: 140 });
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(11)
-        .fillColor(colors.text)
-        .text(value, 220, cursorY, {
-          width: detailWidth - 200,
-          lineGap: 2,
-        });
-      cursorY = Math.max(doc.y, cursorY + 24) + 6;
+    // Helper function untuk baris tabel
+    const drawRow = (label, value) => {
+        const startRowY = currentY;
+        
+        doc.font(fontBold).text(label, col1X, startRowY);
+        doc.font(fontRegular).text(":", col2X, startRowY);
+        
+        // Render Value (bisa multiline)
+        doc.text(value, col3X, startRowY, { width: col3Width, align: 'left' });
+        
+        // Hitung tinggi yang terpakai (mana yang lebih tinggi, label atau value)
+        const heightVal = doc.heightOfString(value, { width: col3Width });
+        const rowHeight = Math.max(heightVal, 15); // Min height
+        
+        currentY = startRowY + rowHeight + 8; // Spacing antar baris
     };
 
-      drawDetailRow("Program", payment.program_name || "-");
-    drawDetailRow("Nomor Invoice", payment.invoice_number || "-");
-    drawDetailRow("Jenis Pembayaran", paymentLabel || "-");
-    drawDetailRow("Jumlah Tagihan", formatCurrency(invoiceAmount));
-    drawDetailRow("Terbilang", amountInWords);
-    drawDetailRow("Jatuh Tempo", dueDisplay);
-    drawDetailRow(
-      "Rekening Pembayaran",
-      "BCA Cab. Maranatha Bandung\nNo. Rekening: 2828339333 a.n PT FAST Indo Talenta"
-    );
-    drawDetailRow(
-      "Catatan",
-      payment.notes ||
-        "Mohon menyelesaikan pembayaran sebelum jatuh tempo dan unggah bukti pembayaran melalui dashboard peserta."
+    drawRow("Nama Program", payment.program_name || "-");
+    drawRow("Tagihan", formatCurrency(invoiceAmount));
+    drawRow("Rincian Tagihan", `${paymentLabel} Biaya Program`);
+    
+    // Rekening (Multiline manual)
+    drawRow("Rekening Tujuan", 
+        "PT FAST Indo Talenta\n" +
+        "Nomor Rekening BCA 2828339333"
     );
 
-    doc.y = Math.max(cursorY + 6, detailTop + detailHeight) + 10;
+    drawRow("Catatan", 
+        `Batas akhir pembayaran s.d ${dueDisplay}`
+    );
 
-    const highlightTop = doc.y;
+    const boxEndY = currentY + 7; // Padding bawah
+
+    // GAMBAR KOTAK (Stroke Only)
     doc
-      .roundedRect(50, highlightTop, detailWidth, 70, 12)
-      .fill(colors.primary);
+       .rect(boxX, boxStartY, boxWidth, boxEndY - boxStartY)
+       .stroke(black);
 
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(20)
-      .fillColor("#ffffff")
-      .text(formatCurrency(invoiceAmount), 50, highlightTop + 16, {
-        width: detailWidth,
-        align: "center",
-      });
+    // Reset posisi Y ke bawah kotak
+    doc.y = boxEndY + 15;
 
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor("#ffffff")
-      .text(amountInWords, 50, highlightTop + 40, {
-        width: detailWidth,
-        align: "center",
-      });
-
-    doc.y = highlightTop + 90;
-
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(colors.text)
-      .text(
-        "Silakan melakukan pembayaran sesuai informasi di atas. Setelah pembayaran dilakukan, unggah bukti pembayaran untuk proses verifikasi."
-      );
-
-    if (remaining > 0) {
-      doc.moveDown(0.5);
-      doc
-        .font("Helvetica")
-        .fontSize(11)
-        .fillColor(colors.text)
-        .text(
-          `Total biaya program: ${formatCurrency(
-            totalAmount
-          )}. Sudah dibayar: ${formatCurrency(
-            amountPaid
-          )}. Sisa kewajiban: ${formatCurrency(remaining)}.`
-        );
-    }
+    // --- DISCLAIMER (Justified) ---
+    // Gunakan font campuran (Bold untuk penekanan)
+    doc.font(fontRegular).text("        Sesuai dengan ketentuan yang berlaku, ", 50, doc.y , { continued: true, align: 'justify' });
+    doc.font(fontBold).text("seluruh pembayaran yang telah dibayarkan tidak dapat dikembalikan dengan alasan apa pun", 50, doc.y , { continued: true });
+    doc.font(fontRegular).text(". Harap dapat melakukan pengecekan kembali atas rincian invoice yang Anda terima. Demikian invoice yang kami berikan, atas perhatian Anda kami ucapkan terimakasih.", 50, doc.y);
 
     doc.moveDown(1);
 
+    // --- SALAM PENUTUP ---
     doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(colors.text)
-      .text(
-        "Demikian invoice ini kami sampaikan. Atas perhatian dan kerja sama Anda kami ucapkan terima kasih."
-      );
-
+      .font(fontItalic)
+      .text("Wassalamu’alaikum Warahmatullahi Wabarakatuh.", 50, doc.y);
+    
     doc.moveDown(2);
 
-    const signatureTop = doc.y;
+    // --- TANDA TANGAN (Kiri) ---
+    // Cek sisa halaman, jika tidak cukup buat page baru (untuk menghindari kepotong)
+    if (doc.y > doc.page.height - 150) {
+        doc.addPage();
+    }
 
+    doc.font(fontRegular).text("Hormat Kami,", 50, doc.y);
+    
+    const sigY = doc.y + 10;
+    
+    // Load Gambar Tanda Tangan (Jika ada file-nya)
+    // Pastikan path ini benar di server Anda
+    const sigPath = path.join(__dirname, '../../frontend/public/signature.jpg'); 
+    if (fs.existsSync(sigPath)) {
+       doc.image(sigPath, 50, sigY, { height: 60 });
+    }
+    
+    // Space untuk tanda tangan
+    doc.y = sigY + 70; 
+
+    // Nama Penanda Tangan (Bold & Underline)
     doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(colors.text)
-      .text(`Bandung, ${formattedInvoiceDate}`, doc.page.width - 220, signatureTop, {
-        width: 170,
-        align: "center",
-      });
-
-     doc.moveDown(3);
-
+      .font(fontBold)
+      .text("Ii Ratna Yanti Kosasih, S.Si., M.Sc.", 50, doc.y, { underline: true });
+    
     doc
-      .font("Helvetica-Bold")
-      .fontSize(11)
-      .fillColor(colors.primary)
-      .text("Il Ratna Yanti Kosasih, S.Si., M.Sc.", doc.page.width - 220, doc.y, {
-        width: 170,
-        align: "center",
+      .font(fontRegular)
+      .text("General Manager");
+
+    // --- FOOTER (Pojok Kanan Bawah) ---
+    // Kita taruh text di posisi absolut bawah
+    const footerY = doc.page.height - 50;
+    doc
+      .fontSize(8)
+      .font(fontItalic) // Atau Regular
+      .text("Fathanah | Amanah | Shiddiq | Tabligh", 50, footerY, {
+          align: "right",
+          width: doc.page.width - 1500
       });
-
-     doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(colors.muted)
-      .text("General Manager", doc.page.width - 220, doc.y, {
-        width: 170,
-        align: "center",
-      });
-
-    doc.moveDown(2);
-
-     doc
-      .font("Helvetica")
-      .fontSize(9)
-      .fillColor(colors.muted)
-      .text("FITALENTA | Amanah | Shiddiq | Tabligh", {
-        align: "center",
-      });
-
 
     doc.end();
+
   } catch (error) {
     console.error("Error generating invoice PDF:", error);
-
-    if (doc) {
-      doc.end();
-    }
-
+    if (doc) doc.end();
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
@@ -2159,7 +2129,7 @@ router.get("/:id/invoice", async (req, res) => {
     // 3. Untuk Pembayaran
     // Hitung posisi Y baris ke-3 secara dinamis
     let currentY = contentY + rowGap + (amountHeight > 25 ? amountHeight : 25) + 15;
-    const purposeText = `${payment.program_name || "-"}`;
+    const purposeText = `${paymentContext.label} - ${payment.program_name || "-"}`;
     drawRow("Untuk", purposeText, currentY);
 
 

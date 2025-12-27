@@ -1490,7 +1490,7 @@ const [detailLoading, setDetailLoading] = useState(false);
         <tr>
           <td class="label">Untuk</td>
           <td class="colon">:</td>
-          <td class="value">${metadata.programName}</td>
+          <td class="value">${metadata.paymentLabel} - ${metadata.programName}</td>
         </tr>
       </table>
     </div>
@@ -1710,106 +1710,270 @@ const [detailLoading, setDetailLoading] = useState(false);
       }
 
       const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>INVOICE - ${metadata.invoiceNumber}</title>
-          <meta charset="UTF-8" />
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-            *, *::before, *::after { box-sizing: border-box; }
-            body { font-family: 'Inter', sans-serif; background: #f1f5ff; margin: 0; padding: 40px; color: #1f2937; }
-            .document { max-width: 820px; margin: auto; background: #ffffff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14); padding: 48px; position: relative; overflow: hidden; }
-            .accent-bar { height: 6px; background: linear-gradient(90deg, #0b4a99, #1b75bc); margin: -48px -48px 32px; border-radius: 0 0 18px 18px; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; }
-            .brand { font-size: 34px; font-weight: 700; color: #0b4a99; letter-spacing: 0.12em; text-transform: uppercase; }
-            .tagline { margin-top: 6px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8; }
-            .company-info { text-align: right; font-size: 12px; line-height: 1.6; color: #64748b; }
-            .meta { margin-top: 24px; display: flex; justify-content: space-between; color: #1f2937; }
-            .recipient { margin-top: 32px; line-height: 1.8; font-size: 14px; }
-            .recipient strong { font-size: 16px; color: #0b4a99; }
-            .subject { margin-top: 28px; font-size: 15px; font-weight: 600; color: #0b4a99; text-transform: uppercase; letter-spacing: 0.12em; }
-            .paragraph { margin-top: 18px; line-height: 1.8; font-size: 14px; color: #1f2937; }
-            .detail-box { margin-top: 28px; border: 1px solid #dbe4ff; border-radius: 16px; padding: 24px; background: #f8fbff; font-size: 14px; }
-            .detail-row { display: grid; grid-template-columns: 180px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px dashed #dbe4ff; }
-            .detail-row:last-child { border-bottom: none; }
-            .detail-label { font-weight: 600; color: #0f172a; text-transform: uppercase; font-size: 12px; letter-spacing: 0.08em; }
-            .detail-value { color: #1f2937; }
-            .amount-box { margin-top: 28px; background: linear-gradient(135deg, #0b4a99, #1b75bc); color: #ffffff; border-radius: 18px; padding: 32px; text-align: center; box-shadow: 0 22px 50px rgba(16, 76, 129, 0.3); }
-            .amount-box .label { text-transform: uppercase; letter-spacing: 0.28em; font-size: 12px; opacity: 0.75; }
-            .amount-box .value { margin-top: 12px; font-size: 34px; font-weight: 700; }
-            .amount-box .words { margin-top: 10px; font-size: 14px; opacity: 0.85; }
-            .closing { margin-top: 28px; line-height: 1.8; font-size: 14px; }
-            .signature { margin-top: 48px; text-align: right; font-size: 14px; color: #0f172a; }
-            .signature .line { width: 240px; height: 1px; background: #cbd5f5; margin: 60px 0 12px auto; }
-            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6b7280; line-height: 1.6; letter-spacing: 0.12em; }
-            @media print {
-              body { background: #ffffff !important; padding: 0 !important; }
-              .document { box-shadow: none !important; margin: 0 !important; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="document">
-            <div class="accent-bar"></div>
-            <div class="header">
-              <div>
-                <div class="brand">FITALENTA</div>
-                <div class="tagline">Empowering People</div>
-              </div>
-              <div class="company-info">
-                Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132<br />
-                Telp: (021) 123-4567<br />
-                Email: admin@fitalenta.com
-              </div>
-            </div>
-<div class="meta">
-              <div>Bandung, ${invoiceDate}</div>
-              <div><strong>No: ${metadata.invoiceNumber}</strong></div>
-            </div>
-            <div class="recipient">
-              <p>Kepada Yth,</p>
-              <p><strong>${metadata.participantName}</strong></p>
-              <p>${metadata.participantAddress}</p>
-              <p>di Tempat</p>
-            </div>
-            <div class="subject">Perihal: Invoice ${metadata.paymentLabel} Pelatihan dan Karantina Kerja Tokutei Ginou</div>
-            <div class="paragraph">
-              Assalamu'alaikum warahmatullahi wabarakatuh,<br /><br />
-              Terima kasih atas kepercayaan Anda kepada PT FAST Indo Talenta. Bersama surat ini kami sampaikan tagihan ${metadata.paymentLabel.toLowerCase()} untuk Program ${metadata.programName}. Adapun rincian tagihan adalah sebagai berikut:
-            </div>
-            <div class="detail-box">
-              <div class="detail-row"><span class="detail-label">Program</span><span class="detail-value">${metadata.programName}</span></div>
-              <div class="detail-row"><span class="detail-label">Nomor Invoice</span><span class="detail-value">${metadata.invoiceNumber}</span></div>
-              <div class="detail-row"><span class="detail-label">Jenis Pembayaran</span><span class="detail-value">${metadata.paymentLabel}</span></div>
-              <div class="detail-row"><span class="detail-label">Jumlah Tagihan</span><span class="detail-value">${formatted.invoiceAmount}</span></div>
-              <div class="detail-row"><span class="detail-label">Terbilang</span><span class="detail-value">${formatted.amountWords}</span></div>
-              <div class="detail-row"><span class="detail-label">Jatuh Tempo</span><span class="detail-value">${escapeHtml(dueDisplay)}</span></div>
-              <div class="detail-row"><span class="detail-label">Rekening Pembayaran</span><span class="detail-value">BCA Cab. Maranatha Bandung<br />No. Rekening: 2828339333 a.n PT FAST Indo Talenta</span></div>
-              <div class="detail-row"><span class="detail-label">Catatan</span><span class="detail-value">${metadata.notes}</span></div>
-            </div>
-            <div class="amount-box">
-              <div class="label">Jumlah Tagihan</div>
-              <div class="value">${formatted.invoiceAmount}</div>
-              <div class="words">${formatted.amountWords}</div>
-            </div>
-            <div class="closing">
-              Mohon melakukan pembayaran sesuai informasi di atas. Setelah pembayaran dilakukan, unggah bukti pembayaran untuk proses verifikasi.<br /><br />
-              Total biaya program: ${formatted.totalAmount}. Sudah dibayar: ${formatted.amountPaid}. Sisa kewajiban: ${formatted.remaining}.<br /><br />
-              Demikian invoice ini kami sampaikan. Atas perhatian dan kerja sama Anda kami ucapkan terima kasih.
-            </div>
-            <div class="signature">
-              <p>Bandung, ${invoiceDate}</p>
-              <div class="line"></div>
-              <p><strong>Il Ratna Yanti Kosasih, S.Si., M.Sc.</strong></p>
-              <p>General Manager</p>
-            </div>
-            <div class="footer">FITALENTA | AMANAH | SHIDDIQ | TABLIGH</div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>INVOICE - ${metadata.invoiceNumber}</title>
+  <meta charset="UTF-8" />
+  <style>
+    /* Reset & Base Styles */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { 
+      font-family: Arial, Helvetica, sans-serif; 
+      font-size: 14px; /* Ukuran standar surat */
+      line-height: 1.4; 
+      color: #000; 
+      background: #fff; 
+      margin: 0; 
+      padding: 0; 
+    }
+
+    /* Page Container (A4 Simulation) */
+    .document { 
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 40px 50px; 
+      background: #ffffff; 
+      position: relative;
+    }
+
+    /* HEADER */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 30px;
+    }
+    
+    .logo-section {
+      width: 40%;
+    }
+    /* Ganti src ini dengan URL logo Fitalenta Anda */
+    .logo-img {
+      max-width: 200px; 
+      height: auto;
+      display: block;
+    }
+
+    .company-address {
+      width: 55%;
+      font-size: 10px; /* Font alamat kecil seperti di gambar */
+      text-align: left;
+      color: #333;
+      line-height: 1.4;
+    }
+    .company-name-bold {
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    /* CONTENT BODY */
+    .date-section { margin-bottom: 20px; }
+    .ref-number { margin-bottom: 20px; }
+    
+    .recipient-section { margin-bottom: 20px; }
+    .recipient-name { font-weight: bold; }
+    
+    .subject-line { 
+      font-weight: bold; 
+      text-decoration: underline;
+      margin-bottom: 25px;
+    }
+
+    .greeting { 
+      font-style: italic; 
+      margin-bottom: 15px; 
+    }
+    
+    .opening-text {
+      text-align: justify;
+      margin-bottom: 15px;
+    }
+
+    /* THE INVOICE BOX (KOTAK TAGIHAN) */
+    .invoice-box {
+      border: 2px solid #000; /* Border hitam tebal */
+      padding: 15px;
+      margin: 10px 0 25px 0;
+      font-size: 14px;
+    }
+
+    .row {
+      display: flex;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+    .row:last-child { margin-bottom: 0; }
+
+    .col-label {
+      width: 160px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .col-separator {
+      width: 15px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .col-value {
+      flex-grow: 1;
+    }
+
+    /* DISCLAIMER TEXT */
+    .disclaimer {
+      text-align: justify;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .closing-greeting {
+      font-style: italic;
+      margin-top: 20px;
+      margin-bottom: 30px;
+    }
+
+    /* SIGNATURE SECTION */
+    .signature-section {
+      margin-top: 30px;
+    }
+    
+    .signature-box {
+      width: 250px; /* Batasi lebar area tanda tangan */
+    }
+
+    /* Ganti src dengan gambar tanda tangan + stempel transparan */
+    .sig-img {
+      height: 80px; 
+      margin: 5px 0;
+      display: block;
+    }
+
+    .signer-name {
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    /* FOOTER (Bottom Right) */
+    .footer-text {
+      margin-top: 60px;
+      text-align: right;
+      font-size: 10px;
+      color: #000;
+    }
+
+    /* Print Optimization */
+    @media print {
+      body { padding: 0; }
+      .document { width: 100%; max-width: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="document">
+    
+    <div class="header-container">
+      <div class="logo-section">
+        <img src="https://registrasi.fitalenta.co.id/images/logo/fitalenta_2024.png" alt="Fitalenta" class="logo-img">
+      </div>
+      <div class="company-address">
+        <div class="company-name-bold">PT FAST Indo Talenta</div>
+        Gedung Science and Techno Park ITB<br>
+        Jl. Ganesa No. 15F, Lb. Siliwangi, Kec. Coblong, Kota Bandung, 40132<br>
+        +62 81110119273<br>
+        fitalenta.co.id
+      </div>
+    </div>
+
+    <div class="date-section">
+      Bandung, ${invoiceDate}
+    </div>
+
+    <div class="ref-number">
+      No: ${metadata.invoiceNumber}
+    </div>
+
+    <div class="recipient-section">
+      Kepada Yth.<br>
+      <span class="recipient-name">${metadata.participantName}</span><br>
+      Di tempat
+    </div>
+
+    <div class="subject-line">
+      Perihal: Invoice ${metadata.paymentLabel} ${metadata.programName}
+    </div>
+
+    <div class="greeting">
+      Assalamu’alaikum Warahmatullahi Wabarakatuh.
+    </div>
+
+    <div class="opening-text">
+      Salam hormat,<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Terimakasih atas kepercayaan yang diberikan kepada PT FAST Indo Talenta untuk ikut serta dalam pengiriman tenaga kerja melalui Program ${metadata.programName}. Bersama ini kami sampaikan tagihan biaya ${metadata.programName} melalui skema cicilan.
+    </div>
+
+    <div class="invoice-box">
+      <div class="row">
+        <div class="col-label">Nama Program</div>
+        <div class="col-separator">:</div>
+        <div class="col-value">${metadata.programName}</div>
+      </div>
+      
+      <div class="row">
+        <div class="col-label">Tagihan</div>
+        <div class="col-separator">:</div>
+        <div class="col-value">${formatted.invoiceAmount}</div>
+      </div>
+
+      <div class="row">
+        <div class="col-label">Rincian Tagihan</div>
+        <div class="col-separator">:</div>
+        <div class="col-value">${metadata.paymentLabel} & Biaya Program</div>
+      </div>
+
+      <div class="row">
+        <div class="col-label">Rekening Tujuan</div>
+        <div class="col-separator">:</div>
+        <div class="col-value">
+          PT FAST Indo Talenta<br>
+          Nomor Rekening BCA 2828339333
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-label">Catatan</div>
+        <div class="col-separator">:</div>
+        <div class="col-value">Batas akhir pembayaran s.d ${escapeHtml(dueDisplay)}</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sesuai dengan ketentuan yang berlaku, <strong>seluruh pembayaran yang telah dibayarkan tidak dapat dikembalikan dengan alasan apa pun</strong>. Harap dapat melakukan pengecekan kembali atas rincian invoice yang Anda terima. Demikian invoice yang kami berikan, atas perhatian Anda kami ucapkan terimakasih.
+    </div>
+
+    <div class="closing-greeting">
+      Wassalamu’alaikum Warahmatullahi Wabarakatuh.
+    </div>
+
+    <div class="signature-section">
+      <div class="signature-box">
+        Hormat Kami,<br>
+        
+        <img src="signature.jpg" alt="Tanda Tangan" style="height: 60px; margin: 10px 0; opacity: 0.5;">
+        
+        <div class="signer-name">Ii Ratna Yanti Kosasih</div>
+        General Manager
+      </div>
+    </div>
+
+    <div class="footer-text">
+      Fathanah | Amanah | Shiddiq | Tabligh
+    </div>
+
+  </div>
+</body>
+</html>
+`;
 
       invoiceWindow.document.write(htmlContent);
       invoiceWindow.document.close();
