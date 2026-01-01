@@ -20,15 +20,20 @@ const __dirname = path.dirname(__filename);
 const router = express.Router();
 
 const ensureUploadsDir = () => {
-  const uploadsDir = path.join(__dirname, "../uploads");
-  const paymentsDir = path.join(uploadsDir, "payments");
+  const dirs = [
+    path.join(__dirname, "../uploads"),
+    path.join(__dirname, "../uploads/payments"),
+    // Tambahkan folder storage untuk menyimpan PDF statis
+    path.join(__dirname, "../storage"),
+    path.join(__dirname, "../storage/invoices"),
+    path.join(__dirname, "../storage/receipts"),
+  ];
 
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-  if (!fs.existsSync(paymentsDir)) {
-    fs.mkdirSync(paymentsDir, { recursive: true });
-  }
+  dirs.forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
 };
 
 ensureUploadsDir();
@@ -536,6 +541,243 @@ const dueDate = installmentEntry?.due_date || payment?.due_date || null;
   };
 };
 
+// ==========================================
+// [START] PDF GENERATOR & SNAPSHOT ENGINE
+// ==========================================
+
+const getAssetPath = (type) => {
+  // Helper mencari path gambar
+  const logoPath = findLogoPath(); // Menggunakan fungsi findLogoPath yg sudah ada di file Anda
+  if (type === 'logo') return logoPath;
+  // Sesuaikan path signature ini dengan struktur folder Anda jika perlu
+  if (type === 'signature') return path.join(__dirname, '../../frontend/public/signature.jpg');
+  return null;
+};
+
+// 1. LAYOUT INVOICE (Diekstrak dari kode lama Anda)
+const drawInvoiceLayout = (doc, payment, context) => {
+    const { amountValue, installmentEntry, dueDate, label } = context;
+    // Gunakan tanggal issued dari history jika ada, atau hari ini
+    const invoiceDate = installmentEntry?.invoice_issued_at || installmentEntry?.created_at || new Date(); 
+    const formattedInvoiceDate = formatLongDate(invoiceDate);
+    const invoiceAmount = amountValue || 0;
+    
+    // Setup Fonts
+    const fontRegular = "Helvetica";
+    const fontBold = "Helvetica-Bold";
+    const fontItalic = "Helvetica-Oblique";
+    const black = "#000000";
+
+    // --- HEADER ---
+    const logoPath = getAssetPath('logo');
+    if (logoPath) doc.image(logoPath, 50, 40, { width: 150 });
+
+    const headerTextX = 220;
+    doc.font(fontBold).fontSize(11).fillColor(black).text("PT FAST Indo Talenta", headerTextX, 45);
+    doc.font(fontRegular).fontSize(9)
+       .text("Gedung Science and Techno Park ITB", headerTextX)
+       .text("Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132")
+       .text("Telp: +62 81110119273")
+       .text("fitalenta.co.id");
+
+    doc.y = 130; 
+
+    // --- INFO SURAT ---
+    doc.font(fontRegular).fontSize(11).text(`Bandung, ${formattedInvoiceDate}`, 50, doc.y);
+    doc.moveDown(0.5);
+    doc.text(`No: ${payment.invoice_number}`);
+    doc.moveDown(1);
+
+    // --- PENERIMA ---
+    doc.text("Kepada Yth.");
+    doc.font(fontBold).text(payment.full_name || "-");
+    doc.moveDown(1.5);
+
+    // --- PERIHAL ---
+    doc.font(fontBold)
+       .text("Perihal: ", { continued: true, underline: false })
+       .text(`Invoice ${label} ${payment.program_name}`, { underline: true });
+    doc.moveDown(1.5);
+
+    // --- BODY ---
+    doc.font(fontItalic).text("Assalamu’alaikum Warahmatullahi Wabarakatuh.");
+    doc.moveDown(1);
+
+    doc.font(fontRegular)
+       .text("Salam hormat,", { lineGap: 5 })
+       .text(
+         `Terimakasih atas kepercayaan yang diberikan kepada PT FAST Indo Talenta untuk ikut serta dalam pengiriman tenaga kerja melalui ${payment.program_name}. Bersama ini kami sampaikan tagihan biaya ${payment.program_name} melalui skema cicilan.`,
+         { align: "justify", lineGap: 3, indent: 30 }
+       );
+
+    // --- TABEL RINCIAN ---
+    const boxX = 50;
+    const boxWidth = doc.page.width - 100;
+    const col1X = boxX + 10;
+    const col2X = col1X + 150;
+    const col3X = col2X + 15;
+    const col3Width = boxWidth - 175;
+    
+    const boxStartY = doc.y + 15; 
+    let currentY = boxStartY + 15;
+
+    const drawRow = (l, v) => {
+        const startRowY = currentY;
+        doc.font(fontBold).text(l, col1X, startRowY);
+        doc.font(fontRegular).text(":", col2X, startRowY);
+        doc.text(v, col3X, startRowY, { width: col3Width, align: 'left' });
+        const h = Math.max(doc.heightOfString(v, { width: col3Width }), 15);
+        currentY = startRowY + h + 8;
+    };
+
+    drawRow("Nama Program", payment.program_name || "-");
+    drawRow("Tagihan", formatCurrency(invoiceAmount));
+    drawRow("Rincian Tagihan", `${label} Biaya Program`);
+    drawRow("Rekening Tujuan", "PT FAST Indo Talenta\nNomor Rekening BCA 2828339333");
+    
+    const dDate = dueDate ? formatLongDate(dueDate) : "-";
+    drawRow("Catatan", `Batas akhir pembayaran s.d ${dDate}, pukul 23.59`);
+
+    const boxEndY = currentY + 7;
+    doc.rect(boxX, boxStartY, boxWidth, boxEndY - boxStartY).stroke(black);
+    doc.y = boxEndY + 15;
+
+    // --- DISCLAIMER & FOOTER ---
+    doc.font(fontRegular).text("        Sesuai dengan ketentuan yang berlaku, ", 50, doc.y , { continued: true, align: 'justify' });
+    doc.font(fontBold).text("seluruh pembayaran yang telah dibayarkan tidak dapat dikembalikan dengan alasan apa pun", 50, doc.y , { continued: true });
+    doc.font(fontRegular).text(". Harap dapat melakukan pengecekan kembali atas rincian invoice yang Anda terima. Demikian invoice yang kami berikan, atas perhatian Anda kami ucapkan terimakasih.", 50, doc.y);
+    doc.moveDown(1);
+
+    doc.font(fontItalic).text("Wassalamu’alaikum Warahmatullahi Wabarakatuh.", 50, doc.y);
+    doc.moveDown(2);
+
+    if (doc.y > doc.page.height - 150) doc.addPage();
+
+    doc.font(fontRegular).text("Hormat Kami,", 50, doc.y);
+    const sigY = doc.y + 10;
+    const sigPath = getAssetPath('signature');
+    if (sigPath && fs.existsSync(sigPath)) doc.image(sigPath, 50, sigY, { height: 60 });
+    
+    doc.y = sigY + 70; 
+    doc.font(fontBold).text("Ii Ratna Yanti Kosasih, S.Si., M.Sc.", 50, doc.y, { underline: true });
+    doc.font(fontRegular).text("General Manager");
+
+    const footerY = doc.page.height - 50;
+    doc.fontSize(8).font(fontItalic).text("Fathanah | Amanah | Shiddiq | Tabligh", 50, footerY, { align: "right", width: doc.page.width - 100 });
+};
+
+// 2. LAYOUT RECEIPT / KWITANSI (Diekstrak dari kode lama Anda)
+const drawReceiptLayout = (doc, payment, context) => {
+    const { amountValue, receiptNumber, installmentEntry, label } = context;
+    const amountInWords = numberToBahasa(amountValue);
+    // Gunakan tanggal bayar dari history jika ada
+    const receiptDate = formatLongDate(installmentEntry?.paid_at || installmentEntry?.verified_at || new Date());
+
+    const startX = 60;
+    const pageWidth = doc.page.width; 
+    const rightMarginX = pageWidth - 60;
+    const contentWidth = rightMarginX - startX;
+    const headerY = 50;
+
+    // Header
+    doc.font("Times-Bold").fontSize(42).fillColor("#000000").text("KWITANSI", startX, headerY);
+    doc.font("Helvetica").fontSize(12).text(`No: ${receiptNumber}`, startX, headerY + 45);
+    
+    const logoPath = getAssetPath('logo');
+    if (logoPath) doc.image(logoPath, pageWidth - 280, 25, { width: 220 });
+
+    doc.moveTo(startX, headerY + 70).lineTo(rightMarginX, headerY + 70).lineWidth(2).stroke();
+
+    // Body
+    const contentY = headerY + 100;
+    const colonX = startX + 180; 
+    const valueX = startX + 200;
+    const rowGap = 35; 
+
+    const drawRow = (l, v, y, italic = false) => {
+      doc.font("Helvetica").fontSize(14).fillColor("#000000").text(l, startX, y);
+      doc.text(":", colonX, y);
+      doc.font(italic ? "Helvetica-Oblique" : "Helvetica-Bold")
+         .fontSize(14).text(v, valueX, y, { width: contentWidth - 220, align: "left" });
+    };
+
+    drawRow("Telah diterima dari", payment.full_name || "-", contentY);
+    
+    const amountHeight = doc.heightOfString(amountInWords + " Rupiah", { width: contentWidth - 220 });
+    drawRow("Uang sejumlah", amountInWords + " Rupiah", contentY + rowGap, true);
+
+    let currentY = contentY + rowGap + (amountHeight > 25 ? amountHeight : 25) + 15;
+    drawRow("Untuk", `${label} - ${payment.program_name || "-"}`, currentY);
+
+    // Separator
+    currentY += 60;
+    doc.moveTo(startX, currentY).lineTo(rightMarginX, currentY).lineWidth(1).dash(5, { space: 5 }).stroke();
+    doc.undash(); 
+
+    // Footer
+    const footerY = currentY + 40;
+    doc.font("Helvetica").fontSize(12)
+       .text("Rekening BCA Cab. Maranatha Bandung", startX, footerY)
+       .text("2828339333 a.n PT FAST Indo Talenta", startX, footerY + 20);
+
+    const boxTop = footerY + 60;
+    const boxWidth = 250;
+    doc.lineWidth(2).rect(startX, boxTop, boxWidth, 60).stroke();
+    doc.font("Helvetica-Bold").fontSize(22)
+       .text(formatCurrency(amountValue), startX, boxTop + 20, { width: boxWidth, align: "center" });
+
+    // TTD
+    const signAreaWidth = 250;
+    const signStartX = rightMarginX - signAreaWidth;
+    doc.font("Helvetica").fontSize(12).text(`Bandung, ${receiptDate}`, signStartX, footerY, { width: signAreaWidth, align: "center" });
+
+    const sigPath = getAssetPath('signature');
+    if (sigPath && fs.existsSync(sigPath)) doc.image(sigPath, pageWidth - 270, footerY + 30, { width: 150 }); // Adjust position as needed
+
+    const nameY = footerY + 120;
+    doc.font("Helvetica-Bold").fontSize(12).fillColor("#000000")
+       .text("Ii Ratna Yanti Kosasih", signStartX, nameY, { width: signAreaWidth, align: "center", underline: true });
+    doc.font("Helvetica").fontSize(11).text("General Manager", signStartX, nameY + 20, { width: signAreaWidth, align: "center" });
+
+    doc.font("Times-Roman").fontSize(10).fillColor("#666666")
+       .text("FATHANAH | AMANAH | SHIDDIQ | TABLIGH", 0, doc.page.height - 40, { align: "center" });
+};
+
+// 3. GENERATOR UTAMA (SNAPSHOT LOGIC)
+const generateAndSaveDocument = async (type, paymentData, context) => {
+    // Nama file unik berdasarkan installment number
+    const filename = `${type}-${paymentData.id}-${context.installmentNumber || 'full'}.pdf`;
+    const filePath = path.join(__dirname, `../storage/${type}s`, filename);
+
+    // Pastikan folder ada
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    // JIKA FILE SUDAH ADA, KEMBALIKAN PATH-NYA (FREEZE DATA)
+    if (fs.existsSync(filePath)) {
+        return filePath;
+    }
+
+    return new Promise((resolve, reject) => {
+        const pdfOptions = type === 'receipt' ? { size: "A4", layout: "landscape", margin: 50 } : { size: "A4", margin: 50 };
+        const doc = new PDFDocument(pdfOptions);
+        const stream = fs.createWriteStream(filePath);
+
+        doc.pipe(stream);
+
+        if (type === 'invoice') drawInvoiceLayout(doc, paymentData, context);
+        else if (type === 'receipt') drawReceiptLayout(doc, paymentData, context);
+
+        doc.end();
+
+        stream.on("finish", () => resolve(filePath));
+        stream.on("error", (err) => reject(err));
+    });
+};
+// ==========================================
+// [END] PDF GENERATOR
+// ==========================================
+
 router.get("/", async (req, res) => {
   try {
     const { status, program, search, start_date, end_date } = req.query;
@@ -775,6 +1017,8 @@ router.post(
   }
 );
 
+
+
 router.post("/:id/create-invoice", async (req, res) => {
   const connection = await db.promise().getConnection();
 
@@ -946,6 +1190,22 @@ router.post("/:id/create-invoice", async (req, res) => {
     );
 
     await connection.commit();
+
+    // [SNAPSHOT INVOICE TRIGGER]
+    try {
+        const pdfData = { ...currentPayment, full_name: currentPayment.participant_name, program_name: currentPayment.program_name };
+        const context = {
+            installmentNumber: installment_number,
+            amountValue: sanitizedAmount,
+            dueDate: due_date,
+            label: `Cicilan Ke-${installment_number}`,
+            installmentEntry: { invoice_issued_at: new Date() } // Tanggal beku saat ini
+        };
+        // Simpan file sekarang juga
+        await generateAndSaveDocument('invoice', pdfData, context);
+        console.log(`Snapshot Invoice ${installment_number} tersimpan.`);
+    } catch (e) { console.error("Gagal snapshot invoice", e); }
+    // ----------------------------------
 
     let emailSent = false;
     if (currentPayment.participant_email) {
@@ -1235,6 +1495,35 @@ let updatedInstallmentsJson = null;
 
     await connection.commit();
 
+    // [SNAPSHOT RECEIPT TRIGGER]
+    if (newPaymentAmount > 0 && receipt_number) {
+        try {
+            // Logika penentuan cicilan ke berapa yg baru dibayar
+            let targetInstallment = current_installment_number;
+            if ((finalStatus === 'paid' || finalStatus === 'paid_off') && !targetInstallment) {
+                 if (currentPayment.status.startsWith('installment_')) {
+                     targetInstallment = parseInt(currentPayment.status.split('_')[1]);
+                 } else {
+                     targetInstallment = totalInstallments;
+                 }
+            }
+            if(!targetInstallment) targetInstallment = 1;
+
+            const context = {
+                installmentNumber: targetInstallment,
+                amountValue: newPaymentAmount,
+                receiptNumber: receipt_number,
+                label: finalStatus === 'paid' ? 'Pelunasan' : `Cicilan Ke-${targetInstallment}`,
+                installmentEntry: { paid_at: new Date() } // Tanggal beku saat ini
+            };
+            
+            // Simpan file sekarang juga
+            await generateAndSaveDocument('receipt', { ...currentPayment, id: paymentId }, context);
+             console.log(`Snapshot Receipt ${targetInstallment} tersimpan.`);
+        } catch (e) { console.error("Gagal snapshot kwitansi", e); }
+    }
+    // -----------------------------------
+
     let emailSent = false;
     const notifiableStatuses = [
       "installment_1",
@@ -1503,6 +1792,59 @@ router.post("/manual", async (req, res) => {
   }
 });
 
+// GET /api/payments/:id/download/:type/:installment
+router.get("/:id/download/:type/:installment", async (req, res) => {
+  const { id, type, installment } = req.params; // type: 'invoice' | 'receipt'
+  
+  try {
+    // 1. Ambil data payment dasar
+    const [payments] = await db.promise().query(
+      `SELECT py.*, u.full_name, p.name as program_name, p.training_cost
+       FROM payments py
+       LEFT JOIN registrations r ON py.registration_id = r.id
+       LEFT JOIN users u ON r.user_id = u.id
+       LEFT JOIN programs p ON r.program_id = p.id
+       WHERE py.id = ?`, 
+      [id]
+    );
+
+    if (payments.length === 0) {
+      return res.status(404).json({ success: false, message: "Data tidak ditemukan" });
+    }
+    const payment = payments[0];
+    const installmentNumber = parseInt(installment);
+
+    // 2. Re-construct Context untuk file yang diminta
+    // Kita memaksa parameter berdasarkan URL, bukan status database saat ini
+    const installmentData = parseInstallmentAmounts(payment);
+    const specificData = installmentData[`installment_${installmentNumber}`] || {};
+    
+    // Fallback amount: Coba ambil dari JSON, jika tidak ada, ambil dari history, atau hitung rata-rata
+    let amountValue = sanitizeAmountValue(specificData.amount, 0);
+    if(amountValue === 0) {
+        amountValue = await getLastPaymentChange(payment, `installment_${installmentNumber}`);
+    }
+
+    const context = {
+      installmentNumber: installmentNumber,
+      amountValue: amountValue > 0 ? amountValue : (payment.training_cost / getTotalInstallments(payment)),
+      dueDate: specificData.due_date || payment.due_date,
+      receiptNumber: specificData.receipt_number || payment.receipt_number,
+      label: `Cicilan Ke-${installmentNumber}`
+    };
+
+    // 3. Panggil Generator (Get or Create)
+    const filePath = await generateAndSaveDocument(type, payment, context);
+
+    // 4. Download
+    res.download(filePath, path.basename(filePath));
+
+  } catch (error) {
+    console.error("Download Error:", error);
+    res.status(500).send("Terjadi kesalahan saat mengunduh file.");
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const [payments] = await db.promise().query(
@@ -1591,678 +1933,132 @@ router.get("/:id", async (req, res) => {
 });
 
 router.get("/:id/invoice", async (req, res) => {
-  let doc;
   try {
+    // 1. Ambil Data Payment (Sama seperti sebelumnya)
     const [payments] = await db.promise().query(
-      `
-      SELECT 
-        py.*,
-        r.registration_code,
-        u.full_name,
-        u.email,
-        u.phone,
-        u.address,
-        p.name as program_name,
-        p.training_cost as program_training_cost,
-        p.departure_cost as program_departure_cost,
-        p.duration as program_duration,
-        p.installment_plan as program_installment_plan
-      FROM payments py
-      LEFT JOIN registrations r ON py.registration_id = r.id
-      LEFT JOIN users u ON r.user_id = u.id
-      LEFT JOIN programs p ON r.program_id = p.id
-      WHERE py.id = ?
-    `,
+      `SELECT py.*, r.registration_code, u.full_name, u.email, u.phone, u.address, 
+              p.name as program_name, p.training_cost as program_training_cost, 
+              p.installment_plan as program_installment_plan
+       FROM payments py
+       LEFT JOIN registrations r ON py.registration_id = r.id
+       LEFT JOIN users u ON r.user_id = u.id
+       LEFT JOIN programs p ON r.program_id = p.id
+       WHERE py.id = ?`,
       [req.params.id]
     );
 
-    if (payments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found",
-      });
-    }
-
+    if (payments.length === 0) return res.status(404).send("Payment not found");
     const payment = payments[0];
 
-    // --- LOGIC PERHITUNGAN CICILAN (Sama seperti sebelumnya) ---
-    const totalInstallments = getTotalInstallments(payment);
-    const { installment: installmentQuery, status: statusQuery } = req.query;
-
-    let requestedInstallment = null;
-    let targetStatus = statusQuery || null;
-
-    if (installmentQuery) {
-      if (
-        ["paid", "lunas", "final", "0"].includes(
-          installmentQuery.toString().toLowerCase()
-        )
-      ) {
-        targetStatus = "paid";
-      } else {
-        const parsedInstallment = parseInt(installmentQuery, 10);
-        if (!isNaN(parsedInstallment)) {
-          requestedInstallment = parsedInstallment;
-          targetStatus = `installment_${parsedInstallment}`;
-        }
-      }
-    }
-
-    if (
-      requestedInstallment &&
-      (requestedInstallment < 1 || requestedInstallment > totalInstallments)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `Cicilan ${requestedInstallment} tidak valid untuk program ini`,
-      });
-    }
-
-    if (!payment.invoice_number) {
-      return res.status(400).json({
-        success: false,
-        message: "Invoice belum diterbitkan untuk pembayaran ini",
-      });
-    }
-
-    const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
-    const amountPaid = parseFloat(payment.amount_paid || 0);
-    const remaining = Math.max(totalAmount - amountPaid, 0);
-
-    const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount, {
-      status: targetStatus,
-      installmentNumber: requestedInstallment,
-    });
-
-    if (requestedInstallment && !paymentContext.installmentEntry) {
-      return res.status(404).json({
-        success: false,
-        message: `Data cicilan ${requestedInstallment} tidak ditemukan`,
-      });
-    }
-
-    const paymentLabel =
-      paymentContext.label ||
-      getStatusText(paymentContext.status || payment.status) ||
-      "Pembayaran";
-    const invoiceAmount = paymentContext.amountValue || 0;
-
-    const invoiceDateValue =
-      paymentContext.installmentEntry?.invoice_issued_at ||
-      payment.updated_at ||
-      payment.created_at ||
-      new Date();
-    const formattedInvoiceDate = formatLongDate(invoiceDateValue);
-    const dueDateSource = paymentContext.dueDate || payment.due_date;
-    const dueDateFormatted = dueDateSource ? formatLongDate(dueDateSource) : "-";
+    // 2. Tentukan Konteks (Cicilan ke berapa?)
+    // Logic ini tetap diperlukan untuk menangani query params ?installment=2
+    const { installment } = req.query;
+    let targetInstallment = installment ? parseInt(installment) : payment.current_installment_number;
     
-    // Format "26 November 2025, pukul 23.59"
-    const dueTimeFormatted = dueDateSource ? formatTime(dueDateSource) : ""; 
-    const dueDisplay = dueDateSource && dueDateFormatted
-        ? `${dueDateFormatted}${dueTimeFormatted ? `, pukul ${dueTimeFormatted}` : ""}`
-        : "-";
+    // Fallback jika tidak ada query param, ambil logic default
+    if (!targetInstallment) targetInstallment = 1;
 
-    const amountInWords = numberToBahasa(invoiceAmount);
-
-    // --- MULAI GENERATE PDF ---
-    res.setHeader("Content-Type", "application/pdf");
-    const suffix = requestedInstallment
-      ? `-cicilan-${requestedInstallment}`
-      : targetStatus === "paid"
-      ? "-pelunasan"
-      : "";
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=invoice-${payment.invoice_number}${suffix}.pdf`
-    );
-
-    // Margin kiri kanan standar surat resmi (misal 2.5cm = ~70pt, atau 50pt)
-    doc = new PDFDocument({ size: "A4", margin: 50 });
-    doc.pipe(res);
-
-    // Definisikan Font dan Warna Dasar
-    const fontRegular = "Helvetica";
-    const fontBold = "Helvetica-Bold";
-    const fontItalic = "Helvetica-Oblique";
-    const black = "#000000";
-
-    // --- HEADER (Logo Kiri, Alamat Kanan) ---
-    const logoPath = findLogoPath(); // Pastikan fungsi ini return path valid
-    if (logoPath) {
-        // Logo di kiri
-        doc.image(logoPath, 50, 40, { width: 150 });
-    }
-
-    // Alamat di kanan (menyesuaikan koordinat X agar di sebelah logo)
-    // Asumsi lebar logo 150, kita mulai teks di x=220
-    const headerTextX = 220;
-    const headerTopY = 45;
-
-    doc
-      .font(fontBold)
-      .fontSize(11)
-      .fillColor(black)
-      .text("PT FAST Indo Talenta", headerTextX, headerTopY);
-
-    doc
-      .font(fontRegular)
-      .fontSize(9) // Font alamat lebih kecil
-      .text("Gedung Science and Techno Park ITB", headerTextX, doc.y + 2)
-      .text("Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132")
-      .text("Telp: +62 81110119273") // Sesuaikan nomor dgn gambar
-      .text("fitalenta.co.id");
-
-    // Pindah ke bawah header
-    doc.y = 130; 
-
-    // --- TANGGAL DAN NOMOR SURAT ---
-    doc
-      .font(fontRegular)
-      .fontSize(11)
-      .text(`Bandung, ${formattedInvoiceDate}`, 50, doc.y);
-    
-    doc.moveDown(0.5);
-    
-    doc.text(`No: ${payment.invoice_number}`);
-
-    doc.moveDown(1);
-
-    // --- PENERIMA (KEPADA YTH) ---
-    doc.text("Kepada Yth.");
-    doc.font(fontBold).text(payment.full_name || "-");
-    
-    // Alamat Penerima (Normal font)
-    // doc.font(fontRegular);
-    // if (payment.address) {
-    //     // Limit width agar tidak terlalu panjang ke kanan
-    //     doc.text(payment.address, { width: 300 }); 
-    // }
-    // doc.text("Di tempat");
-
-    doc.moveDown(1.5);
-
-    // --- PERIHAL (Underline & Bold) ---
-    doc
-      .font(fontBold) // Set font bold untuk kedua bagian
-      // Bagian 1: "Perihal: " (Tanpa underline, kursor tetap di baris yang sama)
-      .text("Perihal: ", {
-        continued: true, 
-        underline: false
-      })
-      // Bagian 2: Sisanya (Dengan underline)
-      .text(`Invoice ${paymentLabel} ${payment.program_name}`, {
-        underline: true
-      });
-
-    doc.moveDown(1.5);
-
-    // --- SALAM PEMBUKA (Italic) ---
-    doc
-      .font(fontItalic)
-      .text("Assalamu’alaikum Warahmatullahi Wabarakatuh.");
-    
-    doc.moveDown(1);
-
-    // --- PARAGRAF PEMBUKA (Justified) ---
-doc
-  .font(fontRegular)
-  // 1. Tulis Salam Hormat terlebih dahulu (tanpa indent)
-  .text("Salam hormat,", { 
-      lineGap: 5 // Memberi sedikit jarak ke paragraf di bawahnya
-  })
-  // 2. Tulis Paragraf isinya dengan properti 'indent'
-  .text(
-    `Terimakasih atas kepercayaan yang diberikan kepada PT FAST Indo Talenta untuk ikut serta dalam pengiriman tenaga kerja melalui ${payment.program_name}. Bersama ini kami sampaikan tagihan biaya ${payment.program_name} melalui skema cicilan.`,
-    { 
-      align: "justify", 
-      lineGap: 3,
-      indent: 30 // <--- INI SOLUSINYA. Sesuaikan angka 30 dengan kedalaman indentasi yang Anda mau.
-    }
-  );
-
-    // --- KOTAK INVOICE (Manual Draw) ---
-    // Kita akan menggambar teks dulu untuk menghitung tinggi, baru menggambar kotak
-    const boxX = 50;
-    const boxWidth = doc.page.width - 100;
-    const col1X = boxX + 10;          // Margin kiri dalam kotak
-    const col2X = col1X + 150;        // Posisi titik dua (:)
-    const col3X = col2X + 15;         // Posisi value
-    const col3Width = boxWidth - 175; // Sisa lebar untuk value
-    
-    const boxStartY = doc.y;
-    let currentY = boxStartY + 15; // Padding atas dalam kotak
-
-    // Helper function untuk baris tabel
-    const drawRow = (label, value) => {
-        const startRowY = currentY;
-        
-        doc.font(fontBold).text(label, col1X, startRowY);
-        doc.font(fontRegular).text(":", col2X, startRowY);
-        
-        // Render Value (bisa multiline)
-        doc.text(value, col3X, startRowY, { width: col3Width, align: 'left' });
-        
-        // Hitung tinggi yang terpakai (mana yang lebih tinggi, label atau value)
-        const heightVal = doc.heightOfString(value, { width: col3Width });
-        const rowHeight = Math.max(heightVal, 15); // Min height
-        
-        currentY = startRowY + rowHeight + 8; // Spacing antar baris
+    // Siapkan Context untuk Snapshot Engine
+    // (Anda mungkin perlu menyesuaikan logic resolveCurrentPaymentContext agar sesuai kebutuhan)
+    const context = {
+        installmentNumber: targetInstallment,
+        // Jika perlu passing due date spesifik atau amount spesifik, lakukan di sini
+        label: `Cicilan Ke-${targetInstallment}`
     };
 
-    drawRow("Nama Program", payment.program_name || "-");
-    drawRow("Tagihan", formatCurrency(invoiceAmount));
-    drawRow("Rincian Tagihan", `${paymentLabel} Biaya Program`);
-    
-    // Rekening (Multiline manual)
-    drawRow("Rekening Tujuan", 
-        "PT FAST Indo Talenta\n" +
-        "Nomor Rekening BCA 2828339333"
-    );
+    // 3. PANGGIL FUNGSI SNAPSHOT (Inti Perubahan)
+    // Fungsi ini akan cek: File ada? Kirim path-nya. Belum ada? Buat, simpan, lalu kirim path-nya.
+    const filePath = await generateAndSaveDocument('invoice', payment, context);
 
-    drawRow("Catatan", 
-        `Batas akhir pembayaran s.d ${dueDisplay}`
-    );
-
-    const boxEndY = currentY + 7; // Padding bawah
-
-    // GAMBAR KOTAK (Stroke Only)
-    doc
-       .rect(boxX, boxStartY, boxWidth, boxEndY - boxStartY)
-       .stroke(black);
-
-    // Reset posisi Y ke bawah kotak
-    doc.y = boxEndY + 15;
-
-    // --- DISCLAIMER (Justified) ---
-    // Gunakan font campuran (Bold untuk penekanan)
-    doc.font(fontRegular).text("        Sesuai dengan ketentuan yang berlaku, ", 50, doc.y , { continued: true, align: 'justify' });
-    doc.font(fontBold).text("seluruh pembayaran yang telah dibayarkan tidak dapat dikembalikan dengan alasan apa pun", 50, doc.y , { continued: true });
-    doc.font(fontRegular).text(". Harap dapat melakukan pengecekan kembali atas rincian invoice yang Anda terima. Demikian invoice yang kami berikan, atas perhatian Anda kami ucapkan terimakasih.", 50, doc.y);
-
-    doc.moveDown(1);
-
-    // --- SALAM PENUTUP ---
-    doc
-      .font(fontItalic)
-      .text("Wassalamu’alaikum Warahmatullahi Wabarakatuh.", 50, doc.y);
-    
-    doc.moveDown(2);
-
-    // --- TANDA TANGAN (Kiri) ---
-    // Cek sisa halaman, jika tidak cukup buat page baru (untuk menghindari kepotong)
-    if (doc.y > doc.page.height - 150) {
-        doc.addPage();
-    }
-
-    doc.font(fontRegular).text("Hormat Kami,", 50, doc.y);
-    
-    const sigY = doc.y + 10;
-    
-    // Load Gambar Tanda Tangan (Jika ada file-nya)
-    // Pastikan path ini benar di server Anda
-    const sigPath = path.join(__dirname, '../../frontend/public/signature.jpg'); 
-    if (fs.existsSync(sigPath)) {
-       doc.image(sigPath, 50, sigY, { height: 60 });
-    }
-    
-    // Space untuk tanda tangan
-    doc.y = sigY + 70; 
-
-    // Nama Penanda Tangan (Bold & Underline)
-    doc
-      .font(fontBold)
-      .text("Ii Ratna Yanti Kosasih, S.Si., M.Sc.", 50, doc.y, { underline: true });
-    
-    doc
-      .font(fontRegular)
-      .text("General Manager");
-
-    // --- FOOTER (Pojok Kanan Bawah) ---
-    // Kita taruh text di posisi absolut bawah
-    const footerY = doc.page.height - 50;
-    doc
-      .fontSize(8)
-      .font(fontItalic) // Atau Regular
-      .text("Fathanah | Amanah | Shiddiq | Tabligh", 50, footerY, {
-          align: "right",
-          width: doc.page.width - 1500
-      });
-
-    doc.end();
+    // 4. Kirim File ke User
+    res.download(filePath, `Invoice-${payment.invoice_number}-Cicilan-${targetInstallment}.pdf`);
 
   } catch (error) {
-    console.error("Error generating invoice PDF:", error);
-    if (doc) doc.end();
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        message: "Gagal membuat PDF invoice: " + error.message,
-      });
-    }
+    console.error("Error serving invoice:", error);
+    res.status(500).send("Gagal mengambil invoice.");
   }
 });
 
-    router.get("/:id/receipt", async (req, res) => {
-  let doc;
+router.get("/:id/receipt", async (req, res) => {
   try {
-    // --- 1. DATA FETCHING (SAMA SEPERTI SEBELUMNYA) ---
+    // 1. Ambil Data Payment dari Database
     const [payments] = await db.promise().query(
       `SELECT py.*, r.registration_code, u.full_name, u.email, u.phone, u.address, 
-      p.name as program_name, p.training_cost as program_training_cost, 
-      p.departure_cost as program_departure_cost, p.duration as program_duration, 
-      p.installment_plan as program_installment_plan, verifier.full_name as verified_by_name
-      FROM payments py
-      LEFT JOIN registrations r ON py.registration_id = r.id
-      LEFT JOIN users u ON r.user_id = u.id
-      LEFT JOIN programs p ON r.program_id = p.id
-      LEFT JOIN users verifier ON py.verified_by = verifier.id
-      WHERE py.id = ?`,
+              p.name as program_name, p.training_cost as program_training_cost, 
+              p.installment_plan as program_installment_plan
+       FROM payments py
+       LEFT JOIN registrations r ON py.registration_id = r.id
+       LEFT JOIN users u ON r.user_id = u.id
+       LEFT JOIN programs p ON r.program_id = p.id
+       WHERE py.id = ?`,
       [req.params.id]
     );
 
     if (payments.length === 0) {
-      return res.status(404).json({ success: false, message: "Payment not found" });
+      return res.status(404).send("Data pembayaran tidak ditemukan.");
     }
 
     const payment = payments[0];
-    const totalInstallments = getTotalInstallments(payment);
-    const { installment: installmentQuery, status: statusQuery } = req.query;
+    const { installment } = req.query;
 
-    let requestedInstallment = null;
-    let targetStatus = statusQuery || null;
+    // 2. Tentukan Cicilan Mana yang Diminta (Installment Context)
+    // Logika ini penting agar snapshot tahu kwitansi mana yang harus diambil/dibuat
+    let targetInstallment = null;
 
-    if (installmentQuery) {
-      if (["paid", "lunas", "final", "0"].includes(installmentQuery.toString().toLowerCase())) {
-        targetStatus = "paid";
+    if (installment) {
+      // Jika user spesifik minta ?installment=1
+      targetInstallment = parseInt(installment);
+    } else {
+      // Jika tidak ada request spesifik, coba tebak dari status terakhir
+      if (payment.status.startsWith("installment_")) {
+        targetInstallment = parseInt(payment.status.split("_")[1]);
+      } else if (payment.status === "paid" || payment.status === "lunas") {
+        // Jika lunas, biasanya user ingin kwitansi terakhir atau pelunasan
+        // Kita bisa default ke installment terakhir yang tercatat, atau 0 (pelunasan)
+        targetInstallment = payment.current_installment_number || 1; 
       } else {
-        const parsedInstallment = parseInt(installmentQuery, 10);
-        if (!isNaN(parsedInstallment)) {
-          requestedInstallment = parsedInstallment;
-          targetStatus = `installment_${parsedInstallment}`;
-        }
+        targetInstallment = 1; // Default fallback
       }
     }
 
-    if (requestedInstallment && (requestedInstallment < 1 || requestedInstallment > totalInstallments)) {
-      return res.status(400).json({ success: false, message: `Cicilan ${requestedInstallment} tidak valid` });
+    // 3. Validasi Ketersediaan Kwitansi
+    // Kwitansi seharusnya tidak boleh dicetak jika belum ada nomor kwitansinya (belum bayar)
+    if (!payment.receipt_number) {
+        return res.status(400).send("Kwitansi belum tersedia (Belum ada pembayaran terverifikasi).");
     }
 
-    const totalAmount = parseFloat(payment.program_training_cost || payment.amount || 0);
-    const amountPaid = parseFloat(payment.amount_paid || 0);
-    
-    const paymentContext = await resolveCurrentPaymentContext(payment, totalAmount, {
-      status: targetStatus,
-      installmentNumber: requestedInstallment,
-    });
-
-    if (requestedInstallment && !paymentContext.installmentEntry) {
-      return res.status(404).json({ success: false, message: `Data cicilan tidak ditemukan` });
-    }
-
-    const receiptNumber = paymentContext.receiptNumber || payment.receipt_number;
-    if (!receiptNumber) {
-      return res.status(400).json({ success: false, message: "Nomor kwitansi belum tersedia" });
-    }
-
-    const receiptAmount = paymentContext.amountValue || 0;
-    const amountInWords = numberToBahasa(receiptAmount) + " Rupiah";
-    const receiptDateValue = paymentContext.installmentEntry?.paid_at || payment.payment_date || payment.verified_at || new Date();
-    const receiptDate = formatLongDate(receiptDateValue);
-
-
-    // --- 2. SETUP GAMBAR (PUBLIC FOLDER) ---
-    // Menggunakan path.resolve(process.cwd(), 'public') untuk memastikan root project
-    const publicDir = path.resolve(process.cwd(), 'public');
-    
-    // Sesuaikan nama file persis dengan yang ada di folder public Anda
-    const signaturePath = () => {
-    const candidates = [
-      path.join(__dirname, "../../frontend/public/signature.jpg"),
-      
-    ];
-    // const logoPath = path.join(publicDir, 'logo-fitalenta.png');
-    // const signaturePath = path.join(publicDir, 'image_eaf745.png'); // Pastikan ini file PNG/JPG
-          for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
-          return candidate;
-        }
-      }
-
-      return null;
+    // 4. Siapkan Context untuk Snapshot Engine
+    // Engine akan menggunakan data ini untuk mengisi variabel dalam PDF jika file belum ada
+    const context = {
+        installmentNumber: targetInstallment,
+        receiptNumber: payment.receipt_number, // Menggunakan nomor kwitansi master (atau logic khusus jika ada per termin)
+        label: (payment.status === 'paid' && !installment) ? "Pelunasan" : `Cicilan Ke-${targetInstallment}`,
+        // Kita tidak perlu pass 'amount' disini jika generateAndSaveDocument
+        // sudah pintar mengambil data dari JSON installment_amounts. 
+        // Namun jika perlu memaksa, bisa tambahkan: amountValue: ...
     };
 
-    // DEBUG: Cek path di console server untuk memastikan file terbaca
-    // console.log("Mencari Logo di:", logoPath, fs.existsSync(logoPath) ? "(DITEMUKAN)" : "(TIDAK DITEMUKAN)");
-    // console.log("Mencari TTD di:", signaturePath, fs.existsSync(signaturePath) ? "(DITEMUKAN)" : "(TIDAK DITEMUKAN)");
+    // 5. EKSEKUSI SNAPSHOT (Inti Perubahan)
+    // Fungsi ini akan cek: Apakah file di storage/receipts/.. sudah ada?
+    // JIKA ADA: Return path file tersebut.
+    // JIKA TIDAK: Generate PDF baru, simpan ke storage, lalu return path-nya.
+    const filePath = await generateAndSaveDocument('receipt', payment, context);
 
-
-    // --- 3. PDF GENERATION (LANDSCAPE) ---
-    doc = new PDFDocument({ 
-        size: "A4", 
-        layout: "landscape", // SETTING LANDSCAPE
-        margin: 50 
+    // 6. Download File ke Browser User
+    const filename = `Kwitansi-${payment.receipt_number}-Cicilan-${targetInstallment}.pdf`;
+    
+    res.download(filePath, filename, (err) => {
+        if (err) {
+            console.error("Error sending receipt file:", err);
+            if (!res.headersSent) {
+                res.status(500).send("Gagal mengunduh file kwitansi.");
+            }
+        }
     });
-
-    res.setHeader("Content-Type", "application/pdf");
-    const suffix = requestedInstallment ? `-cicilan-${requestedInstallment}` : targetStatus === "paid" ? "-pelunasan" : "";
-    res.setHeader("Content-Disposition", `attachment; filename=kwitansi-${receiptNumber}${suffix}.pdf`);
-
-    doc.pipe(res);
-
-    // --- SETUP LAYOUT VARIABELS ---
-    // A4 Landscape lebar ~841pt, tinggi ~595pt
-    const startX = 60;
-    const pageWidth = doc.page.width; 
-    const rightMarginX = pageWidth - 60;
-    const contentWidth = rightMarginX - startX;
-
-    // ================= HEADER =================
-    const headerY = 50;
-
-    // Judul "KWITANSI"
-    doc
-      .font("Times-Bold") 
-      .fontSize(42) // Font lebih besar untuk landscape
-      .fillColor("#000000")
-      .text("KWITANSI", startX, headerY);
-
-    // Nomor Referensi
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .text(`No: ${receiptNumber}`, startX, headerY + 45);
-
-    // Logo (Kanan Atas)
-    // if (fs.existsSync(logoPath)) {
-    //   // Posisi X digeser menyesuaikan lebar landscape
-    //   doc.image(logoPath, rightMarginX - 130, headerY - 10, { width: 130 });
-    // }
-        const logoPath2 = findLogoPath();
-
-        if (logoPath2) {
-
-          doc.image(logoPath2, doc.page.width - 280, 25, { width: 220 });
-
-        }
-
-    // Garis Tebal Hitam
-    doc
-      .moveTo(startX, headerY + 70)
-      .lineTo(rightMarginX, headerY + 70)
-      .lineWidth(2)
-      .strokeColor("#000000")
-      .stroke();
-
-
-    // ================= BODY CONTENT =================
-    // Menggunakan koordinat relatif yang lebih lebar
-    const contentY = headerY + 100;
-    
-    // Layout Kolom: Label (kiri), Titik Dua (tengah dikit), Value (panjang ke kanan)
-    const labelX = startX;
-    const colonX = startX + 180; 
-    const valueX = startX + 200;
-    const rowGap = 35; // Jarak vertikal antar baris lebih renggang
-
-    const drawRow = (label, value, y, options = {}) => {
-      // Label
-      doc.font("Helvetica").fontSize(14).fillColor("#000000").text(label, labelX, y);
-      // Titik Dua
-      doc.text(":", colonX, y);
-      // Value
-      doc
-        .font(options.italic ? "Helvetica-Oblique" : "Helvetica-Bold")
-        .fontSize(14) // Font isi lebih besar
-        .text(value, valueX, y, { 
-          width: contentWidth - 220, // Lebar value menyesuaikan sisa kertas
-          align: "left" 
-        });
-    };
-
-    // 1. Telah diterima dari
-    drawRow("Telah diterima dari", payment.full_name || "-", contentY);
-
-    // 2. Uang sejumlah
-    const amountHeight = doc.heightOfString(amountInWords, { width: contentWidth - 220 });
-    drawRow("Uang sejumlah", amountInWords, contentY + rowGap, { italic: true });
-
-    // 3. Untuk Pembayaran
-    // Hitung posisi Y baris ke-3 secara dinamis
-    let currentY = contentY + rowGap + (amountHeight > 25 ? amountHeight : 25) + 15;
-    const purposeText = `${paymentContext.label} - ${payment.program_name || "-"}`;
-    drawRow("Untuk", purposeText, currentY);
-
-
-    // ================= SEPARATOR =================
-    // Geser ke bawah sedikit
-    currentY += 60;
-    
-    doc
-      .moveTo(startX, currentY)
-      .lineTo(rightMarginX, currentY)
-      .lineWidth(1)
-      .dash(5, { space: 5 })
-      .stroke();
-    
-    doc.undash(); 
-
-
-    // ================= FOOTER =================
-    const footerY = currentY + 40;
-
-    // --- AREA KIRI: Bank & Nominal ---
-    
-    // Info Bank
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .text("Rekening BCA Cab. Maranatha Bandung", startX, footerY)
-      .text("2828339333 a.n PT FAST Indo Talenta", startX, footerY + 20);
-
-    // Kotak Nominal
-    const boxTop = footerY + 60;
-    const boxWidth = 250;
-    const boxHeight = 60;
-
-    // Gambar Kotak
-    doc
-      .lineWidth(2)
-      .rect(startX, boxTop, boxWidth, boxHeight)
-      .stroke();
-
-    // Teks Nominal
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(22)
-      .text(
-        formatCurrency(receiptAmount), 
-        startX, 
-        boxTop + 20, // Center vertical manual
-        { width: boxWidth, align: "center" }
-      );
-
-
-    // --- AREA KANAN: Tanggal & Tanda Tangan ---
-    // Geser area tanda tangan lebih ke kanan karena landscape
-    const signAreaWidth = 250;
-    const signStartX = rightMarginX - signAreaWidth;
-
-    // Tanggal
-    doc
-      .font("Helvetica")
-      .fontSize(12)
-      .text(`Bandung, ${receiptDate}`, signStartX, footerY, {
-        width: signAreaWidth,
-        align: "center"
-      });
-
-    // Gambar Tanda Tangan
-    // if (fs.existsSync(signaturePath)) {
-      const signPath2 = signaturePath();
-
-        if (signPath2) {
-
-          doc.image(signPath2, doc.page.width - 270, 360, { width: 220 });
-
-        }
-       // Offset Y disesuaikan supaya tidak menumpuk tanggal
-      //  doc.image(signaturePath, signStartX + 50, footerY + 20, { 
-      //    width: 150, 
-      //    align: "center"
-      //  });
-    // } else {
-    //    // Fallback text
-    //    doc.text("(Tanda Tangan)", signStartX, footerY + 50, { align: "center", color: "#ccc" });
-    // }
-
-    // Nama & Jabatan
-    const nameY = footerY + 120; // Jarak untuk tanda tangan
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(12)
-      .fillColor("#000000")
-      .text("Ii Ratna Yanti Kosasih", signStartX, nameY, {
-        width: signAreaWidth,
-        align: "center",
-        underline: true
-      });
-
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .text("General Manager", signStartX, nameY + 20, {
-        width: signAreaWidth,
-        align: "center"
-      });
-
-
-    // ================= TAGLINE (BOTTOM) =================
-    const pageHeight = doc.page.height;
-    doc
-      .font("Times-Roman")
-      .fontSize(10)
-      .fillColor("#666666")
-      .text("FATHANAH | AMANAH | SHIDDIQ | TABLIGH", 0, pageHeight - 80, {
-        align: "center"
-      });
-
-    doc.end();
 
   } catch (error) {
-    console.error("Error generating receipt PDF:", error);
-
-    if (doc) {
-     // doc.end() berisiko jika stream error, biarkan res.end() menangani di bawah
-    }
-
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        message: "Gagal membuat PDF kwitansi: " + error.message,
-      });
-    } else {
-      res.end();
-    }
+    console.error("Error serving receipt:", error);
+    res.status(500).send("Terjadi kesalahan saat memproses kwitansi.");
   }
 });
 

@@ -799,18 +799,12 @@ const [downloadingId, setDownloadingId] = useState(null);
 
 const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') => {
   try {
-    // Set loading indicator khusus untuk baris ini (opsional)
     setDownloadingId(`${type}-${installment}`);
 
-    // Tentukan endpoint berdasarkan tipe (invoice atau receipt)
-    const endpoint = type === 'invoice' 
-      ? `/api/payments/${paymentId}/invoice?installment=${installment}`
-      : `/api/payments/${paymentId}/receipt?installment=${installment}`;
+    // GUNAKAN ENDPOINT BARU
+    const endpoint = `/api/payments/${paymentId}/download/${type}/${installment}`;
 
-    // Gunakan axios yang sudah ada (yang otomatis menyertakan Token)
-    const response = await axios.get(endpoint, {
-      responseType: 'blob', // PENTING: Agar axios membaca response sebagai file binary
-    });
+    const response = await axios.get(endpoint, { responseType: 'blob' });
 
     // Buat URL sementara untuk file blob tersebut
     const url = window.URL.createObjectURL(new Blob([response.data]));
