@@ -955,7 +955,9 @@ router.post("/", async (req, res) => {
 
       const registrationId = result.insertId;
 
-      const invoiceNumber = await generateInvoiceNumber();
+      const invoiceNumber = `REQ-${registrationCode}`;
+
+      // const invoiceNumber = await generateInvoiceNumber();
 
       await connection.query(
         `INSERT INTO payments 

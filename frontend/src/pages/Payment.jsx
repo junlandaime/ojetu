@@ -1471,7 +1471,7 @@ const [detailLoading, setDetailLoading] = useState(false);
         <div class="ref-number">No: ${metadata.receiptNumber}</div>
       </div>
       <div class="header-right">
-        <img src="logo-fitalenta.png" alt="Logo Fitalenta" />
+        <img src="https://registrasi.fitalenta.co.id/images/logo/fitalenta_2024.png" style="height: 90px;" alt="Logo Fitalenta" />
       </div>
     </div>
 
@@ -1542,11 +1542,9 @@ const [detailLoading, setDetailLoading] = useState(false);
         text: "Gagal mengunduh kwitansi: " + (error.message || "Unknown error"),
       });
     }
-  };
+  };           
 
-              
-
-              const downloadInvoice = async (payment, options = {}) => {
+  const downloadInvoice = async (payment, options = {}) => {
     const validation = paymentUtils.validatePayment(payment);
     if (!validation.isValid) {
       setMessage({
@@ -2327,16 +2325,7 @@ const [detailLoading, setDetailLoading] = useState(false);
             )}
 
 
-            {/* Download Receipt Button */}
-            {canDownloadReceipt(payment) && (
-              <button
-                className="btn btn-outline-primary"
-                onClick={() => downloadReceipt(payment)}
-                title="Download Kwitansi"
-              >
-                <i className="bi bi-download"></i>
-              </button>
-            )}
+      
 
             {/* View Details Button */}
             <button
@@ -3233,7 +3222,7 @@ const [detailLoading, setDetailLoading] = useState(false);
                 >
                   Tutup
                 </button>
-                {canDownloadReceipt(selectedPayment) && (
+                {/* {canDownloadReceipt(selectedPayment) && (
                   <button
                     type="button"
                     className="btn btn-primary"
@@ -3244,7 +3233,7 @@ const [detailLoading, setDetailLoading] = useState(false);
                   >
                     <i className="bi bi-download me-2"></i>Download Kwitansi
                   </button>
-                )}
+                )} */}
                 {canUploadProof(selectedPayment) && (
                   <button
                     type="button"

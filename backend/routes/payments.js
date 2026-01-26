@@ -663,7 +663,7 @@ const drawInvoiceLayout = (doc, payment, context) => {
     doc.font(fontRegular).text("General Manager");
 
     const footerY = doc.page.height - 50;
-    doc.fontSize(8).font(fontItalic).text("Fathanah | Amanah | Shiddiq | Tabligh", 50, footerY, { align: "right", width: doc.page.width - 100 });
+    doc.fontSize(8).font(fontItalic).text("Fathanah  | Amanah | Shiddiq | Tabligh", 50, footerY, { align: "right", width: doc.page.width - 1500 });
 };
 
 // 2. LAYOUT RECEIPT / KWITANSI (Diekstrak dari kode lama Anda)
@@ -703,8 +703,8 @@ const drawReceiptLayout = (doc, payment, context) => {
 
     drawRow("Telah diterima dari", payment.full_name || "-", contentY);
     
-    const amountHeight = doc.heightOfString(amountInWords + " Rupiah", { width: contentWidth - 220 });
-    drawRow("Uang sejumlah", amountInWords + " Rupiah", contentY + rowGap, true);
+    const amountHeight = doc.heightOfString(amountInWords + "", { width: contentWidth - 220 });
+    drawRow("Uang sejumlah", amountInWords + "", contentY + rowGap, true);
 
     let currentY = contentY + rowGap + (amountHeight > 25 ? amountHeight : 25) + 15;
     drawRow("Untuk", `${label} - ${payment.program_name || "-"}`, currentY);
@@ -732,7 +732,7 @@ const drawReceiptLayout = (doc, payment, context) => {
     doc.font("Helvetica").fontSize(12).text(`Bandung, ${receiptDate}`, signStartX, footerY, { width: signAreaWidth, align: "center" });
 
     const sigPath = getAssetPath('signature');
-    if (sigPath && fs.existsSync(sigPath)) doc.image(sigPath, pageWidth - 270, footerY + 30, { width: 150 }); // Adjust position as needed
+    if (sigPath && fs.existsSync(sigPath)) doc.image(sigPath, pageWidth - 270, footerY + 30, { width: 220 }); // Adjust position as needed
 
     const nameY = footerY + 120;
     doc.font("Helvetica-Bold").fontSize(12).fillColor("#000000")
@@ -740,13 +740,32 @@ const drawReceiptLayout = (doc, payment, context) => {
     doc.font("Helvetica").fontSize(11).text("General Manager", signStartX, nameY + 20, { width: signAreaWidth, align: "center" });
 
     doc.font("Times-Roman").fontSize(10).fillColor("#666666")
-       .text("FATHANAH | AMANAH | SHIDDIQ | TABLIGH", 0, doc.page.height - 40, { align: "center" });
+       .text("FATHANAH | AMANAH | SHIDDIQ | TABLIGH", 0, doc.page.height - 80, { align: "center" });
+};
+
+// --- HELPER PENAMAAN FILE ---
+const getStorageFilename = (type, paymentData, context) => {
+    // Fungsi untuk membersihkan karakter terlarang di nama file (seperti / \ : * ? " < > |)
+    const sanitize = (str) => str ? str.replace(/[\/\\:*?"<>|]/g, '-') : 'unknown';
+
+    if (type === 'invoice') {
+        // Format: Invoice-[NomorInvoice]-Cicilan-[Ke].pdf
+        // Contoh: Invoice-INV-2025-001-Cicilan-1.pdf
+        const invNum = sanitize(paymentData.invoice_number || `DRAFT-${paymentData.id}`);
+        return `Invoice-${invNum}-Cicilan-${context.installmentNumber}.pdf`;
+    } else {
+        // Format: Kwitansi-[NomorKwitansi].pdf
+        // Contoh: Kwitansi-REC-2025-999.pdf
+        // Karena nomor kwitansi pasti unik per pembayaran, kita tidak butuh nomor cicilan di nama file
+        const recNum = sanitize(context.receiptNumber || `REC-${paymentData.id}-${context.installmentNumber}`);
+        return `Kwitansi-${recNum}-Cicilan-${context.installmentNumber}.pdf`;
+    }
 };
 
 // 3. GENERATOR UTAMA (SNAPSHOT LOGIC)
 const generateAndSaveDocument = async (type, paymentData, context) => {
-    // Nama file unik berdasarkan installment number
-    const filename = `${type}-${paymentData.id}-${context.installmentNumber || 'full'}.pdf`;
+// [UPDATE: GUNAKAN HELPER PENAMAAN BARU]
+    const filename = getStorageFilename(type, paymentData, context);
     const filePath = path.join(__dirname, `../storage/${type}s`, filename);
 
     // Pastikan folder ada
@@ -1025,12 +1044,14 @@ router.post("/:id/create-invoice", async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    const { installment_number, amount, due_date, notes, verified_by } =
-      req.body;
+    const { installment_number, amount, due_date, notes, verified_by } = req.body;
     const issuerId = verified_by || req.user?.userId || null;
     const sanitizedAmount = sanitizeAmountValue(amount, null);
     const paymentId = req.params.id;
 
+    // ---------------------------------------------------------
+    // 1. AMBIL DATA PAYMENT EXISTING
+    // ---------------------------------------------------------
     const [payments] = await connection.query(
       `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan,
               p.name AS program_name, r.registration_code, r.id AS registration_id,
@@ -1054,6 +1075,11 @@ router.post("/:id/create-invoice", async (req, res) => {
     const currentPayment = payments[0];
     const totalInstallments = getTotalInstallments(currentPayment);
 
+    // ---------------------------------------------------------
+    // 2. VALIDASI LOGIKA CICILAN (Dari Block 2)
+    // ---------------------------------------------------------
+    
+    // Cek Urutan Cicilan
     let expectedInstallment = 1;
     if (currentPayment.status === "pending") {
       expectedInstallment = 1;
@@ -1078,13 +1104,14 @@ router.post("/:id/create-invoice", async (req, res) => {
       });
     }
 
+    // Cek Cicilan Sebelumnya Harus Lunas
     if (installment_number > 1) {
       const previousStatus = `installment_${installment_number - 1}`;
       const [paidHistory] = await connection.query(
         `SELECT * FROM payment_history 
          WHERE payment_id = ? 
          AND new_status = ? 
-         AND amount_changed > 0`,
+         AND amount_changed > 0`, // Asumsi: amount_changed > 0 menandakan ada uang masuk/lunas
         [paymentId, previousStatus]
       );
 
@@ -1097,6 +1124,7 @@ router.post("/:id/create-invoice", async (req, res) => {
       }
     }
 
+    // Validasi Amount
     if (!sanitizedAmount || sanitizedAmount <= 0) {
       await connection.rollback();
       return res.status(400).json({
@@ -1105,6 +1133,7 @@ router.post("/:id/create-invoice", async (req, res) => {
       });
     }
 
+    // Validasi Tanggal (Tidak boleh masa lalu)
     if (!due_date) {
       await connection.rollback();
       return res.status(400).json({
@@ -1125,6 +1154,16 @@ router.post("/:id/create-invoice", async (req, res) => {
       });
     }
 
+    // ---------------------------------------------------------
+    // 3. GENERATE NOMOR BARU & PERSIAPAN DATA UPDATE
+    // ---------------------------------------------------------
+    
+    // [PENTING] Generate Invoice Number Baru
+    const newInvoiceNo = await generateInvoiceNumber();
+    
+    // [PENTING] Receipt Number TIDAK digenerate disini agar status tetap "Belum Bayar"
+    
+    // Persiapan JSON History
     let installmentAmounts = {};
     try {
       installmentAmounts = currentPayment.installment_amounts
@@ -1147,12 +1186,19 @@ router.post("/:id/create-invoice", async (req, res) => {
       created_by: existingEntry.created_by || issuerId,
       notes: notes,
       status: "invoiced",
-      invoice_number: currentPayment.invoice_number,
+      
+      // Update JSON dengan Nomor Invoice Baru
+      invoice_number: newInvoiceNo, 
+      receipt_number: null, // Set NULL agar Frontend mendeteksi ini belum lunas
+      
       invoice_issued_at: nowIso,
     };
 
     const newStatus = `installment_${installment_number}`;
 
+    // ---------------------------------------------------------
+    // 4. UPDATE DATABASE
+    // ---------------------------------------------------------
     await connection.query(
       `UPDATE payments 
        SET status = ?,
@@ -1161,6 +1207,8 @@ router.post("/:id/create-invoice", async (req, res) => {
            current_installment_number = ?,
            installment_amounts = ?,
            is_manual_invoice = TRUE,
+           invoice_number = ?,    -- Update dengan Nomor Invoice Baru
+           receipt_number = NULL, -- Update jadi NULL (Reset status bayar)
            notes = CONCAT(COALESCE(notes, ''), ?),
            updated_at = NOW()
        WHERE id = ?`,
@@ -1170,11 +1218,16 @@ router.post("/:id/create-invoice", async (req, res) => {
         due_date,
         installment_number,
         JSON.stringify(installmentAmounts),
-         ` | Manual Invoice: Cicilan ${installment_number} - Amount: Rp ${sanitizedAmount} - Due: ${due_date}`,
+        newInvoiceNo, // Masukkan invoice baru
+        // Receipt number tidak masuk parameter karena di-hardcode NULL di query
+        ` | Manual Invoice: Cicilan ${installment_number} - Amount: Rp ${sanitizedAmount} - Due: ${due_date}`,
         paymentId,
       ]
     );
 
+    // ---------------------------------------------------------
+    // 5. CATAT HISTORY LOG
+    // ---------------------------------------------------------
     await connection.query(
       `INSERT INTO payment_history 
        (payment_id, old_status, new_status, notes, changed_by) 
@@ -1183,42 +1236,54 @@ router.post("/:id/create-invoice", async (req, res) => {
         paymentId,
         currentPayment.status,
         newStatus,
-        `Manual invoice created: Cicilan ${installment_number} - Amount: Rp ${sanitizedAmount} - Due: ${due_date} - ${notes || ""
-        }`,
-       issuerId,
+        `Manual invoice created: ${newInvoiceNo} (Cicilan ${installment_number}) - Amount: Rp ${sanitizedAmount} - Due: ${due_date}`,
+        issuerId,
       ]
     );
 
     await connection.commit();
 
+    // ---------------------------------------------------------
+    // 6. SNAPSHOT PDF & EMAIL
+    // ---------------------------------------------------------
+    
     // [SNAPSHOT INVOICE TRIGGER]
     try {
-        const pdfData = { ...currentPayment, full_name: currentPayment.participant_name, program_name: currentPayment.program_name };
+        const pdfData = { 
+            ...currentPayment, 
+            invoice_number: newInvoiceNo, // Pakai Invoice Baru
+            receipt_number: null,         // Pastikan Kosong di PDF
+            full_name: currentPayment.participant_name, 
+            program_name: currentPayment.program_name 
+        };
+        
         const context = {
             installmentNumber: installment_number,
             amountValue: sanitizedAmount,
             dueDate: due_date,
             label: `Cicilan Ke-${installment_number}`,
-            installmentEntry: { invoice_issued_at: new Date() } // Tanggal beku saat ini
+            installmentEntry: { invoice_issued_at: new Date() } 
         };
-        // Simpan file sekarang juga
+        
+        // Simpan file snapshot
         await generateAndSaveDocument('invoice', pdfData, context);
         console.log(`Snapshot Invoice ${installment_number} tersimpan.`);
     } catch (e) { console.error("Gagal snapshot invoice", e); }
-    // ----------------------------------
 
+    // [SEND EMAIL]
     let emailSent = false;
     if (currentPayment.participant_email) {
       try {
         const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
         const paymentUrl = `${appUrl}/dashboard/payments/${currentPayment.registration_id || ""}`;
+        
         await sendEmail({
           to: currentPayment.participant_email,
           subject: `Tagihan Cicilan ${installment_number} Program ${currentPayment.program_name}`,
           html: createInvoiceEmailTemplate({
             fullName: currentPayment.participant_name,
             programName: currentPayment.program_name || "Program Fitalenta",
-            invoiceNumber: currentPayment.invoice_number || paymentId,
+            invoiceNumber: newInvoiceNo, // Pakai Invoice Baru
             amount: formatCurrency(sanitizedAmount),
             dueDate: new Date(due_date).toLocaleDateString("id-ID"),
             paymentUrl,
@@ -1230,7 +1295,6 @@ router.post("/:id/create-invoice", async (req, res) => {
       }
     }
 
-
     res.json({
       success: true,
       message: `Tagihan cicilan ${installment_number} berhasil dibuat`,
@@ -1240,9 +1304,12 @@ router.post("/:id/create-invoice", async (req, res) => {
         amount: amount,
         due_date: due_date,
         current_installment_number: installment_number,
+        invoice_number: newInvoiceNo, // Kembalikan nomor baru
+        receipt_number: null          // Konfirmasi status null
       },
       meta: { emailSent },
     });
+
   } catch (error) {
     await connection.rollback();
     console.error("❌ Error creating manual invoice:", error);
@@ -1255,12 +1322,26 @@ router.post("/:id/create-invoice", async (req, res) => {
   }
 });
 
+// ============================================================================
+// [FIXED ROUTER] PUT STATUS: INCREMENTAL RECEIPT NUMBER (GLOBAL + LOCAL SCAN)
+// ============================================================================
+
+// ============================================================================
+// ROUTER PUT STATUS: INCREMENT BASED ON HISTORY LOG (THE MOST ROBUST WAY)
+// ============================================================================
+
+const getRomanMonth = () => {
+  const months = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+  return months[new Date().getMonth()];
+};
+
 router.put("/:id/status", async (req, res) => {
   const connection = await db.promise().getConnection();
 
   try {
     await connection.beginTransaction();
 
+    // 1. Ambil Data Request
     const {
       status,
       amount_paid,
@@ -1274,43 +1355,37 @@ router.put("/:id/status", async (req, res) => {
     } = req.body;
     const paymentId = req.params.id;
 
-    const noteValue =
-      typeof notes === "string" && notes.trim().length > 0 ? notes.trim() : null;
+    console.log(`[DEBUG] Processing Status Update ID: ${paymentId} -> ${status}`);
 
-
+    // 2. Ambil Data Payment Existing (PERBAIKAN: Tambahkan Join ke User & Program)
     const [currentPayments] = await connection.query(
-      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan,
-              p.name AS program_name, r.registration_code, r.id AS registration_id,
-              u.email AS participant_email, u.full_name AS participant_name
+      `SELECT 
+          py.*, 
+          p.training_cost as program_training_cost,
+          p.name as program_name,         -- Ambil Nama Program
+          u.full_name as participant_name, -- Ambil Nama User
+          u.email as participant_email
        FROM payments py
        LEFT JOIN registrations r ON py.registration_id = r.id
        LEFT JOIN programs p ON r.program_id = p.id
-       LEFT JOIN users u ON r.user_id = u.id
+       LEFT JOIN users u ON r.user_id = u.id -- Join ke tabel Users
        WHERE py.id = ?`,
       [paymentId]
     );
 
     if (currentPayments.length === 0) {
       await connection.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found",
-      });
+      return res.status(404).json({ success: false, message: "Payment not found" });
     }
 
     const currentPayment = currentPayments[0];
     const totalInstallments = getTotalInstallments(currentPayment);
-    const totalAmount = sanitizeAmountValue(
-      currentPayment.program_training_cost,
-      0
-    );
-    const currentAmountPaid = sanitizeAmountValue(
-      currentPayment.amount_paid || 0,
-      0
-    );
+    const totalAmount = sanitizeAmountValue(currentPayment.program_training_cost, 0);
+    const currentAmountPaid = sanitizeAmountValue(currentPayment.amount_paid || 0, 0);
     const newPaymentAmount = sanitizeAmountValue(amount_paid || 0, 0);
     const newTotalPaid = currentAmountPaid + newPaymentAmount;
 
+    // 3. Validasi
     const validation = await validateStatusProgression(
       currentPayment.status,
       status,
@@ -1322,143 +1397,154 @@ router.put("/:id/status", async (req, res) => {
 
     if (!validation.isValid) {
       await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: validation.error,
-        details: {
-          currentStatus: currentPayment.status,
-          requestedStatus: status,
-          currentAmountPaid,
-          newPaymentAmount,
-          totalAmount,
-        },
-      });
+      return res.status(400).json({ success: false, message: validation.error });
     }
 
-    if (newTotalPaid > totalAmount) {
-      await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: `Jumlah pembayaran melebihi total tagihan. Total: ${totalAmount}, Sudah dibayar: ${currentAmountPaid}, Maksimal: ${totalAmount - currentAmountPaid
-          }`,
-      });
-    }
-
+    // 4. Setup Status Baru
     let finalStatus = status;
-    let receipt_number = currentPayment.receipt_number;
     let due_date = currentPayment.due_date;
     let current_installment_number = currentPayment.current_installment_number;
 
-    if (finalStatus === "pending") {
-      current_installment_number = 0;
-    } else if (finalStatus.startsWith("installment_")) {
+    if (finalStatus.startsWith("installment_")) {
       current_installment_number = parseInt(finalStatus.split("_")[1]);
     } else if (finalStatus === "paid") {
-      current_installment_number = 0;
+      current_installment_number = 0; 
     }
-
+    
     if (newTotalPaid >= totalAmount && finalStatus !== "cancelled") {
       finalStatus = "paid";
-      current_installment_number = 0;
-
-      if (!receipt_number) {
-        receipt_number = await generateReceiptNumber();
-      }
     }
 
-    if (
-      !receipt_number &&
-      finalStatus !== "pending" &&
-      finalStatus !== "cancelled" &&
-      newPaymentAmount > 0
-    ) {
-      receipt_number = await generateReceiptNumber();
+    // ========================================================================
+    // [FINAL FIX] HISTORY LOG SCANNER
+    // Strategi: Cari angka terbesar dari tabel payment_history kolom notes.
+    // Karena history tidak pernah dihapus/null, ini adalah sumber kebenaran mutlak.
+    // ========================================================================
+    let receipt_number = null; 
+
+    if (finalStatus !== "pending" && finalStatus !== "cancelled" && finalStatus !== "rejected") {
+        
+        const year = new Date().getFullYear();
+        const romanMonth = getRomanMonth();
+        
+        // Baseline awal
+        let absoluteMaxSequence = 20; 
+
+        // A. SCANNER HISTORY (LOG QUERY)
+        // Kita cari note yang mengandung pola kwitansi, ambil 50 terakhir
+        // --------------------------------------------------------------------
+        const [historyRows] = await connection.query(
+            `SELECT notes 
+             FROM payment_history 
+             WHERE notes LIKE '%/TRX/FITALENTA/%' 
+             ORDER BY id DESC 
+             LIMIT 50`
+        );
+
+        // REGEX PINTAR:
+        // Mencari pola angka (\d+) tepat sebelum kata /TRX/FITALENTA
+        // Contoh: "Receipt generated: 60/TRX/..." -> Regex akan menangkap "60"
+        const receiptRegex = /(\d+)\/TRX\/FITALENTA\//;
+
+        historyRows.forEach(row => {
+            if (row.notes) {
+                const match = row.notes.match(receiptRegex);
+                if (match && match[1]) {
+                    const num = parseInt(match[1]);
+                    if (!isNaN(num) && num > absoluteMaxSequence) {
+                        absoluteMaxSequence = num;
+                    }
+                }
+            }
+        });
+        
+        console.log(`[DEBUG] Max found in History Logs: ${absoluteMaxSequence}`);
+
+        // B. SCANNER JSON LOKAL (Backup Safety)
+        // Tetap kita cek JSON user ini, jaga-jaga kalau history log gagal tercatat dulu
+        // --------------------------------------------------------------------
+        try {
+            const history = parseInstallmentAmounts(currentPayment);
+            Object.values(history).forEach(entry => {
+                if (entry && entry.receipt_number && typeof entry.receipt_number === 'string') {
+                    if (entry.receipt_number.includes('/TRX/FITALENTA/')) {
+                        const parts = entry.receipt_number.split('/TRX');
+                        const localNum = parseInt(parts[0]);
+                        
+                        if (!isNaN(localNum) && localNum > absoluteMaxSequence) {
+                            absoluteMaxSequence = localNum;
+                            console.log(`[DEBUG] Found higher number in Local JSON: ${localNum}`);
+                        }
+                    }
+                }
+            });
+        } catch (err) { /* ignore */ }
+
+        // C. GENERATE
+        const nextSequence = absoluteMaxSequence + 1;
+        receipt_number = `${nextSequence}/TRX/FITALENTA/${romanMonth}/${year}`;
+        
+        console.log(`[DEBUG] >>> FINAL GENERATED RECEIPT: ${receipt_number}`);
     }
+    // ========================================================================
 
-    const reviewerId = verified_by || req.user?.userId || currentPayment.verified_by || null;
+    const reviewerId = verified_by || req.user?.userId || null;
+    const noteValue = typeof notes === "string" ? notes.trim() : null;
 
+    // 5. Update DB
     let updateQuery = `UPDATE payments
-       SET status = ?, amount_paid = ?, receipt_number = ?, notes = COALESCE(?, notes),
-           verified_by = ?, verified_at = CASE WHEN ? IS NOT NULL THEN NOW() ELSE verified_at END,
-           due_date = ?, current_installment_number = ?`;
+        SET status = ?, amount_paid = ?, 
+            receipt_number = ?, 
+            notes = COALESCE(?, notes),
+            verified_by = ?, verified_at = NOW(),
+            due_date = ?, current_installment_number = ?`;
 
     let updateParams = [
       finalStatus,
       newTotalPaid,
-      receipt_number,
+      receipt_number, 
       noteValue,
-      reviewerId,
       reviewerId,
       due_date,
       current_installment_number,
     ];
 
-let updatedInstallmentsJson = null;
+    // 6. Update JSON
+    let updatedInstallmentsJson = null;
 
-    if (receipt_number && newPaymentAmount > 0) {
+    if (receipt_number) {
       const existingInstallments = parseInstallmentAmounts(currentPayment);
-      let effectiveInstallmentNumber = null;
-
-      if (finalStatus && finalStatus.startsWith("installment_")) {
-        effectiveInstallmentNumber = parseInt(finalStatus.split("_")[1]);
-      } else if (finalStatus === "paid") {
-        if (currentPayment.status?.startsWith("installment_")) {
-          effectiveInstallmentNumber = parseInt(
-            currentPayment.status.split("_")[1]
-          );
-        }
-
-        if (!effectiveInstallmentNumber || isNaN(effectiveInstallmentNumber)) {
-          effectiveInstallmentNumber =
-            currentPayment.current_installment_number || totalInstallments;
-        }
+      
+      let effectiveInstallmentNumber = current_installment_number;
+      if (finalStatus === "paid" && (!effectiveInstallmentNumber || effectiveInstallmentNumber === 0)) {
+           if(currentPayment.status.startsWith('installment_')) {
+               effectiveInstallmentNumber = parseInt(currentPayment.status.split('_')[1]); 
+           } else {
+               effectiveInstallmentNumber = totalInstallments;
+           }
       }
+      if (!effectiveInstallmentNumber) effectiveInstallmentNumber = 1;
 
-      if (effectiveInstallmentNumber && !isNaN(effectiveInstallmentNumber)) {
-        const updatedInstallments = ensureInstallmentEntry(
-          existingInstallments,
-          effectiveInstallmentNumber
-        );
-
-        const key = `installment_${effectiveInstallmentNumber}`;
-        const nowIso = new Date().toISOString();
-        const entry = updatedInstallments[key] || {};
-
-        const existingAmount = sanitizeAmountValue(entry.amount, null);
-
-        updatedInstallments[key] = {
+      const updatedInstallments = ensureInstallmentEntry(existingInstallments, effectiveInstallmentNumber);
+      const key = `installment_${effectiveInstallmentNumber}`;
+      const entry = updatedInstallments[key] || {};
+      
+      updatedInstallments[key] = {
           ...entry,
-          amount:
-            existingAmount !== null ? existingAmount : newPaymentAmount,
+          amount: newPaymentAmount || entry.amount,
           paid_amount: newPaymentAmount,
-          paid_at: nowIso,
-          receipt_number: receipt_number,
-          receipt_generated_at: nowIso,
+          paid_at: new Date().toISOString(),
+          receipt_number: receipt_number, 
           verified_by: reviewerId,
-          verified_at: nowIso,
-          status: "paid",
-        };
+          status: "paid"
+      };
 
-        if (!updatedInstallments[key].due_date && due_date) {
-          updatedInstallments[key].due_date = due_date;
-        }
-
-        if (updatedInstallments[key].proof_image) {
-          updatedInstallments[key].proof_verified_at = nowIso;
-        }
-
-        updatedInstallmentsJson = JSON.stringify(updatedInstallments);
-      }
+      updatedInstallmentsJson = JSON.stringify(updatedInstallments);
     }
 
     if (is_manual) {
-      updateQuery += `, payment_method = ?, bank_name = ?, account_number = ?, payment_date = ?`;
-      updateParams.push(
-        payment_method || "transfer",
-        bank_name,
-        account_number,
-        payment_date || new Date()
-      );
+       updateQuery += `, payment_method = ?, bank_name = ?, account_number = ?, payment_date = ?`;
+       updateParams.push(payment_method || "transfer", bank_name, account_number, payment_date || new Date());
     }
 
     if (updatedInstallmentsJson) {
@@ -1471,120 +1557,60 @@ let updatedInstallmentsJson = null;
 
     await connection.query(updateQuery, updateParams);
 
-    const historyNotes =
-      noteValue ||
-      (is_manual
-        ? `Manual payment: Rp ${newPaymentAmount} - Status: ${finalStatus}`
-        : `Status berubah dari ${currentPayment.status} ke ${finalStatus} - Pembayaran: Rp ${newPaymentAmount}`);
+    // 7. Insert History (SANGAT PENTING: Notes harus mengandung Receipt Number agar terbaca Scanner di masa depan)
+    const historyNotes = noteValue || `Receipt generated: ${receipt_number}`; 
+    // Pastikan receipt number masuk ke notes!
+    const finalHistoryNote = historyNotes.includes(receipt_number) ? historyNotes : `${historyNotes}. Receipt generated: ${receipt_number}`;
 
     await connection.query(
-      `INSERT INTO payment_history 
-       (payment_id, old_status, new_status, old_amount_paid, new_amount_paid, amount_changed, notes, changed_by) 
+      `INSERT INTO payment_history (payment_id, old_status, new_status, old_amount_paid, new_amount_paid, amount_changed, notes, changed_by) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        paymentId,
-        currentPayment.status,
-        finalStatus,
-        currentAmountPaid,
-        newTotalPaid,
-        newPaymentAmount,
-        historyNotes,
-        reviewerId,
-      ]
+      [paymentId, currentPayment.status, finalStatus, currentAmountPaid, newTotalPaid, newPaymentAmount, finalHistoryNote, reviewerId]
     );
 
     await connection.commit();
+    console.log("[DEBUG] Transaction Committed");
 
-    // [SNAPSHOT RECEIPT TRIGGER]
-    if (newPaymentAmount > 0 && receipt_number) {
+    // 8. Snapshot
+    // 8. Snapshot PDF
+    if (receipt_number) {
         try {
-            // Logika penentuan cicilan ke berapa yg baru dibayar
-            let targetInstallment = current_installment_number;
-            if ((finalStatus === 'paid' || finalStatus === 'paid_off') && !targetInstallment) {
-                 if (currentPayment.status.startsWith('installment_')) {
-                     targetInstallment = parseInt(currentPayment.status.split('_')[1]);
-                 } else {
-                     targetInstallment = totalInstallments;
-                 }
-            }
-            if(!targetInstallment) targetInstallment = 1;
-
+            let targetSnapInstallment = current_installment_number || totalInstallments;
+            if(finalStatus.startsWith('installment_')) targetSnapInstallment = parseInt(finalStatus.split('_')[1]);
+            
             const context = {
-                installmentNumber: targetInstallment,
+                installmentNumber: targetSnapInstallment || 1,
+                receiptNumber: receipt_number, 
                 amountValue: newPaymentAmount,
-                receiptNumber: receipt_number,
-                label: finalStatus === 'paid' ? 'Pelunasan' : `Cicilan Ke-${targetInstallment}`,
-                installmentEntry: { paid_at: new Date() } // Tanggal beku saat ini
+                label: `Cicilan Ke-${targetSnapInstallment || 1}`,
+                installmentEntry: { paid_at: new Date() }
             };
             
-            // Simpan file sekarang juga
-            await generateAndSaveDocument('receipt', { ...currentPayment, id: paymentId }, context);
-             console.log(`Snapshot Receipt ${targetInstallment} tersimpan.`);
-        } catch (e) { console.error("Gagal snapshot kwitansi", e); }
+            // PERBAIKAN: Pastikan full_name dan program_name terisi
+            const pdfData = { 
+                ...currentPayment, 
+                id: paymentId, 
+                receipt_number: receipt_number, 
+                // Mapping field dari query di atas
+                full_name: currentPayment.participant_name || currentPayment.full_name || '-', 
+                program_name: currentPayment.program_name || '-'
+            };
+            
+            await generateAndSaveDocument('receipt', pdfData, context);
+            console.log("[DEBUG] Snapshot Created Successfully");
+        } catch(e) { console.error("[DEBUG] Snapshot Failed", e); }
     }
-    // -----------------------------------
-
-    let emailSent = false;
-    const notifiableStatuses = [
-      "installment_1",
-      "installment_2",
-      "installment_3",
-      "installment_4",
-      "installment_5",
-      "installment_6",
-      "paid",
-    ];
-
-    if (
-      currentPayment.participant_email &&
-      (notifiableStatuses.includes(finalStatus) || finalStatus === "pending")
-    ) {
-      try {
-        const appUrl = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
-        const paymentUrl = `${appUrl}/dashboard/payments/${currentPayment.registration_id || ""}`;
-        await sendEmail({
-          to: currentPayment.participant_email,
-          subject: `Status Pembayaran Program ${currentPayment.program_name}`,
-          html: createPaymentStatusEmailTemplate({
-            fullName: currentPayment.participant_name,
-            programName: currentPayment.program_name || "Program Fitalenta",
-            statusText: getStatusText(finalStatus),
-            amount: formatCurrency(newTotalPaid),
-            invoiceNumber: currentPayment.invoice_number || paymentId,
-            notes: noteValue || "",
-            paymentUrl,
-          }),
-        });
-        emailSent = true;
-      } catch (emailError) {
-        console.error("Failed to send payment status email", emailError);
-      }
-    }
-
 
     res.json({
       success: true,
-      message:
-        "Status pembayaran berhasil diperbarui" +
-        (is_manual ? " (Manual Payment)" : ""),
-      data: {
-        receipt_number,
-        amount_paid: newTotalPaid,
-        status: finalStatus,
-        due_date: due_date,
-        current_installment_number: current_installment_number,
-        is_manual: is_manual,
-        verified_by: reviewerId,
-      },
-      meta: { emailSent },
+      message: "Status updated successfully",
+      data: { receipt_number, status: finalStatus }
     });
+
   } catch (error) {
     await connection.rollback();
-    console.error("❌ Error updating payment status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error: " + error.message,
-    });
+    console.error("❌ Error:", error);
+    res.status(500).json({ success: false, message: error.message });
   } finally {
     connection.release();
   }
@@ -1794,10 +1820,9 @@ router.post("/manual", async (req, res) => {
 
 // GET /api/payments/:id/download/:type/:installment
 router.get("/:id/download/:type/:installment", async (req, res) => {
-  const { id, type, installment } = req.params; // type: 'invoice' | 'receipt'
+  const { id, type, installment } = req.params; 
   
   try {
-    // 1. Ambil data payment dasar
     const [payments] = await db.promise().query(
       `SELECT py.*, u.full_name, p.name as program_name, p.training_cost
        FROM payments py
@@ -1814,30 +1839,59 @@ router.get("/:id/download/:type/:installment", async (req, res) => {
     const payment = payments[0];
     const installmentNumber = parseInt(installment);
 
-    // 2. Re-construct Context untuk file yang diminta
-    // Kita memaksa parameter berdasarkan URL, bukan status database saat ini
+    // [FIX 2] AMBIL DATA DARI JSON (Agar Receipt Number sesuai History)
     const installmentData = parseInstallmentAmounts(payment);
     const specificData = installmentData[`installment_${installmentNumber}`] || {};
     
-    // Fallback amount: Coba ambil dari JSON, jika tidak ada, ambil dari history, atau hitung rata-rata
-    let amountValue = sanitizeAmountValue(specificData.amount, 0);
-    if(amountValue === 0) {
-        amountValue = await getLastPaymentChange(payment, `installment_${installmentNumber}`);
+    // Tentukan Nominal
+    let amountValue = 0;
+    if (type === 'invoice') {
+        amountValue = sanitizeAmountValue(specificData.amount, 0);
+        if(amountValue <= 0) amountValue = payment.training_cost / getTotalInstallments(payment);
+    } else {
+        amountValue = sanitizeAmountValue(specificData.paid_amount, 0);
+        // Fallback backward compatibility
+        if (amountValue <= 0 && payment.status === 'paid' && installmentNumber === getTotalInstallments(payment)) {
+             amountValue = payment.amount_paid;
+        }
+    }
+
+    // [FIX 2.1] LOGIKA PEMILIHAN NOMOR KWITANSI
+    // Cek JSON dulu. Jika kosong, baru cek kolom master (payment.receipt_number).
+    // Tapi HANYA cek kolom master jika nomor installment match atau statusnya paid.
+    let historicalReceiptNumber = specificData.receipt_number;
+    
+    // Fallback: Jika di JSON kosong (data lama), dan ini adalah cicilan terakhir/saat ini, pakai master
+    if (!historicalReceiptNumber && payment.current_installment_number === installmentNumber) {
+        historicalReceiptNumber = payment.receipt_number;
     }
 
     const context = {
-      installmentNumber: installmentNumber,
-      amountValue: amountValue > 0 ? amountValue : (payment.training_cost / getTotalInstallments(payment)),
-      dueDate: specificData.due_date || payment.due_date,
-      receiptNumber: specificData.receipt_number || payment.receipt_number,
-      label: `Cicilan Ke-${installmentNumber}`
+        installmentNumber,
+        amountValue,
+        dueDate: specificData.due_date || payment.due_date,
+        // Gunakan nomor history yg sudah dipilih di atas
+        receiptNumber: historicalReceiptNumber || payment.receipt_number, 
+        label: `Cicilan Ke-${installmentNumber}`,
+        installmentEntry: specificData
     };
 
-    // 3. Panggil Generator (Get or Create)
-    const filePath = await generateAndSaveDocument(type, payment, context);
+    if (type === 'receipt') {
+        if (!context.receiptNumber) {
+            return res.status(400).json({ message: "Kwitansi belum tersedia untuk cicilan ini." });
+        }
+    }
 
-    // 4. Download
-    res.download(filePath, path.basename(filePath));
+    // Helper penamaan file (Pastikan fungsi getStorageFilename ada di kode Part 1 Anda)
+    const filename = getStorageFilename(type, payment, context);
+    const filePath = path.join(__dirname, `../storage/${type}s`, filename);
+
+    if (fs.existsSync(filePath)) {
+       return res.download(filePath, filename);
+    }
+
+    const newFilePath = await generateAndSaveDocument(type, payment, context);
+    res.download(newFilePath, filename);
 
   } catch (error) {
     console.error("Download Error:", error);
@@ -1981,7 +2035,6 @@ router.get("/:id/invoice", async (req, res) => {
 
 router.get("/:id/receipt", async (req, res) => {
   try {
-    // 1. Ambil Data Payment dari Database
     const [payments] = await db.promise().query(
       `SELECT py.*, r.registration_code, u.full_name, u.email, u.phone, u.address, 
               p.name as program_name, p.training_cost as program_training_cost, 
@@ -1994,67 +2047,47 @@ router.get("/:id/receipt", async (req, res) => {
       [req.params.id]
     );
 
-    if (payments.length === 0) {
-      return res.status(404).send("Data pembayaran tidak ditemukan.");
-    }
+    if (payments.length === 0) return res.status(404).send("Data pembayaran tidak ditemukan.");
 
     const payment = payments[0];
     const { installment } = req.query;
 
-    // 2. Tentukan Cicilan Mana yang Diminta (Installment Context)
-    // Logika ini penting agar snapshot tahu kwitansi mana yang harus diambil/dibuat
+    // 1. Tentukan target cicilan
     let targetInstallment = null;
-
     if (installment) {
-      // Jika user spesifik minta ?installment=1
       targetInstallment = parseInt(installment);
     } else {
-      // Jika tidak ada request spesifik, coba tebak dari status terakhir
       if (payment.status.startsWith("installment_")) {
         targetInstallment = parseInt(payment.status.split("_")[1]);
-      } else if (payment.status === "paid" || payment.status === "lunas") {
-        // Jika lunas, biasanya user ingin kwitansi terakhir atau pelunasan
-        // Kita bisa default ke installment terakhir yang tercatat, atau 0 (pelunasan)
+      } else if (payment.status === "paid") {
         targetInstallment = payment.current_installment_number || 1; 
       } else {
-        targetInstallment = 1; // Default fallback
+        targetInstallment = 1; 
       }
     }
 
-    // 3. Validasi Ketersediaan Kwitansi
-    // Kwitansi seharusnya tidak boleh dicetak jika belum ada nomor kwitansinya (belum bayar)
-    if (!payment.receipt_number) {
-        return res.status(400).send("Kwitansi belum tersedia (Belum ada pembayaran terverifikasi).");
+    // [FIX 3] AMBIL NOMOR KWITANSI DARI HISTORY JSON
+    const installmentData = parseInstallmentAmounts(payment);
+    const specificData = installmentData[`installment_${targetInstallment}`] || {};
+    
+    // Logic Prioritas: Ambil dari JSON Cicilan X -> Ambil dari Master (hanya jika fallback)
+    const activeReceiptNumber = specificData.receipt_number || payment.receipt_number;
+
+    if (!activeReceiptNumber) {
+        return res.status(400).send("Kwitansi belum tersedia untuk cicilan ini.");
     }
 
-    // 4. Siapkan Context untuk Snapshot Engine
-    // Engine akan menggunakan data ini untuk mengisi variabel dalam PDF jika file belum ada
     const context = {
         installmentNumber: targetInstallment,
-        receiptNumber: payment.receipt_number, // Menggunakan nomor kwitansi master (atau logic khusus jika ada per termin)
+        receiptNumber: activeReceiptNumber, // <--- INI KUNCINYA
         label: (payment.status === 'paid' && !installment) ? "Pelunasan" : `Cicilan Ke-${targetInstallment}`,
-        // Kita tidak perlu pass 'amount' disini jika generateAndSaveDocument
-        // sudah pintar mengambil data dari JSON installment_amounts. 
-        // Namun jika perlu memaksa, bisa tambahkan: amountValue: ...
+        installmentEntry: specificData
     };
 
-    // 5. EKSEKUSI SNAPSHOT (Inti Perubahan)
-    // Fungsi ini akan cek: Apakah file di storage/receipts/.. sudah ada?
-    // JIKA ADA: Return path file tersebut.
-    // JIKA TIDAK: Generate PDF baru, simpan ke storage, lalu return path-nya.
     const filePath = await generateAndSaveDocument('receipt', payment, context);
-
-    // 6. Download File ke Browser User
-    const filename = `Kwitansi-${payment.receipt_number}-Cicilan-${targetInstallment}.pdf`;
+    const filename = `Kwitansi-${activeReceiptNumber}-Cicilan-${targetInstallment}.pdf`;
     
-    res.download(filePath, filename, (err) => {
-        if (err) {
-            console.error("Error sending receipt file:", err);
-            if (!res.headersSent) {
-                res.status(500).send("Gagal mengunduh file kwitansi.");
-            }
-        }
-    });
+    res.download(filePath, filename);
 
   } catch (error) {
     console.error("Error serving receipt:", error);

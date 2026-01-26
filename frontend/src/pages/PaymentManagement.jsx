@@ -361,42 +361,57 @@ const paymentUtils = {
     const totalInstallments = paymentUtils.getTotalInstallments(payment);
     const rows = [];
     const installmentData = paymentUtils.parseInstallmentAmounts(payment);
-   
+    const defaultAmount = paymentUtils.parseFloatSafe(payment.program_training_cost) / totalInstallments;
 
     for (let i = 1; i <= totalInstallments; i++) {
-      const context = paymentUtils.getInstallmentContext(payment, i);
-      const entry = installmentData[`installment_${i}`] || {};
+      const key = `installment_${i}`;
+      const entry = installmentData[key] || {};
+      
+      const displayAmount = paymentUtils.parseFloatSafe(entry.amount) > 0 
+          ? paymentUtils.parseFloatSafe(entry.amount) 
+          : defaultAmount;
 
       let statusLabel = "Belum Diterbitkan";
       let statusVariant = "secondary";
+      let status = "pending";
 
-      if (context.status === "paid" || context.receiptAvailable) {
-        statusLabel = "Sudah Dibayar";
-        statusVariant = "success";
-       } else if (context.status === "waiting_verification") {
-        statusLabel = "Menunggu Verifikasi";
-        statusVariant = "warning";
-     } else if (context.status === "active") {
-        statusLabel = "Tagihan Aktif";
-        statusVariant = "primary";
-      } else if (context.invoiceAvailable) {
-        statusLabel = "Tagihan Diterbitkan";
-        statusVariant = "info";
+      if (entry.status === 'paid' || (entry.paid_at && entry.receipt_number)) {
+          statusLabel = "Sudah Dibayar";
+          statusVariant = "success";
+          status = "paid";
+      } else if (entry.status === 'waiting_verification') {
+          statusLabel = "Menunggu Verifikasi";
+          statusVariant = "warning";
+          status = "waiting_verification";
+      } else if (entry.status === 'invoiced' || entry.invoice_issued_at) {
+          statusLabel = "Tagihan Terbit";
+          statusVariant = "primary";
+          status = "invoiced";
       }
+
+      // --- LOGIKA TOMBOL DIPERKETAT ---
+      
+      // Invoice: Aktif jika sudah pernah diterbitkan (ada tanggal issued)
+      const invoiceAvailable = Boolean(entry.invoice_issued_at);
+      
+      // Kwitansi: HANYA Aktif jika nomor kwitansi SUDAH ADA. 
+      // Kita cek length > 1 untuk menghindari string kosong/error.
+      const receiptAvailable = Boolean(entry.receipt_number && entry.receipt_number.length > 1);
 
       rows.push({
         installment: i,
-        amount: context.amount,
-        dueDate: context.dueDate,
+        amount: displayAmount,
+        dueDate: entry.due_date || null,
         statusLabel,
         statusVariant,
-        invoiceAvailable: context.invoiceAvailable,
-        receiptAvailable: context.receiptAvailable,
-        receiptNumber: context.receiptNumber,
-        proofImage: context.proofImage,
+        status,
+        invoiceAvailable,
+        receiptAvailable, // <--- Ini kunci agar tombol disable
+        receiptNumber: entry.receipt_number,
+        proofImage: entry.proof_image,
         notes: entry.notes || null,
-        paidAt: context.paidAt,
-        invoiceIssuedAt: context.invoiceIssuedAt,
+        paidAt: entry.paid_at,
+        invoiceIssuedAt: entry.invoice_issued_at,
       });
     }
 
@@ -1559,7 +1574,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
           </div>
           <div className="modal-footer">
             <button className="btn btn-secondary" onClick={resetModals}>Tutup</button>
-            {selectedPayment?.receipt_number && (
+            {/* {selectedPayment?.receipt_number && (
               <a
                 href={`/api/payments/${selectedPayment.id}/receipt`}
                 target="_blank"
@@ -1569,7 +1584,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
               >
                 <i className="bi bi-download me-1"></i>Download Kwitansi
              </a>
-            )}
+            )} */}
           </div>
         </div>
       </div>
