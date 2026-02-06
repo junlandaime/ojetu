@@ -207,7 +207,7 @@ const Register = () => {
                   <div className="col-md-6">
                     <div className="mb-3">
                       <label htmlFor="phone" className="form-label">
-                        Nomor Telepon
+                        Nomor Telepon *
                       </label>
                       <input
                         type="tel"
@@ -216,6 +216,7 @@ const Register = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleChange}
+                        required
                         disabled={loading}
                         placeholder="08xxxxxxxxxx"
                       />
@@ -224,7 +225,7 @@ const Register = () => {
                   <div className="col-md-6">
                     <div className="mb-3">
                       <label htmlFor="address" className="form-label">
-                        Alamat
+                        Alamat *
                       </label>
                       <textarea
                         className="form-control"
@@ -232,6 +233,7 @@ const Register = () => {
                         name="address"
                         value={formData.address}
                         onChange={handleChange}
+                        required
                         disabled={loading}
                         rows="2"
                         placeholder="Masukkan alamat lengkap"
