@@ -300,6 +300,8 @@ const ProgramDetail = () => {
                           ? "Tidak tersedia cicilan"
                           : program.installment_plan === "4_installments"
                           ? "4 Kali Cicilan"
+                          : program.installment_plan === "3_installments"
+                          ? "3 Kali Cicilan"
                           : "6 Kali Cicilan"}
                       </p>
                     </div>

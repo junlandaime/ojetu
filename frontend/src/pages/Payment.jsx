@@ -192,6 +192,7 @@ const paymentUtils = {
 
     const plan = payment.program_installment_plan;
     if (plan === "none") return 1;
+    if (plan === "3_installments") return 3;
     if (plan === "4_installments") return 4;
     if (plan === "6_installments") return 6;
 

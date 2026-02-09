@@ -480,6 +480,7 @@ const paymentUtils = {
     if (!payment || !payment.program_installment_plan) return 4;
     const plan = payment.program_installment_plan;
     if (plan === "none") return 1;
+    if (plan === "3_installments") return 3;
     if (plan === "4_installments") return 4;
     if (plan === "6_installments") return 6;
     return parseInt(plan.split("_")[0]) || 4;
@@ -680,6 +681,13 @@ const PaymentManagement = () => {
       .split("T")[0],
     notes: "",
   });
+
+  // Tambahkan state baru (sekitar baris dengan useState lainnya)
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [manualPaymentLoading, setManualPaymentLoading] = useState(false);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [manualInvoiceLoading, setManualInvoiceLoading] = useState(false);
+
 
   const [proofFile, setProofFile] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -1018,6 +1026,8 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
   const handleManualPaymentSubmit = async (e) => {
     e.preventDefault();
 
+     if (manualPaymentLoading) return; // TAMBAHKAN
+
     if (!formData.registration_id) {
       alert("Pilih pendaftaran terlebih dahulu");
       return;
@@ -1034,7 +1044,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
     }
 
     try {
-      setUploadLoading(true);
+      setManualPaymentLoading(true); // GANTI dari uploadLoading
 
       const payload = {
         registration_id: registrationId,
@@ -1088,12 +1098,14 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
       const errorMessage = error.response?.data?.message || error.message;
       alert("❌ Error processing payment: " + errorMessage);
     } finally {
-      setUploadLoading(false);
+      setManualPaymentLoading(false);
     }
   };
 
   const handleManualInvoiceSubmit = async (e) => {
     e.preventDefault();
+
+     if (manualInvoiceLoading) return; // TAMBAHKAN INI
 
     if (!selectedPayment?.id) {
       alert("Data pembayaran tidak valid");
@@ -1120,6 +1132,8 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
     }
 
     try {
+      setManualInvoiceLoading(true); // TAMBAHKAN INI
+
       const payload = {
         installment_number: manualInvoiceForm.installment_number,
         amount: paymentUtils.parseFloatSafe(manualInvoiceForm.amount),
@@ -1143,11 +1157,19 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
       console.error("❌ Error creating manual invoice:", error);
       const errorMessage = error.response?.data?.message || error.message;
       alert(`Error creating manual invoice: ${errorMessage}`);
+    } finally {
+        setManualInvoiceLoading(false); // TAMBAHKAN INI
     }
   };
 
   const handleVerificationSubmit = async (e) => {
     e.preventDefault();
+
+      // TAMBAHKAN INI - Cek jika sedang proses
+    if (verificationLoading) {
+      console.warn("Verification already in progress");
+      return;
+    }
 
     if (!selectedPayment?.id) {
       alert("Data pembayaran tidak valid");
@@ -1163,6 +1185,9 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
     }
 
     try {
+
+      setVerificationLoading(true); // UBAH dari setUploadLoading
+      
       const payload = {
         status: verificationForm.status,
         amount_paid: paymentAmount,
@@ -1197,11 +1222,15 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
       console.error("❌ Error verifying payment:", error);
       const errorMessage = error.response?.data?.message || error.message;
       alert(`Error verifying payment: ${errorMessage}`);
-    }
+    } finally {
+    setVerificationLoading(false); // TAMBAHKAN INI
+  }
   };
 
   const handleInvoiceSubmit = async (e) => {
     e.preventDefault();
+
+    if (invoiceLoading) return; // TAMBAHKAN INI
 
     if (!selectedPayment?.id) {
       alert("Data pembayaran tidak valid");
@@ -1214,6 +1243,8 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
     }
 
     try {
+      setInvoiceLoading(true); // TAMBAHKAN INI
+
       const payload = {
         due_date: invoiceForm.due_date,
         notes: invoiceForm.notes,
@@ -1235,6 +1266,8 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
       console.error("❌ Error updating invoice:", error);
       const errorMessage = error.response?.data?.message || error.message;
       alert(`Error updating invoice: ${errorMessage}`);
+    } finally {
+      setInvoiceLoading(false); // TAMBAHKAN INI
     }
   };
 
@@ -1458,7 +1491,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
                                   )}
                                 </td>
                                 <td>
-                                   Rp {paymentUtils.formatCurrency(row.amount)}
+                                   {paymentUtils.formatCurrency(row.amount)}
                                   {row.paidAt && (
                                     <div className="text-muted small">
                                       Dibayar: {new Date(row.paidAt).toLocaleDateString("id-ID")}
@@ -1976,9 +2009,24 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
                   <i className="bi bi-x-circle me-2"></i>Tolak Pembayaran
                 </button>
               ) : (
-                <button type="submit" className="btn btn-primary">
-                  <i className="bi bi-check-circle me-2"></i>Verifikasi Pembayaran
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={verificationLoading || manualPaymentLoading || invoiceLoading} // TAMBAHKAN disabled
+                >
+                  {verificationLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Memproses...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check-circle me-2"></i>
+                      Verifikasi Pembayaran
+                    </>
+                  )}
                 </button>
+
               )}
             </div>
           </form>
@@ -2095,7 +2143,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={resetModals}>Batal</button>
-              <button type="submit" className="btn btn-primary">
+              <button type="submit" className="btn btn-primary" disabled={verificationLoading || manualPaymentLoading || invoiceLoading}>
                 <i className="bi bi-receipt me-2"></i>Buat Tagihan Manual
               </button>
             </div>
@@ -2216,7 +2264,7 @@ const handleDownloadInvoice = async (paymentId, installment, type = 'invoice') =
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={resetModals}>Batal</button>
-              <button type="submit" className="btn btn-primary">
+              <button type="submit" className="btn btn-primary" disabled={verificationLoading || manualPaymentLoading || invoiceLoading}>
                 <i className="bi bi-receipt me-2"></i>Terbitkan Tagihan
               </button>
             </div>

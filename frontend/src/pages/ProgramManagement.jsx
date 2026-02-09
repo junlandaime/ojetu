@@ -531,6 +531,7 @@ const ProgramManagement = () => {
                           onChange={handleChange}
                         >
                           <option value="none">Tidak Ada</option>
+                          <option value="3_installments">3 Cicilan</option>
                           <option value="4_installments">4 Cicilan</option>
                           <option value="6_installments">6 Cicilan</option>
                         </select>
