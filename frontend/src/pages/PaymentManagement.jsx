@@ -251,18 +251,7 @@ const paymentUtils = {
     }
   },
 
-  parseInstallmentAmounts: (payment) => {
-    if (!payment || !payment.installment_amounts) return {};
-
-    try {
-      return typeof payment.installment_amounts === "string"
-        ? JSON.parse(payment.installment_amounts)
-        : payment.installment_amounts || {};
-    } catch (error) {
-      console.error("❌ Error parsing installment_amounts:", error);
-      return {};
-    }
-  },
+  
 
   getInstallmentContext: (payment, installmentNumber) => {
     if (!payment || !installmentNumber) {

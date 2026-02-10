@@ -3111,7 +3111,7 @@ const [detailLoading, setDetailLoading] = useState(false);
                                   )}
                                 </td>
                                 <td>
-                                  {row.statusVariant === 'success' || row.paidAt ? (
+                                  {row.invoiceAvailable || row.receiptAvailable || row.paidAt ? (
                                     <>
                                       {paymentUtils.formatCurrency(row.amount)}
                                       {row.paidAt && (
@@ -3121,7 +3121,7 @@ const [detailLoading, setDetailLoading] = useState(false);
                                       )}
                                     </>
                                   ) : (
-                                    <span className="text-muted">-</span>
+                                    <span className="text-muted fst-italic">Belum diterbitkan</span>
                                   )}
                                 </td>
 
