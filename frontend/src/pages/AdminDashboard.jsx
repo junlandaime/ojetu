@@ -400,6 +400,8 @@ const AdminDashboard = () => {
 
     if (installmentPlan === "4_installments") {
       return `Cicilan ${installmentNumber}/4`;
+    } else if (installmentPlan === "3_installments") {
+      return `Cicilan ${installmentNumber}/3`;
     } else if (installmentPlan === "6_installments") {
       return `Cicilan ${installmentNumber}/6`;
     } else {
