@@ -3111,13 +3111,20 @@ const [detailLoading, setDetailLoading] = useState(false);
                                   )}
                                 </td>
                                 <td>
-                                  Rp {paymentUtils.formatCurrency(row.amount)}
-                                  {row.paidAt && (
-                                    <div className="text-muted small">
-                                      Dibayar: {formatDate(row.paidAt)}
-                                    </div>
+                                  {row.statusVariant === 'success' || row.paidAt ? (
+                                    <>
+                                      {paymentUtils.formatCurrency(row.amount)}
+                                      {row.paidAt && (
+                                        <div className="text-muted small">
+                                          Dibayar: {formatDate(row.paidAt)}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-muted">-</span>
                                   )}
                                 </td>
+
                                 <td>{row.dueDate ? formatDate(row.dueDate) : "-"}</td>
                                 <td>
                                   <span className={`badge bg-${row.statusVariant}`}>
