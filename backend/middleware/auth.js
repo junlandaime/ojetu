@@ -98,11 +98,14 @@ export const setAuthCookie = (res, token) => {
 
   const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
   const secure = process.env.NODE_ENV === "production";
+  // "none" diperlukan untuk cross-domain (frontend & backend beda subdomain)
+  // sameSite "none" hanya valid jika secure=true
+  const sameSite = secure ? "none" : "lax";
 
   res.cookie(JWT_COOKIE_NAME, token, {
     httpOnly: true,
     secure,
-    sameSite: secure ? "strict" : "lax",
+    sameSite,
     maxAge,
     path: "/",
   });
@@ -110,11 +113,12 @@ export const setAuthCookie = (res, token) => {
 
 export const clearAuthCookie = (res) => {
   const secure = process.env.NODE_ENV === "production";
+  const sameSite = secure ? "none" : "lax";
 
   res.clearCookie(JWT_COOKIE_NAME, {
     httpOnly: true,
     secure,
-    sameSite: secure ? "strict" : "lax",
+    sameSite,
     path: "/",
   });
 };
