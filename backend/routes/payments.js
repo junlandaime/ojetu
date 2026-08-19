@@ -1103,7 +1103,7 @@ router.get("/:id/receipt", async (req, res) => {
     doc.fontSize(9)
       .fillColor(textMuted)
       .text('FITALENTA', { align: 'center' })
-      .text('Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132', { align: 'center' })
+      .text('Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132', { align: 'center' })
       .text('Telp: (021) 123-4567 | Email: admin@fitalenta.com', { align: 'center' });
 
     doc.moveDown(1);

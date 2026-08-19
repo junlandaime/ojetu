@@ -79,7 +79,7 @@ const seedData = async () => {
         capacity: 20,
         current_participants: 0,
         status: "active",
-        contact_info: "Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132",
+        contact_info: "Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132",
         registration_deadline: "2024-12-31",
         start_date: "2024-02-01",
         end_date: "2024-04-30",
@@ -89,7 +89,7 @@ const seedData = async () => {
         departure_cost: "30000000.00",
         departure_fee_details: "Tiket pesawat ke Jepang (sekali jalan).\nPengurusan Visa Kerja & dokumen keberangkatan.\nAsuransi perjalanan dan asuransi kesehatan awal di Jepang.\nBiaya penempatan kerja di Jepang (termasuk administrasi penyaluran).\nPendampingan proses keberangkatan hingga penyaluran ke perusahaan di Jepang.",
         installment_plan: "4_installments",
-        bridge_fund: "Tersedia (Jaminan dari perusahaan pengirim)",
+        bridge_fund: "Tersedia",
         timeline_text: "Bulan 1: Pelatihan Dasar Bahasa Jepang (Hiragana & Katakana)\nBulan 2: Pengembangan Kosakata dan Tata Bahasa\nBulan 3: Budaya Jepang dan Etika Kerja\nBulan 4: Persiapan Akhir dan Evaluasi",
         requirements_text: "Minimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai."
       },
@@ -104,7 +104,7 @@ const seedData = async () => {
         capacity: 15,
         current_participants: 0,
         status: "active",
-        contact_info: "Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132",
+        contact_info: "Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132",
         registration_deadline: "2024-12-31",
         start_date: "2024-02-01",
         end_date: "2024-04-30",
@@ -114,7 +114,7 @@ const seedData = async () => {
         departure_cost: "30000000.00",
         departure_fee_details: "Tiket pesawat ke Jepang Visa & dokumen keberangkatan \nAsuransi perjalanan & kesehatan \nBiaya penempatan kerja di Jepang\nPendampingan proses keberangkatan hingga penyaluran",
         installment_plan: "6_installments",
-        bridge_fund: "Tersedia (Jaminan dari perusahaan pengirim)",
+        bridge_fund: "Tersedia",
         timeline_text: "Minggu 1-6: Pelatihan Dasar Bahasa Jepang (Virtual: Penguasaan Hiragana & Katakana).\nMinggu 7-12: Pengembangan Kosakata dan Tata Bahasa Lanjutan (Virtual: Fokus N5 dan Komunikasi Dasar).\nMinggu 13-20: Bahasa Lanjutan, Evaluasi Virtual, dan Persiaapan Administratif (Virtual: Fokus N4, Self-Study, dan Pre-screening dokumen penempatan).\nMinggu 21-24: Pemantapan Budaya, Kesiapan Fisik/Mental, dan Penyaluran (Luring di Asrama: Etika Kerja, Simulasi Wawancara, Ujian Akhir, dan Proses Keberangkatan).",
         requirements_text: "Minimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai."
       },
@@ -129,7 +129,7 @@ const seedData = async () => {
         capacity: 12,
         current_participants: 0,
         status: "active",
-        contact_info: "Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132",
+        contact_info: "Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132",
         registration_deadline: "2024-12-31",
         start_date: "2024-02-01",
         end_date: "2024-05-31",
@@ -139,7 +139,7 @@ const seedData = async () => {
         departure_cost: "30000000.00",
         departure_fee_details: "Tiket pesawat ke Jepang Visa dan dokumen keberangkatan \nAsuransi perjalanan dan kesehatan awal\nBiaya penempatan kerja di Jepang\nProcessing fee administrasi penyaluran",
         installment_plan: "none",
-        bridge_fund: "Tersedia (Jaminan dari perusahaan pengirim)",
+        bridge_fund: "Tersedia",
         timeline_text: "Minggu 1: Verifikasi Dokumen, Sertifikat N4/SSW, dan Keahlian Teknis \nMinggu 2: Orientasi Budaya Kerja, Etika Jepang (Horenso), dan Simulasi Wawancara \nMinggu 3: Pengurusan Dokumen Administrasi Keberangkatan dan Visa\nMinggu 4: Briefing Akhir, Matching Perusahaan, dan Pemberangkatan",
         requirements_text: "Memiliki sertifikat Noryoku Shiken N4\nMemiliki sertifikat Specified Skilled Worker (SSW)\nMinimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai."
       }
