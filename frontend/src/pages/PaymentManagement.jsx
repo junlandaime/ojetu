@@ -486,7 +486,7 @@ const paymentUtils = {
         ) {
             return path;
         }
-        return `http://localhost:5000${path}`;
+        return path.startsWith("/") ? path : `/${path}`;
     },
     getInitials: (name) => {
         if (!name) {

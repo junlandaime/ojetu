@@ -137,9 +137,12 @@ CREATE TABLE `programs` (
   `departure_cost` decimal(10,2) DEFAULT '30000000.00',
   `departure_fee_details` text,
   `installment_plan` varchar(20) DEFAULT 'none',
+  `down_payment` decimal(10,2) DEFAULT '0.00',
+  `job_matching_cost` decimal(10,2) DEFAULT '0.00',
   `bridge_fund` varchar(255) DEFAULT 'Tersedia',
   `timeline_text` text,
-  `requirements_text` text
+  `requirements_text` text,
+  `sort_order` int DEFAULT '999'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --

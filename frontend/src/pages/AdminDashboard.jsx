@@ -684,7 +684,7 @@ const AdminDashboard = () => {
                 {documents.map((document) => (
                     <a
                         key={document.key}
-                        href={`http://localhost:5000${document.path}`}
+                        href={document.path}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="admin-document-chip"
@@ -1559,7 +1559,7 @@ const AdminDashboard = () => {
                                                         <div className="admin-participant-photo">
                                                             {registration.photo_path ? (
                                                                 <img
-                                                                    src={`http://localhost:5000${registration.photo_path}`}
+                                                                    src={registration.photo_path}
                                                                     alt={
                                                                         registration.full_name
                                                                     }
@@ -1797,7 +1797,7 @@ const AdminDashboard = () => {
                                                     <div className="admin-participant-photo">
                                                         {registration.photo_path ? (
                                                             <img
-                                                                src={`http://localhost:5000${registration.photo_path}`}
+                                                                src={registration.photo_path}
                                                                 alt={
                                                                     registration.full_name
                                                                 }
@@ -2070,7 +2070,7 @@ const AdminDashboard = () => {
                                         <div className="admin-modal-avatar">
                                             {selectedRegistration.photo_path ? (
                                                 <img
-                                                    src={`http://localhost:5000${selectedRegistration.photo_path}`}
+                                                    src={selectedRegistration.photo_path}
                                                     alt={
                                                         selectedRegistration.full_name
                                                     }
@@ -2459,7 +2459,7 @@ const AdminDashboard = () => {
 
                                                             {selectedRegistration.photo_path ? (
                                                                 <a
-                                                                    href={`http://localhost:5000${selectedRegistration.photo_path}`}
+                                                                    href={selectedRegistration.photo_path}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
@@ -2493,7 +2493,7 @@ const AdminDashboard = () => {
 
                                                             {selectedRegistration.n4_certificate_path ? (
                                                                 <a
-                                                                    href={`http://localhost:5000${selectedRegistration.n4_certificate_path}`}
+                                                                    href={selectedRegistration.n4_certificate_path}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
@@ -2527,7 +2527,7 @@ const AdminDashboard = () => {
 
                                                             {selectedRegistration.ssw_certificate_path ? (
                                                                 <a
-                                                                    href={`http://localhost:5000${selectedRegistration.ssw_certificate_path}`}
+                                                                    href={selectedRegistration.ssw_certificate_path}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
