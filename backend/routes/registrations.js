@@ -4,22 +4,9 @@ import {
   generateRegistrationCode,
   generateInvoiceNumber,
 } from "../config/database.js";
-<<<<<<< HEAD
-// --- TAMBAHAN LIBRARY EXPORT ---
-import ExcelJS from "exceljs";
-import PDFDocument from "pdfkit";
-// -------------------------------
 
 const router = express.Router();
 
-// ==========================================
-// 1. LIST DATA (PAGINATION/FILTER)
-// ==========================================
-=======
-
-const router = express.Router();
-
->>>>>>> perbaikan-website-fitalenta
 router.get("/", async (req, res) => {
   try {
     const {
@@ -164,10 +151,6 @@ router.get("/", async (req, res) => {
 
     query += " ORDER BY r.registration_date DESC";
 
-<<<<<<< HEAD
-    const [registrations] = await db.promise().query(query, params);
-
-=======
     // console.log("Executing registration query:", query);
     // console.log("With parameters:", params);
 
@@ -175,17 +158,13 @@ router.get("/", async (req, res) => {
 
     // console.log(`Found ${registrations.length} registrations`);
 
->>>>>>> perbaikan-website-fitalenta
     res.json({
       success: true,
       data: registrations,
       count: registrations.length,
     });
   } catch (error) {
-<<<<<<< HEAD
-=======
     // console.error("Error fetching registrations:", error);
->>>>>>> perbaikan-website-fitalenta
     res.status(500).json({
       success: false,
       message: "Internal server error: " + error.message,
@@ -193,12 +172,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-// ==========================================
-// 2. STATISTICS SUMMARY
-// ==========================================
-=======
->>>>>>> perbaikan-website-fitalenta
 router.get("/statistics/summary", async (req, res) => {
   try {
     const [totalResult] = await db.promise().query(
@@ -283,265 +256,6 @@ router.get("/statistics/summary", async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-// ==========================================
-// 3. EXPORT EXCEL (Harus sebelum /:id)
-// ==========================================
-router.get("/export/excel", async (req, res) => {
-  try {
-    const {
-      program,
-      payment_status,
-      selection_status,
-      placement_status,
-      search,
-    } = req.query;
-
-    let query = `
-      SELECT 
-        r.registration_code,
-        r.registration_date,
-        r.registration_status,
-        u.full_name,
-        u.email,
-        u.phone,
-        p.name as program_name,
-        ss.status as selection_status,
-        ps.status as placement_status,
-        ps.company_name,
-        py.status as payment_status,
-        py.amount_paid
-      FROM registrations r
-      LEFT JOIN users u ON r.user_id = u.id
-      LEFT JOIN programs p ON r.program_id = p.id
-      LEFT JOIN (
-        SELECT registration_id, status, evaluated_at
-        FROM selection_status 
-        WHERE (registration_id, evaluated_at) IN (
-          SELECT registration_id, MAX(evaluated_at) FROM selection_status GROUP BY registration_id
-        ) OR evaluated_at IS NULL
-      ) ss ON r.id = ss.registration_id
-      LEFT JOIN (
-        SELECT registration_id, status, company_name, updated_at
-        FROM placement_status 
-        WHERE (registration_id, updated_at) IN (
-          SELECT registration_id, MAX(updated_at) FROM placement_status GROUP BY registration_id
-        ) OR updated_at IS NULL
-      ) ps ON r.id = ps.registration_id
-      LEFT JOIN (
-        SELECT registration_id, status, amount_paid, updated_at
-        FROM payments 
-        WHERE (registration_id, updated_at) IN (
-          SELECT registration_id, MAX(updated_at) FROM payments GROUP BY registration_id
-        ) OR updated_at IS NULL
-      ) py ON r.id = py.registration_id
-      WHERE 1=1
-    `;
-
-    const params = [];
-
-    if (program && program !== "all") {
-      query += " AND r.program_id = ?";
-      params.push(program);
-    }
-    if (payment_status && payment_status !== "all") {
-      if (payment_status === "no_payment") {
-        query += " AND py.registration_id IS NULL";
-      } else {
-        query += " AND py.status = ?";
-        params.push(payment_status);
-      }
-    }
-    if (selection_status && selection_status !== "all") {
-      if (selection_status === "no_selection") {
-        query += " AND ss.registration_id IS NULL";
-      } else {
-        query += " AND ss.status = ?";
-        params.push(selection_status);
-      }
-    }
-    if (placement_status && placement_status !== "all") {
-      if (placement_status === "no_placement") {
-        query += " AND ps.registration_id IS NULL";
-      } else {
-        query += " AND ps.status = ?";
-        params.push(placement_status);
-      }
-    }
-    if (search) {
-      query += " AND (u.full_name LIKE ? OR u.email LIKE ? OR r.registration_code LIKE ?)";
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
-    }
-
-    query += " ORDER BY r.registration_date DESC";
-
-    const [registrations] = await db.promise().query(query, params);
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Data Pendaftar");
-
-    worksheet.columns = [
-      { header: "No", key: "no", width: 5 },
-      { header: "Kode", key: "registration_code", width: 15 },
-      { header: "Nama Lengkap", key: "full_name", width: 30 },
-      { header: "Program", key: "program_name", width: 25 },
-      { header: "Email", key: "email", width: 25 },
-      { header: "Telepon", key: "phone", width: 15 },
-      { header: "Tgl Daftar", key: "registration_date", width: 15 },
-      { header: "Status Daftar", key: "registration_status", width: 20 },
-      { header: "Status Bayar", key: "payment_status", width: 20 },
-      { header: "Jml Bayar", key: "amount_paid", width: 15 },
-      { header: "Status Seleksi", key: "selection_status", width: 15 },
-      { header: "Status Penyaluran", key: "placement_status", width: 15 },
-      { header: "Perusahaan", key: "company_name", width: 20 },
-    ];
-
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
-      type: "pattern", pattern: "solid", fgColor: { argb: "FFCCCCCC" },
-    };
-
-    registrations.forEach((reg, index) => {
-      worksheet.addRow({
-        no: index + 1,
-        registration_code: reg.registration_code,
-        full_name: reg.full_name,
-        program_name: reg.program_name,
-        email: reg.email,
-        phone: reg.phone || "-",
-        registration_date: new Date(reg.registration_date).toLocaleDateString("id-ID"),
-        registration_status: reg.registration_status || "Menunggu",
-        payment_status: reg.payment_status || "Belum Bayar",
-        amount_paid: reg.amount_paid ? parseFloat(reg.amount_paid) : 0,
-        selection_status: reg.selection_status || "-",
-        placement_status: reg.placement_status || "-",
-        company_name: reg.company_name || "-"
-      });
-    });
-
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="data-pendaftar-${new Date().toISOString().split("T")[0]}.xlsx"`);
-
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (error) {
-    console.error("Error exporting to Excel:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
-// ==========================================
-// 4. EXPORT PDF (Harus sebelum /:id)
-// ==========================================
-router.get("/export/pdf", async (req, res) => {
-  try {
-    const {
-      program,
-      payment_status,
-      selection_status,
-      placement_status,
-      search,
-    } = req.query;
-
-    let query = `
-      SELECT 
-        r.registration_code,
-        r.registration_date,
-        r.registration_status,
-        u.full_name,
-        p.name as program_name,
-        py.status as payment_status
-      FROM registrations r
-      LEFT JOIN users u ON r.user_id = u.id
-      LEFT JOIN programs p ON r.program_id = p.id
-      LEFT JOIN (
-        SELECT registration_id, status, evaluated_at
-        FROM selection_status 
-        WHERE (registration_id, evaluated_at) IN (
-          SELECT registration_id, MAX(evaluated_at) FROM selection_status GROUP BY registration_id
-        ) OR evaluated_at IS NULL
-      ) ss ON r.id = ss.registration_id
-      LEFT JOIN (
-        SELECT registration_id, status, updated_at
-        FROM placement_status 
-        WHERE (registration_id, updated_at) IN (
-          SELECT registration_id, MAX(updated_at) FROM placement_status GROUP BY registration_id
-        ) OR updated_at IS NULL
-      ) ps ON r.id = ps.registration_id
-      LEFT JOIN (
-        SELECT registration_id, status, updated_at
-        FROM payments 
-        WHERE (registration_id, updated_at) IN (
-          SELECT registration_id, MAX(updated_at) FROM payments GROUP BY registration_id
-        ) OR updated_at IS NULL
-      ) py ON r.id = py.registration_id
-      WHERE 1=1
-    `;
-
-    const params = [];
-
-    // Gunakan logika filter yang sama
-    if (program && program !== "all") { query += " AND r.program_id = ?"; params.push(program); }
-    if (payment_status && payment_status !== "all") {
-      if (payment_status === "no_payment") { query += " AND py.registration_id IS NULL"; }
-      else { query += " AND py.status = ?"; params.push(payment_status); }
-    }
-    if (selection_status && selection_status !== "all") {
-      if (selection_status === "no_selection") { query += " AND ss.registration_id IS NULL"; }
-      else { query += " AND ss.status = ?"; params.push(selection_status); }
-    }
-    if (placement_status && placement_status !== "all") {
-      if (placement_status === "no_placement") { query += " AND ps.registration_id IS NULL"; }
-      else { query += " AND ps.status = ?"; params.push(placement_status); }
-    }
-    if (search) {
-      query += " AND (u.full_name LIKE ? OR u.email LIKE ? OR r.registration_code LIKE ?)";
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
-    }
-
-    query += " ORDER BY r.registration_date DESC";
-    const [registrations] = await db.promise().query(query, params);
-
-    const doc = new PDFDocument({ margin: 30, size: 'A4' });
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="data-pendaftar-${new Date().toISOString().split("T")[0]}.pdf"`);
-
-    doc.pipe(res);
-
-    doc.fontSize(18).text("Laporan Data Pendaftar", { align: "center" });
-    doc.fontSize(10).text(`Dicetak: ${new Date().toLocaleDateString("id-ID")}`, { align: "center" });
-    doc.moveDown(2);
-
-    let y = doc.y;
-    registrations.forEach((reg, index) => {
-      if (y > 750) { doc.addPage(); y = 50; }
-
-      doc.fontSize(11).font('Helvetica-Bold')
-         .text(`${index + 1}. ${reg.full_name} (${reg.registration_code})`, 50, y);
-      
-      doc.fontSize(10).font('Helvetica')
-         .text(`   Program: ${reg.program_name}`, 50, y + 15)
-         .text(`   Status: ${reg.registration_status} | Pembayaran: ${reg.payment_status || 'Belum'}`, 50, y + 28)
-         .text(`   Tanggal: ${new Date(reg.registration_date).toLocaleDateString("id-ID")}`, 50, y + 41);
-
-      y += 60;
-    });
-
-    doc.end();
-  } catch (error) {
-    console.error("Error exporting PDF:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
-  }
-});
-
-// ==========================================
-// 5. GET DETAIL (ROUTE DYNAMIC)
-// ==========================================
-=======
->>>>>>> perbaikan-website-fitalenta
 router.get("/:id", async (req, res) => {
   try {
     const registrationId = req.params.id;
@@ -857,14 +571,7 @@ router.post("/", async (req, res) => {
 
     const [users] = await db
       .promise()
-<<<<<<< HEAD
-      .query(
-        "SELECT id, full_name, email, allow_multiple_programs FROM users WHERE id = ?",
-        [user_id]
-      );
-=======
       .query("SELECT id, full_name, email FROM users WHERE id = ?", [user_id]);
->>>>>>> perbaikan-website-fitalenta
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -896,31 +603,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
-    const allowMultiplePrograms = users[0].allow_multiple_programs === 1;
-
-    if (!allowMultiplePrograms) {
-      const [activeRegistrations] = await db
-        .promise()
-        .query(
-          `SELECT id FROM registrations
-           WHERE user_id = ?
-             AND registration_status IN ('menunggu', 'lolos')`,
-          [user_id]
-        );
-
-      if (activeRegistrations.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Anda sudah memiliki pendaftaran aktif. Silakan hubungi admin jika ingin mendaftar program lain.",
-        });
-      }
-    }
-
-
-=======
->>>>>>> perbaikan-website-fitalenta
     const [existingRegistrations] = await db
       .promise()
       .query(
@@ -988,13 +670,7 @@ router.post("/", async (req, res) => {
 
       const registrationId = result.insertId;
 
-<<<<<<< HEAD
-      const invoiceNumber = `REQ-${registrationCode}`;
-
-      // const invoiceNumber = await generateInvoiceNumber();
-=======
       const invoiceNumber = await generateInvoiceNumber();
->>>>>>> perbaikan-website-fitalenta
 
       await connection.query(
         `INSERT INTO payments 

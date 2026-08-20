@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 // import mysql from "mysql2";
 // import dotenv from "dotenv";
 
@@ -57,7 +55,6 @@
 
 // export default db;
 
->>>>>>> perbaikan-website-fitalenta
 import mysql from "mysql2";
 import dotenv from "dotenv";
 
@@ -79,118 +76,13 @@ const db = mysql.createPool({
 // Get promise-based interface
 const promisePool = db.promise();
 
-<<<<<<< HEAD
-// --- HELPER FUNCTIONS ---
-
-// Helper: Ubah Bulan Angka (0-11) ke Angka Romawi
-const getRomanMonth = () => {
-  const months = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-  const currentMonthIndex = new Date().getMonth(); 
-  return months[currentMonthIndex];
-};
-
-=======
 // Helper functions
->>>>>>> perbaikan-website-fitalenta
 export const generateRegistrationCode = async () => {
   const timestamp = Date.now().toString().slice(-6);
   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
   return `REG-${timestamp}-${random}`;
 };
 
-<<<<<<< HEAD
-/**
- * Generate Invoice Number
- * Format: 131-TG/INV/FITALENTA/<<ROMAN>>/<<YEAR>>
- * Logic: Cari nomor urut terbesar dari database, increment +1.
- */
-export const generateInvoiceNumber = async () => {
-  const year = new Date().getFullYear();
-  const romanMonth = getRomanMonth();
-  const defaultStart = 31; // Mulai dari 131 jika belum ada data
-
-  try {
-    // QUERY PENTING:
-    // Kita mengambil data payments, memfilter yang formatnya sesuai invoice baru,
-    // lalu mengurutkan berdasarkan ANGKA di depan (substring sebelum '-TG') secara descending.
-    const query = `
-      SELECT invoice_number 
-      FROM payments 
-      WHERE invoice_number LIKE '%-TG/INV/FITALENTA/%' 
-      ORDER BY CAST(SUBSTRING_INDEX(invoice_number, '-TG', 1) AS UNSIGNED) DESC 
-      LIMIT 1
-    `;
-    
-    const [rows] = await promisePool.query(query);
-
-    let nextSequence = defaultStart;
-
-    if (rows.length > 0 && rows[0].invoice_number) {
-      const lastInvoice = rows[0].invoice_number;
-      // Ambil angka depan: "131-TG/..." -> "131"
-      const lastSeqStr = lastInvoice.split('-TG')[0];
-      const lastSeq = parseInt(lastSeqStr);
-
-      if (!isNaN(lastSeq)) {
-        nextSequence = lastSeq + 1;
-      }
-    }
-
-    // Format Akhir
-    return `${nextSequence}-TG/INV/FITALENTA/${romanMonth}/${year}`;
-
-  } catch (error) {
-    console.error("Error generating invoice number:", error);
-    // Fallback darurat jika DB error
-    return `${defaultStart}-TG/INV/FITALENTA/${romanMonth}/${year}`;
-  }
-};
-
-/**
- * Generate Receipt Number
- * Format: 121/TRX/FITALENTA/<<ROMAN>>/<<YEAR>>
- * Logic: Cari nomor urut terbesar dari database, increment +1.
- */
-export const generateReceiptNumber = async () => {
-  const year = new Date().getFullYear();
-  const romanMonth = getRomanMonth();
-  const defaultStart = 21; // Mulai dari 121 jika belum ada data
-
-  try {
-    // QUERY PENTING:
-    // Memfilter yang formatnya sesuai receipt baru,
-    // lalu mengurutkan berdasarkan ANGKA di depan (substring sebelum '/TRX') secara descending.
-    const query = `
-      SELECT receipt_number 
-      FROM payments 
-      WHERE receipt_number LIKE '%/TRX/FITALENTA/%' 
-      ORDER BY CAST(SUBSTRING_INDEX(receipt_number, '/TRX', 1) AS UNSIGNED) DESC 
-      LIMIT 1
-    `;
-
-    const [rows] = await promisePool.query(query);
-
-    let nextSequence = defaultStart;
-
-    if (rows.length > 0 && rows[0].receipt_number) {
-      const lastReceipt = rows[0].receipt_number;
-      // Ambil angka depan: "121/TRX/..." -> "121"
-      const lastSeqStr = lastReceipt.split('/TRX')[0];
-      const lastSeq = parseInt(lastSeqStr);
-
-      if (!isNaN(lastSeq)) {
-        nextSequence = lastSeq + 1;
-      }
-    }
-
-    // Format Akhir
-    return `${nextSequence}/TRX/FITALENTA/${romanMonth}/${year}`;
-
-  } catch (error) {
-    console.error("Error generating receipt number:", error);
-    return `${defaultStart}/TRX/FITALENTA/${romanMonth}/${year}`;
-  }
-=======
 export const generateInvoiceNumber = async () => {
   const year = new Date().getFullYear();
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -205,7 +97,6 @@ export const generateReceiptNumber = async () => {
   const timestamp = Date.now().toString().slice(-6);
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `RCP/${year}/${month}/${timestamp}${random}`;
->>>>>>> perbaikan-website-fitalenta
 };
 
 // Test connection function

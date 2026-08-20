@@ -4,21 +4,11 @@ node_modules/
 
 # Production builds
 build/
-<<<<<<< HEAD
-
-
-
-# Environment variables
-backend/.env
-backend/.env.*
-!backend/.env.example
-=======
 dist/
 */dist/
 
 # Environment variables
 backend/.env
->>>>>>> perbaikan-website-fitalenta
 
 # Logs
 npm-debug.log*
@@ -52,12 +42,6 @@ Thumbs.db
 *.swo
 
 # Uploads
-<<<<<<< HEAD
-backend/storage/*
-
-# Uploads
-=======
->>>>>>> perbaikan-website-fitalenta
 backend/uploads/documents/*
 backend/uploads/payments/*
 backend/uploads/photos/*

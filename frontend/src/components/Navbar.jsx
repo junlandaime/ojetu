@@ -8,14 +8,6 @@ const Navbar = () => {
   const location = useLocation();
   const [logoError, setLogoError] = useState(false);
 
-<<<<<<< HEAD
-  if (!useAuth) {
-    console.error("AuthContext is not available");
-    return null;
-  }
-
-=======
->>>>>>> perbaikan-website-fitalenta
   const isActive = useCallback(
     (path) => {
       if (path === "/") {
@@ -51,21 +43,6 @@ const Navbar = () => {
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
       <div className="container">
         {/* Logo dengan error handling yang lebih baik */}
-<<<<<<< HEAD
-        <Link className="navbar-brand fw-bold d-flex align-items-center" to="/">
-          {!logoError ? (
-            <img
-              src="/images/logo/fitalenta_2024.png"
-              alt="FITALENTA Logo"
-              height="50"
-              className="me-2"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <span className="text-light">FITALENTA</span>
-          )}
-        </Link>
-=======
           <a
               className="navbar-brand fw-bold d-flex align-items-center"
               href="https://www.fitalenta.co.id/"
@@ -84,7 +61,6 @@ const Navbar = () => {
                   <span className="text-light">FITALENTA</span>
               )}
           </a>
->>>>>>> perbaikan-website-fitalenta
 
         {/* Toggler untuk Mobile */}
         <button
@@ -144,40 +120,6 @@ const Navbar = () => {
               /* Menu untuk User yang sudah login */
               <>
                 {/* Menu untuk User Biasa */}
-<<<<<<< HEAD
-                {!isAdmin && (
-                  <>
-                    <li className="nav-item">
-                      <Link
-                        className={`nav-link ${isActive("/dashboard")}`}
-                        to="/dashboard"
-                      >
-                        Overview
-                      </Link>
-                    </li>
-                    <li className="nav-item border-end border-light border-opacity-25 mx-2 d-none d-lg-block"></li>
-
-                    <li className="nav-item">
-                      <Link
-                        className={`nav-link ${isActive("/registration")}`}
-                        to="/registration"
-                      >
-                        Registration
-                      </Link>
-                    </li>
-                    <li className="nav-item border-end border-light border-opacity-25 mx-2 d-none d-lg-block"></li>
-
-                    <li className="nav-item">
-                      <Link
-                        className={`nav-link ${isActive("/payment")}`}
-                        to="/payment"
-                      >
-                        Payment
-                      </Link>
-                    </li>
-                  </>
-                )}
-=======
                   {!isAdmin && (
                       <>
                           <li className="nav-item">
@@ -223,7 +165,6 @@ const Navbar = () => {
                           </li>
                       </>
                   )}
->>>>>>> perbaikan-website-fitalenta
 
                 {/* Menu untuk Admin */}
                 {isAdmin && (

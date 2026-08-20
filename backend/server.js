@@ -4,12 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import db, { testConnection } from "./config/database.js";
-<<<<<<< HEAD
-import rateLimiter from "./middleware/rateLimiter.js";
-import authenticateRequest from "./middleware/auth.js";
-=======
 import jwt from "jsonwebtoken";
->>>>>>> perbaikan-website-fitalenta
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,82 +22,10 @@ import reportRoutes from "./routes/reports.js";
 import programCategoriesRoutes from "./routes/program-categories.js";
 import wilayahRoutes from "./routes/wilayah.js";
 import uploadRoutes from "./routes/uploads.js";
-<<<<<<< HEAD
-import successStoriesRoutes from "./routes/successStories.js";
-=======
->>>>>>> perbaikan-website-fitalenta
 
 dotenv.config();
 
 const app = express();
-<<<<<<< HEAD
-app.disable("x-powered-by");
-const PORT = process.env.PORT || 5000;
-
-const uniqueOrigins = (...origins) => {
-  const allowed = new Set();
-  origins
-    .flatMap((entry) =>
-      typeof entry === "string"
-        ? entry
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean)
-        : []
-    )
-    .forEach((origin) => allowed.add(origin));
-
-  return Array.from(allowed);
-};
-
-const allowedOrigins = uniqueOrigins(
-  process.env.APP_URL,
-  process.env.ADMIN_APP_URL,
-  process.env.CORS_ALLOWED_ORIGINS
-);
-
-const corsMiddleware = cors({
-  origin: allowedOrigins.length === 0 ? true : allowedOrigins,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-});
-
-app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "SAMEORIGIN");
-  res.setHeader("X-DNS-Prefetch-Control", "off");
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader(
-    "Permissions-Policy",
-    "geolocation=(), microphone=(), camera=(), fullscreen=(self)"
-  );
-  if (process.env.NODE_ENV === "production") {
-    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
-  }
-
- next();
-});
-
-app.use((req, res, next) => {
-   const origin = req.header("Origin");
-  if (origin && allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
-    console.warn(`Blocked request from origin: ${origin}`);
-    return res.status(403).json({
-      success: false,
-      message: "Origin tidak diizinkan oleh kebijakan CORS",
-    });
-  }
-
-  return corsMiddleware(req, res, next);
-});
-
-app.use(rateLimiter);
-
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(authenticateRequest);
-=======
 const PORT = process.env.PORT || 5000;
 
 app.use(
@@ -130,7 +53,6 @@ app.use((req, res, next) => {
 
   next();
 });
->>>>>>> perbaikan-website-fitalenta
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -162,10 +84,6 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/program-categories", programCategoriesRoutes);
 app.use("/api/wilayah", wilayahRoutes);
 app.use("/api/uploads", uploadRoutes);
-<<<<<<< HEAD
-app.use("/api/success-stories", successStoriesRoutes);
-=======
->>>>>>> perbaikan-website-fitalenta
 
 app.use((error, req, res, next) => {
   console.error("Error:", error);

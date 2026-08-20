@@ -12,43 +12,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-<<<<<<< HEAD
-    const checkAuthStatus = async () => {
-      try {
-        const response = await axios.get("/api/auth/session");
-        if (response.data?.success) {
-          setUser(response.data.data.user);
-        } else {
-          setUser(null);
-        }
-         } catch (error) {
-        if (error.response?.status === 401) {
-          console.info("Auth session: not authenticated yet (401)");
-        } else {
-          console.error("Auth check error:", error);
-        }
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
-
-  const login = async (email, password, isAdmin = false) => {
-    try {
-      const endpoint = isAdmin ? "/api/auth/admin/login" : "/api/auth/login";
-      const payload = isAdmin
-        ? { username: email, password }
-        : { email, password };
-
-      const response = await axios.post(endpoint, payload);
-
-      if (response.data.success) {
-        const { user: userData } = response.data.data;
-        setUser(userData);
-=======
     checkAuthStatus();
   }, []);
 
@@ -98,7 +61,6 @@ export const AuthProvider = ({ children }) => {
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         setUser(userData);
 
->>>>>>> perbaikan-website-fitalenta
         return { success: true, user: userData };
       } else {
         return { success: false, message: response.data.message };
@@ -114,29 +76,6 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post("/api/auth/register", userData);
 
       if (response.data.success) {
-<<<<<<< HEAD
-        const payload = response.data.data;
-        if (payload?.user) {
-          setUser(payload.user);
-          return { success: true, user: payload.user };
-        }
-
-        return {
-          success: true,
-          message:
-            response.data.message ||
-            "Registrasi berhasil. Silakan cek email Anda untuk verifikasi.",
-        };
-      }
-      
-      return {
-        success: false,
-        message: response.data.message || "Registrasi gagal",
-      };
-    } catch (error) {
-      const message =
-        error.response?.data?.message || error.message || "Registration failed";
-=======
         const { token, user: newUser } = response.data.data;
 
         localStorage.setItem("token", token);
@@ -150,7 +89,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       const message = error.response?.data?.message || "Registration failed";
->>>>>>> perbaikan-website-fitalenta
       return { success: false, message };
     }
   };
@@ -161,12 +99,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-<<<<<<< HEAD
-=======
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       delete axios.defaults.headers.common["Authorization"];
->>>>>>> perbaikan-website-fitalenta
       setUser(null);
     }
   };

@@ -3,31 +3,12 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-<<<<<<< HEAD
-import { requireAuth } from "../middleware/auth.js";
-
-const normalizeBaseUrl = (value) =>
-  typeof value === "string" ? value.replace(/\/$/, "") : undefined;
-
-const getBaseUrl = (req) =>
-  normalizeBaseUrl(process.env.FILE_BASE_URL) ||
-  normalizeBaseUrl(process.env.BACKEND_URL) ||
-  (req?.protocol && req?.get("host")
-    ? `${req.protocol}://${req.get("host")}`
-    : undefined);
-=======
->>>>>>> perbaikan-website-fitalenta
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-<<<<<<< HEAD
-router.use(requireAuth);
-
-=======
->>>>>>> perbaikan-website-fitalenta
 const ensureUploadsDir = (subdir = "") => {
   const uploadsDir = path.join(__dirname, "../uploads");
   const targetDir = subdir ? path.join(uploadsDir, subdir) : uploadsDir;
@@ -145,10 +126,6 @@ router.post("/photo", uploadPhoto.single("file"), async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
-    const baseUrl = getBaseUrl(req);
-=======
->>>>>>> perbaikan-website-fitalenta
     const filePath = `/uploads/photos/${req.file.filename}`;
 
     res.json({
@@ -160,12 +137,7 @@ router.post("/photo", uploadPhoto.single("file"), async (req, res) => {
         original_name: req.file.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
-<<<<<<< HEAD
-        // full_url: `http://localhost:5001${filePath}`,
-        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
-=======
         full_url: `http://localhost:5000${filePath}`
->>>>>>> perbaikan-website-fitalenta
       },
     });
   } catch (error) {
@@ -196,10 +168,6 @@ router.post("/document", uploadDocument.single("file"), async (req, res) => {
     }
 
     const docType = req.body.type || "document";
-<<<<<<< HEAD
-    const baseUrl = getBaseUrl(req);
-=======
->>>>>>> perbaikan-website-fitalenta
     const filePath = `/uploads/documents/${req.file.filename}`;
 
     res.json({
@@ -212,12 +180,7 @@ router.post("/document", uploadDocument.single("file"), async (req, res) => {
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         document_type: docType,
-<<<<<<< HEAD
-        // full_url: `http://localhost:5001${filePath}`,
-        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
-=======
         full_url: `http://localhost:5000${filePath}`
->>>>>>> perbaikan-website-fitalenta
       },
     });
   } catch (error) {
@@ -247,10 +210,6 @@ router.post("/payment", uploadPayment.single("file"), async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
-    const baseUrl = getBaseUrl(req);
-=======
->>>>>>> perbaikan-website-fitalenta
     const filePath = `/uploads/payments/${req.file.filename}`;
 
     res.json({
@@ -262,12 +221,7 @@ router.post("/payment", uploadPayment.single("file"), async (req, res) => {
         original_name: req.file.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
-<<<<<<< HEAD
-        // full_url: `http://localhost:5001${filePath}`,
-        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
-=======
         full_url: `http://localhost:5000${filePath}`
->>>>>>> perbaikan-website-fitalenta
       },
     });
   } catch (error) {
@@ -297,12 +251,7 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
-    const baseUrl = getBaseUrl(req);
-    const uploadedFiles = req.files.map((file) => {
-=======
     const uploadedFiles = req.files.map(file => {
->>>>>>> perbaikan-website-fitalenta
       const filePath = `/uploads/documents/${file.filename}`;
       return {
         file_path: filePath,
@@ -310,11 +259,7 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
         original_name: file.originalname,
         file_size: file.size,
         mime_type: file.mimetype,
-<<<<<<< HEAD
-        full_url: baseUrl ? `${baseUrl}${filePath}` : filePath,
-=======
         full_url: `http://localhost:5000${filePath}`
->>>>>>> perbaikan-website-fitalenta
       };
     });
 

@@ -2,18 +2,9 @@ import express from "express";
 import db from "../config/database.js";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
-<<<<<<< HEAD
-import { requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.use(requireAdmin);
-
-=======
-
-const router = express.Router();
-
->>>>>>> perbaikan-website-fitalenta
 router.get("/financial/summary", async (req, res) => {
   try {
     const { start_date, end_date, program } = req.query;

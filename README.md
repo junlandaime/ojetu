@@ -45,8 +45,4 @@ Atau:
     ```bash
     npm run dev
     ```
-<<<<<<< HEAD
-Server frontend akan berjalan di http://localhost:3000 dan server backend akan berjalan di http://localhost:5001
-=======
 Server frontend akan berjalan di http://localhost:3000 dan server backend akan berjalan di http://localhost:5000
->>>>>>> perbaikan-website-fitalenta

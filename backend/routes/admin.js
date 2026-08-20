@@ -4,39 +4,17 @@ import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-<<<<<<< HEAD
-import { requireAdmin } from "../middleware/auth.js";
-// --- TAMBAHAN LIBRARY EXPORT ---
-import ExcelJS from "exceljs";
-import PDFDocument from "pdfkit";
-// -------------------------------
-=======
->>>>>>> perbaikan-website-fitalenta
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-<<<<<<< HEAD
-router.use(requireAdmin);
-
-=======
->>>>>>> perbaikan-website-fitalenta
 const deleteFileSafely = (filePath) => {
   if (!filePath) return false;
 
   try {
-<<<<<<< HEAD
-     const sanitizedPath = filePath.replace(/^\/+/, "");
-    const fullPath = path.resolve(
-      __dirname,
-      "..",
-      sanitizedPath.startsWith("uploads") ? sanitizedPath : path.join("uploads", sanitizedPath)
-    );
-=======
     const fullPath = path.join(__dirname, '..', filePath);
->>>>>>> perbaikan-website-fitalenta
 
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
@@ -50,13 +28,6 @@ const deleteFileSafely = (filePath) => {
   }
 };
 
-<<<<<<< HEAD
-// ==========================================
-// STATISTICS & DASHBOARD
-// ==========================================
-
-=======
->>>>>>> perbaikan-website-fitalenta
 router.get("/statistics", async (req, res) => {
   try {
     // console.log("Fetching admin statistics...");
@@ -303,151 +274,6 @@ router.get("/overview", async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-// ==========================================
-// EXPORT ROUTES (Harus sebelum /users CRUD)
-// ==========================================
-
-// Export Excel
-router.get("/users/export/excel", async (req, res) => {
-  try {
-    const { user_type, search } = req.query;
-
-    let query = `
-      SELECT id, full_name, email, phone, address, user_type, created_at 
-      FROM users 
-      WHERE 1=1
-    `;
-    const params = [];
-
-    if (user_type && user_type !== "all") {
-      query += " AND user_type = ?";
-      params.push(user_type);
-    }
-
-    if (search) {
-      query += " AND (full_name LIKE ? OR email LIKE ?)";
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
-    }
-
-    query += " ORDER BY created_at DESC";
-
-    const [users] = await promisePool.query(query, params);
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Data User");
-
-    worksheet.columns = [
-      { header: "No", key: "no", width: 5 },
-      { header: "Nama Lengkap", key: "full_name", width: 30 },
-      { header: "Email", key: "email", width: 30 },
-      { header: "Telepon", key: "phone", width: 15 },
-      { header: "Tipe User", key: "user_type", width: 15 },
-      { header: "Alamat", key: "address", width: 40 },
-      { header: "Tanggal Daftar", key: "created_at", width: 20 },
-    ];
-
-    worksheet.getRow(1).font = { bold: true };
-    
-    users.forEach((user, index) => {
-      worksheet.addRow({
-        no: index + 1,
-        full_name: user.full_name,
-        email: user.email,
-        phone: user.phone || "-",
-        user_type: user.user_type,
-        address: user.address || "-",
-        created_at: new Date(user.created_at).toLocaleDateString("id-ID")
-      });
-    });
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="users-${Date.now()}.xlsx"`
-    );
-
-    await workbook.xlsx.write(res);
-    res.end();
-
-  } catch (error) {
-    console.error("Error exporting excel:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Export PDF
-router.get("/users/export/pdf", async (req, res) => {
-  try {
-    const { user_type, search } = req.query;
-
-    let query = `
-      SELECT full_name, email, phone, user_type, created_at 
-      FROM users 
-      WHERE 1=1
-    `;
-    const params = [];
-
-    if (user_type && user_type !== "all") {
-      query += " AND user_type = ?";
-      params.push(user_type);
-    }
-
-    if (search) {
-      query += " AND (full_name LIKE ? OR email LIKE ?)";
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
-    }
-
-    query += " ORDER BY created_at DESC";
-
-    const [users] = await promisePool.query(query, params);
-
-    const doc = new PDFDocument();
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="users-${Date.now()}.pdf"`
-    );
-
-    doc.pipe(res);
-
-    doc.fontSize(20).text("Laporan Data User", { align: "center" });
-    doc.moveDown();
-    
-    let yPosition = 150;
-    
-    users.forEach((user, index) => {
-      if (yPosition > 700) {
-        doc.addPage();
-        yPosition = 50;
-      }
-      
-      doc.fontSize(12).text(`${index + 1}. ${user.full_name} (${user.user_type})`, 50, yPosition);
-      doc.fontSize(10).text(`${user.email} | ${user.phone || "-"}`, 70, yPosition + 15);
-      
-      yPosition += 40;
-    });
-
-    doc.end();
-
-  } catch (error) {
-    console.error("Error exporting pdf:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ==========================================
-// USER MANAGEMENT CRUD
-// ==========================================
-
-=======
->>>>>>> perbaikan-website-fitalenta
 router.get("/users", async (req, res) => {
   try {
     const [users] = await promisePool.query(`
@@ -639,12 +465,7 @@ router.delete("/users/:id", async (req, res) => {
       await connection.commit();
 
       let deletedFilesCount = 0;
-<<<<<<< HEAD
-      const uniqueFiles = [...new Set(filesToDelete.filter(Boolean))];
-      uniqueFiles.forEach((filePath) => {
-=======
       filesToDelete.forEach(filePath => {
->>>>>>> perbaikan-website-fitalenta
         if (deleteFileSafely(filePath)) {
           deletedFilesCount++;
         }
