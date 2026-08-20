@@ -4,29 +4,39 @@ import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+<<<<<<< HEAD
 import { requireAdmin } from "../middleware/auth.js";
 // --- TAMBAHAN LIBRARY EXPORT ---
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 // -------------------------------
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+<<<<<<< HEAD
 router.use(requireAdmin);
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 const deleteFileSafely = (filePath) => {
   if (!filePath) return false;
 
   try {
+<<<<<<< HEAD
      const sanitizedPath = filePath.replace(/^\/+/, "");
     const fullPath = path.resolve(
       __dirname,
       "..",
       sanitizedPath.startsWith("uploads") ? sanitizedPath : path.join("uploads", sanitizedPath)
     );
+=======
+    const fullPath = path.join(__dirname, '..', filePath);
+>>>>>>> perbaikan-website-fitalenta
 
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
@@ -40,10 +50,13 @@ const deleteFileSafely = (filePath) => {
   }
 };
 
+<<<<<<< HEAD
 // ==========================================
 // STATISTICS & DASHBOARD
 // ==========================================
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.get("/statistics", async (req, res) => {
   try {
     // console.log("Fetching admin statistics...");
@@ -290,6 +303,7 @@ router.get("/overview", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // ==========================================
 // EXPORT ROUTES (Harus sebelum /users CRUD)
 // ==========================================
@@ -432,6 +446,8 @@ router.get("/users/export/pdf", async (req, res) => {
 // USER MANAGEMENT CRUD
 // ==========================================
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.get("/users", async (req, res) => {
   try {
     const [users] = await promisePool.query(`
@@ -623,8 +639,12 @@ router.delete("/users/:id", async (req, res) => {
       await connection.commit();
 
       let deletedFilesCount = 0;
+<<<<<<< HEAD
       const uniqueFiles = [...new Set(filesToDelete.filter(Boolean))];
       uniqueFiles.forEach((filePath) => {
+=======
+      filesToDelete.forEach(filePath => {
+>>>>>>> perbaikan-website-fitalenta
         if (deleteFileSafely(filePath)) {
           deletedFilesCount++;
         }

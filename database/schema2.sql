@@ -6,6 +6,11 @@
 -- Generation Time: Oct 21, 2025 at 01:25 PM
 -- Server version: 8.0.30
 -- PHP Version: 7.4.33
+<<<<<<< HEAD
+=======
+USE intern_registration;
+
+>>>>>>> perbaikan-website-fitalenta
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -37,7 +42,11 @@ CREATE TABLE `notifications` (
   `related_entity` enum('registration','payment','selection','placement') DEFAULT NULL,
   `related_entity_id` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -68,7 +77,11 @@ CREATE TABLE `payments` (
   `installment_amounts` json DEFAULT NULL,
   `current_installment_number` int DEFAULT '0',
   `next_due_date` date DEFAULT NULL
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -87,7 +100,11 @@ CREATE TABLE `payment_history` (
   `changed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `old_amount_paid` decimal(15,2) DEFAULT NULL,
   `new_amount_paid` decimal(15,2) DEFAULT NULL
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -104,7 +121,11 @@ CREATE TABLE `placement_status` (
   `notes` text,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -135,6 +156,7 @@ CREATE TABLE `programs` (
   `departure_cost` decimal(10,2) DEFAULT '30000000.00',
   `departure_fee_details` text,
   `installment_plan` varchar(20) DEFAULT 'none',
+<<<<<<< HEAD
   `bridge_fund` varchar(255) DEFAULT 'Tersedia (Jaminan dari perusahaan pengirim)',
   `timeline_text` text,
   `requirements_text` text
@@ -156,16 +178,36 @@ CREATE TABLE `program_payment_plans` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+  `down_payment` decimal(10,2) DEFAULT '0.00',
+  `job_matching_cost` decimal(10,2) DEFAULT '0.00',
+  `bridge_fund` varchar(255) DEFAULT 'Tersedia',
+  `timeline_text` text,
+  `requirements_text` text,
+  `sort_order` int DEFAULT '999'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+>>>>>>> perbaikan-website-fitalenta
 --
 -- Dumping data for table `programs`
 --
 
+<<<<<<< HEAD
 INSERT INTO `programs` (`id`, `category_id`, `name`, `description`, `requirements`, `schedule`, `duration`, `capacity`, `current_participants`, `status`, `contact_info`, `registration_deadline`, `start_date`, `end_date`, `created_at`, `updated_at`, `location`, `training_cost`, `training_fee_details`, `departure_cost`, `departure_fee_details`, `installment_plan`, `bridge_fund`, `timeline_text`, `requirements_text`) VALUES (1, 1, 'Program Regular', 'Skema terbaik untuk persiapan intensif dan komprehensif.', '- Ijazah Minimal SMA/Sederajat\n- Sehat Jasmani & Rohani\n- Usia Maksimal 30 Tahun', 'Senin - Jumat', '4 bulan', 20, 0, 'active', 'Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132', '2024-12-31', '2024-02-01', '2024-04-30', '2025-10-02 07:08:29', '2025-10-21 05:31:44', 'Asrama Depok', '16000000.00', 'Biaya administrasi pendaftaran.\nSeragam pelatihan lengkap.\nModul, buku pelajaran bahasa Jepang, dan materi pendukung lainnya.\nAkses penuh ke fasilitas kelas dan laboratorium bahasa.\nFasilitas asrama (akomodasi dan utilitas dasar selama periode pelatihan).\nPendampingan dan bimbingan belajar intensif.', '30000000.00', 'Tiket pesawat ke Jepang (sekali jalan).\nPengurusan Visa Kerja & dokumen keberangkatan.\nAsuransi perjalanan dan asuransi kesehatan awal di Jepang.\nBiaya penempatan kerja di Jepang (termasuk administrasi penyaluran).\nPendampingan proses keberangkatan hingga penyaluran ke perusahaan di Jepang.', '4_installments', 'Tersedia (Jaminan dari perusahaan pengirim)', 'Bulan 1: Pelatihan Dasar Bahasa Jepang (Hiragana & Katakana)\r\nBulan 2: Pengembangan Kosakata dan Tata Bahasa\r\nBulan 3: Budaya Jepang dan Etika Kerja\r\nBulan 4: Persiapan Akhir dan Evaluasi', 'Minimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai.');
 
 INSERT INTO `programs` (`id`, `category_id`, `name`, `description`, `requirements`, `schedule`, `duration`, `capacity`, `current_participants`, `status`, `contact_info`, `registration_deadline`, `start_date`, `end_date`, `created_at`, `updated_at`, `location`, `training_cost`, `training_fee_details`, `departure_cost`, `departure_fee_details`, `installment_plan`, `bridge_fund`, `timeline_text`, `requirements_text`) VALUES (2, 2, 'Program Hybrid', 'Fleksibilitas pelatihan virtual dengan pemantapan di asrama.', '- Ijazah Minimal SMA/Sederajat\n- Sehat Jasmani & Rohani\n- Usia Maksimal 30 Tahun', 'Senin - Jumat', '6 bulan', 15, 0, 'active', 'Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132', '2024-12-31', '2024-02-01', '2024-04-30', '2025-10-02 07:08:29', '2025-10-21 05:31:54', '-', '7150000.00', 'Biaya administrasi pendaftaran.\nAkses ke platform pembelajaran virtual (LMS).\nModul & buku pelajaran digital bahasa Jepang. \nSesi live interaction & bimbingan virtual.\nFasilitas asrama (akomodasi & utilitas dasar) selama 1 bulan pemantapan luring.\nPendampingan & bimbingan belajar.', '30000000.00', 'Tiket pesawat ke Jepang Visa & dokumen keberangkatan \nAsuransi perjalanan & kesehatan \nBiaya penempatan kerja di Jepang\nPendampingan proses keberangkatan hingga penyaluran', '6_installments', 'Tersedia (Jaminan dari perusahaan pengirim)', 'Minggu 1-6: Pelatihan Dasar Bahasa Jepang (Virtual: Penguasaan Hiragana & Katakana).\nMinggu 7-12: Pengembangan Kosakata dan Tata Bahasa Lanjutan (Virtual: Fokus N5 dan Komunikasi Dasar).\nMinggu 13-20: Bahasa Lanjutan, Evaluasi Virtual, dan Persiapan Administratif (Virtual: Fokus N4, Self-Study, dan Pre-screening dokumen penempatan).\nMinggu 21-24: Pemantapan Budaya, Kesiapan Fisik/Mental, dan Penyaluran (Luring di Asrama: Etika Kerja, Simulasi Wawancara, Ujian Akhir, dan Proses Keberangkatan).', 'Minimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai.');
 
 INSERT INTO `programs` (`id`, `category_id`, `name`, `description`, `requirements`, `schedule`, `duration`, `capacity`, `current_participants`, `status`, `contact_info`, `registration_deadline`, `start_date`, `end_date`, `created_at`, `updated_at`, `location`, `training_cost`, `training_fee_details`, `departure_cost`, `departure_fee_details`, `installment_plan`, `bridge_fund`, `timeline_text`, `requirements_text`) VALUES (3, 3, 'Program Fast Track', 'Jalur cepat untuk yang sudah memiliki sertifikat Noryoku Shiken N4 dan Specified Skilled Worker', '- Mahasiswa Statistika/TI/Matematika\n- Menguasai dasar statistik\n- Familiar dengan Python/R', 'Senin - Jumat', '1 bulan', 12, 0, 'active', 'Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesa No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132', '2024-12-31', '2024-02-01', '2024-05-31', '2025-10-02 07:08:29', '2025-10-21 11:07:39', 'Jakarta, Indonesia & Jepang', '4000000.00', 'Biaya administrasi dan pendaftaran\nVerifikasi sertifikat N4 / Sertifikat Keahlian (SSW)\nOrientasi budaya kerja dan etika bisnis (1 bulan) \nKonsultasi persiapan keberangkatan dan wawancara \nAkses ke fasilitas kelas/ruangan briefing', '30000000.00', 'Tiket pesawat ke Jepang Visa dan dokumen keberangkatan \nAsuransi perjalanan dan kesehatan awal\nBiaya penempatan kerja di Jepang\nProcessing fee administrasi penyaluran', 'none', 'Tersedia (Jaminan dari perusahaan pengirim)', 'Minggu 1: Verifikasi Dokumen, Sertifikat N4/SSW, dan Keahlian Teknis \nMinggu 2: Orientasi Budaya Kerja, Etika Jepang (Horenso), dan Simulasi Wawancara \nMinggu 3: Pengurusan Dokumen Administrasi Keberangkatan dan Visa\nMinggu 4: Briefing Akhir, Matching Perusahaan, dan Pemberangkatan', 'Memiliki sertifikat Noryoku Shiken N4\nMemiliki sertifikat Specified Skilled Worker (SSW)\nMinimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai.');
 -- --------------------------------------------------------
+=======
+INSERT INTO `programs` (`id`, `category_id`, `name`, `description`, `requirements`, `schedule`, `duration`, `capacity`, `current_participants`, `status`, `contact_info`, `registration_deadline`, `start_date`, `end_date`, `created_at`, `updated_at`, `location`, `training_cost`, `training_fee_details`, `departure_cost`, `departure_fee_details`, `installment_plan`, `bridge_fund`, `timeline_text`, `requirements_text`) VALUES
+(1, 1, 'Program Regular', 'Skema terbaik untuk persiapan intensif dan komprehensif.', '- Ijazah Minimal SMA/Sederajat\n- Sehat Jasmani & Rohani\n- Usia Maksimal 30 Tahun', 'Senin-Jumat, 09:00-17:00', '4 bulan', 20, 0, 'active', 'Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132', '2024-12-31', '2024-02-01', '2024-04-30', '2025-10-02 07:08:29', '2025-10-21 05:31:44', 'Asrama Depok', '16000000.00', 'Biaya administrasi pendaftaran.\nSeragam pelatihan lengkap.\nModul, buku pelajaran bahasa Jepang, dan materi pendukung lainnya.\nAkses penuh ke fasilitas kelas dan laboratorium bahasa.\nFasilitas asrama (akomodasi dan utilitas dasar selama periode pelatihan).\nPendampingan dan bimbingan belajar intensif.', '30000000.00', 'Tiket pesawat ke Jepang (sekali jalan).\nPengurusan Visa Kerja & dokumen keberangkatan.\nAsuransi perjalanan dan asuransi kesehatan awal di Jepang.\nBiaya penempatan kerja di Jepang (termasuk administrasi penyaluran).\nPendampingan proses keberangkatan hingga penyaluran ke perusahaan di Jepang.', '4_installments', 'Tersedia', 'Bulan 1: Pelatihan Dasar Bahasa Jepang (Hiragana & Katakana)\r\nBulan 2: Pengembangan Kosakata dan Tata Bahasa\r\nBulan 3: Budaya Jepang dan Etika Kerja\r\nBulan 4: Persiapan Akhir dan Evaluasi', 'Minimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai.'),
+(2, 2, 'Program Hybrid', 'Fleksibilitas pelatihan virtual dengan pemantapan di asrama.', '- Ijazah Minimal SMA/Sederajat\n- Sehat Jasmani & Rohani\n- Usia Maksimal 30 Tahun', 'Senin-Jumat, 09:00-17:00', '6 bulan', 15, 0, 'active', 'Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132', '2024-12-31', '2024-02-01', '2024-04-30', '2025-10-02 07:08:29', '2025-10-21 05:31:54', '-', '7150000.00', 'Biaya administrasi pendaftaran.\nAkses ke platform pembelajaran virtual (LMS).\nModul & buku pelajaran digital bahasa Jepang. \nSesi live interaction & bimbingan virtual.\nFasilitas asrama (akomodasi & utilitas dasar) selama 1 bulan pemantapan luring.\nPendampingan & bimbingan belajar.', '30000000.00', 'Tiket pesawat ke Jepang Visa & dokumen keberangkatan \nAsuransi perjalanan & kesehatan \nBiaya penempatan kerja di Jepang\nPendampingan proses keberangkatan hingga penyaluran', '6_installments', 'Tersedia', 'Minggu 1-6: Pelatihan Dasar Bahasa Jepang (Virtual: Penguasaan Hiragana & Katakana).\nMinggu 7-12: Pengembangan Kosakata dan Tata Bahasa Lanjutan (Virtual: Fokus N5 dan Komunikasi Dasar).\nMinggu 13-20: Bahasa Lanjutan, Evaluasi Virtual, dan Persiapan Administratif (Virtual: Fokus N4, Self-Study, dan Pre-screening dokumen penempatan).\nMinggu 21-24: Pemantapan Budaya, Kesiapan Fisik/Mental, dan Penyaluran (Luring di Asrama: Etika Kerja, Simulasi Wawancara, Ujian Akhir, dan Proses Keberangkatan).', 'Minimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai.'),
+(3, 3, 'Program Fast Track', 'Jalur cepat untuk yang sudah memiliki sertifikat Noryoku Shiken N4 dan Specified Skilled Worker', '- Mahasiswa Statistika/TI/Matematika\n- Menguasai dasar statistik\n- Familiar dengan Python/R', 'Senin-Jumat, 09:00-17:00', '1 bulan', 12, 0, 'active', 'Email: info@fitalenta.co.id\nTelp: 0811 1011 9273\nAlamat: Gedung Science Techno Park ITB. Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong, Bandung 40132', '2024-12-31', '2024-02-01', '2024-05-31', '2025-10-02 07:08:29', '2025-10-21 11:07:39', 'Jakarta, Indonesia & Jepang', '4000000.00', 'Biaya administrasi dan pendaftaran\nVerifikasi sertifikat N4 / Sertifikat Keahlian (SSW)\nOrientasi budaya kerja dan etika bisnis (1 bulan) \nKonsultasi persiapan keberangkatan dan wawancara \nAkses ke fasilitas kelas/ruangan briefing', '30000000.00', 'Tiket pesawat ke Jepang Visa dan dokumen keberangkatan \nAsuransi perjalanan dan kesehatan awal\nBiaya penempatan kerja di Jepang\nProcessing fee administrasi penyaluran', 'none', 'Tersedia', 'Minggu 1: Verifikasi Dokumen, Sertifikat N4/SSW, dan Keahlian Teknis \nMinggu 2: Orientasi Budaya Kerja, Etika Jepang (Horenso), dan Simulasi Wawancara \nMinggu 3: Pengurusan Dokumen Administrasi Keberangkatan dan Visa\nMinggu 4: Briefing Akhir, Matching Perusahaan, dan Pemberangkatan', 'Memiliki sertifikat Noryoku Shiken N4\nMemiliki sertifikat Specified Skilled Worker (SSW)\nMinimal 18 tahun dan Maksimal 30 Tahun.\nMinimal Ijazah SMA/SMK Sederajat.\nSehat Jasmani & Rohani (Wajib dibuktikan dengan Surat Keterangan Sehat dari fasilitas kesehatan).\nTidak memiliki catatan kriminal (Wajib melampirkan Surat Keterangan Catatan Kepolisian/SKCK).\nBersedia mengikuti seluruh rangkaian pelatihan dan aturan asrama hingga selesai.');
+
+-- --------------------------------------------------------
+
+>>>>>>> perbaikan-website-fitalenta
 --
 -- Table structure for table `program_categories`
 --
@@ -175,17 +217,28 @@ CREATE TABLE `program_categories` (
   `name` varchar(255) NOT NULL,
   `description` text,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Dumping data for table `program_categories`
 --
 
+<<<<<<< HEAD
 INSERT INTO `program_categories` (`id`, `name`, `description`, `created_at`) VALUES (1, 'Regular', 'Program magang di bidang teknologi informasi dan pengembangan software', '2025-10-02 07:08:29');
 
 INSERT INTO `program_categories` (`id`, `name`, `description`, `created_at`) VALUES (2, 'Hybrid', 'Program magang di bidang analisis data dan machine learning', '2025-10-02 07:08:29');
 
 INSERT INTO `program_categories` (`id`, `name`, `description`, `created_at`) VALUES (3, 'Fast Track', 'Program magang di bidang pemasaran digital dan media sosial', '2025-10-02 07:08:29');
+=======
+INSERT INTO `program_categories` (`id`, `name`, `description`, `created_at`) VALUES
+(1, 'Regular', 'Program magang di bidang teknologi informasi dan pengembangan software', '2025-10-02 07:08:29'),
+(2, 'Hybrid', 'Program magang di bidang analisis data dan machine learning', '2025-10-02 07:08:29'),
+(3, 'Fast Track', 'Program magang di bidang pemasaran digital dan media sosial', '2025-10-02 07:08:29');
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -226,6 +279,7 @@ CREATE TABLE `registrations` (
   `photo_path` varchar(255) DEFAULT NULL,
   `n4_certificate_path` varchar(255) DEFAULT NULL,
   `ssw_certificate_path` varchar(255) DEFAULT NULL
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -248,6 +302,12 @@ CREATE TABLE `success_stories` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+>>>>>>> perbaikan-website-fitalenta
 --
 -- Table structure for table `registration_status_history`
 --
@@ -260,7 +320,11 @@ CREATE TABLE `registration_status_history` (
   `notes` text,
   `changed_by` int DEFAULT NULL,
   `changed_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -277,7 +341,11 @@ CREATE TABLE `selection_status` (
   `evaluated_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 -- --------------------------------------------------------
 
@@ -292,11 +360,15 @@ CREATE TABLE `users` (
   `full_name` varchar(255) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` text,
+<<<<<<< HEAD
    `profile_picture` varchar(255) DEFAULT NULL,
+=======
+>>>>>>> perbaikan-website-fitalenta
   `user_type` enum('participant','admin') DEFAULT 'participant',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `birth_place` varchar(100) DEFAULT NULL,
+<<<<<<< HEAD
   `birth_date` date DEFAULT NULL,
   `is_verified` tinyint(1) DEFAULT '0',
   `verification_token_sent_at` timestamp NULL DEFAULT NULL,
@@ -333,16 +405,27 @@ CREATE TABLE `password_resets` (
   `used_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+=======
+  `birth_date` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Dumping data for table `users`
 --
 
+<<<<<<< HEAD
 INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `address`, `profile_picture`, `user_type`, `created_at`, `updated_at`, `birth_place`, `birth_date`, `is_verified`, `verification_token_sent_at`, `allow_multiple_programs`, `last_login_at`) VALUES (1, 'admin@gmail.com', '$2a$12$xJy3WDCbb37u0BCUepQTk.QL7A7B8hrka0.ZH6gh1NwN3PljrMufG', 'Admin Fitalenta', '081312557168', '', NULL, 'admin', '2025-10-02 07:08:29', '2025-10-21 12:19:54', NULL, NULL, 1, NULL, 1, NULL);
 
 INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `address`, `profile_picture`, `user_type`, `created_at`, `updated_at`, `birth_place`, `birth_date`, `is_verified`, `verification_token_sent_at`, `allow_multiple_programs`, `last_login_at`) VALUES (5, 'user1@gmail.com', '$2b$12$tEe5PStStL4/aqC56ZSIX.ytdeaGPveMAOGxO3BC.Df45ZjEoag2a', 'User 1', '', '', NULL, 'participant', '2025-10-21 12:21:55', '2025-10-21 12:21:55', NULL, NULL, 1, NULL, 0, NULL);
 
 INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `address`, `profile_picture`, `user_type`, `created_at`, `updated_at`, `birth_place`, `birth_date`, `is_verified`, `verification_token_sent_at`, `allow_multiple_programs`, `last_login_at`) VALUES (6, 'user2@gmail.com', '$2b$12$Im8LbTmbb4mYZaaeZCwqY.e00xuELRmGH01eSJkd2kcLccFWnh/t6', 'User 2', '', '', NULL, 'participant', '2025-10-21 12:22:54', '2025-10-21 12:22:54', NULL, NULL, 0, NULL, 0, NULL);
+=======
+INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `phone`, `address`, `user_type`, `created_at`, `updated_at`, `birth_place`, `birth_date`) VALUES
+(1, 'admin@gmail.com', ' ', 'Admin Fitalenta', '081312557168', '', 'admin', '2025-10-02 07:08:29', '2025-10-21 12:19:54', NULL, NULL),
+(5, 'user1@gmail.com', '$2b$12$tEe5PStStL4/aqC56ZSIX.ytdeaGPveMAOGxO3BC.Df45ZjEoag2a', 'User 1', '', '', 'participant', '2025-10-21 12:21:55', '2025-10-21 12:21:55', NULL, NULL),
+(6, 'user2@gmail.com', '$2b$12$Im8LbTmbb4mYZaaeZCwqY.e00xuELRmGH01eSJkd2kcLccFWnh/t6', 'User 2', '', '', 'participant', '2025-10-21 12:22:54', '2025-10-21 12:22:54', NULL, NULL);
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Indexes for dumped tables
@@ -398,6 +481,7 @@ ALTER TABLE `programs`
 --
 ALTER TABLE `program_categories`
   ADD PRIMARY KEY (`id`);
+<<<<<<< HEAD
 --
 -- Indexes for table `program_payment_plans`
 --
@@ -405,6 +489,8 @@ ALTER TABLE `program_payment_plans`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_program_payment_plans_program` (`program_id`),
   ADD KEY `idx_program_payment_plans_installment` (`program_id`,`installment_number`);
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Indexes for table `registrations`
@@ -432,6 +518,7 @@ ALTER TABLE `selection_status`
   ADD KEY `evaluated_by` (`evaluated_by`),
   ADD KEY `idx_status` (`status`),
   ADD KEY `idx_registration` (`registration_id`);
+<<<<<<< HEAD
 --
 -- Indexes for table `success_stories`
 --
@@ -440,6 +527,8 @@ ALTER TABLE `success_stories`
   ADD KEY `idx_success_stories_published` (`is_published`),
   ADD KEY `idx_success_stories_created_by` (`created_by`),
   ADD KEY `idx_success_stories_updated_by` (`updated_by`);
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Indexes for table `users`
@@ -448,6 +537,7 @@ ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`),
   ADD KEY `idx_email` (`email`),
+<<<<<<< HEAD
   ADD KEY `idx_user_type` (`user_type`),
   ADD KEY `idx_user_is_verified` (`is_verified`);
 
@@ -469,6 +559,9 @@ ALTER TABLE `password_resets`
   ADD KEY `idx_password_resets_user` (`user_id`),
   ADD KEY `idx_password_resets_expires` (`expires_at`);
 
+=======
+  ADD KEY `idx_user_type` (`user_type`);
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -533,6 +626,7 @@ ALTER TABLE `selection_status`
 --
 ALTER TABLE `users`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+<<<<<<< HEAD
 --
 -- AUTO_INCREMENT for table `program_payment_plans`
 --
@@ -556,6 +650,8 @@ ALTER TABLE `email_verifications`
 --
 ALTER TABLE `password_resets`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Constraints for dumped tables
@@ -573,11 +669,14 @@ ALTER TABLE `notifications`
 ALTER TABLE `payments`
   ADD CONSTRAINT `payments_ibfk_1` FOREIGN KEY (`registration_id`) REFERENCES `registrations` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `payments_ibfk_2` FOREIGN KEY (`verified_by`) REFERENCES `users` (`id`);
+<<<<<<< HEAD
 --
 -- Constraints for table `program_payment_plans`
 --
 ALTER TABLE `program_payment_plans`
   ADD CONSTRAINT `program_payment_plans_ibfk_1` FOREIGN KEY (`program_id`) REFERENCES `programs` (`id`) ON DELETE CASCADE;
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 --
 -- Constraints for table `payment_history`
@@ -618,6 +717,7 @@ ALTER TABLE `registration_status_history`
 ALTER TABLE `selection_status`
   ADD CONSTRAINT `selection_status_ibfk_1` FOREIGN KEY (`registration_id`) REFERENCES `registrations` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `selection_status_ibfk_2` FOREIGN KEY (`evaluated_by`) REFERENCES `users` (`id`);
+<<<<<<< HEAD
 
 --
 -- Constraints for table `success_stories`
@@ -637,6 +737,8 @@ ALTER TABLE `email_verifications`
 --
 ALTER TABLE `password_resets`
   ADD CONSTRAINT `password_resets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+=======
+>>>>>>> perbaikan-website-fitalenta
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -1,3 +1,63 @@
+<<<<<<< HEAD
+=======
+// import mysql from "mysql2";
+// import dotenv from "dotenv";
+
+// dotenv.config();
+
+// // Create connection pool
+// const db = mysql.createPool({
+//   host: process.env.DB_HOST || "localhost",
+//   user: process.env.DB_USER || "root",
+//   password: process.env.DB_PASSWORD || "",
+//   database: process.env.DB_NAME || "intern_registration",
+//   waitForConnections: true,
+//   connectionLimit: 10,
+//   queueLimit: 0,
+//   charset: "utf8mb4",
+//   timezone: "+07:00", // WIB
+// });
+
+// const promisePool = db.promise();
+
+// // Helper functions
+// export const generateRegistrationCode = async () => {
+//   const timestamp = Date.now().toString().slice(-6);
+//   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+//   return `REG-${timestamp}-${random}`;
+// };
+
+// export const generateInvoiceNumber = async () => {
+//   const year = new Date().getFullYear();
+//   const month = String(new Date().getMonth() + 1).padStart(2, "0");
+//   const timestamp = Date.now().toString().slice(-6);
+//   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+//   return `INV/${year}/${month}/${timestamp}${random}`;
+// };
+
+// export const generateReceiptNumber = async () => {
+//   const year = new Date().getFullYear();
+//   const month = String(new Date().getMonth() + 1).padStart(2, "0");
+//   const timestamp = Date.now().toString().slice(-6);
+//   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+//   return `RCP/${year}/${month}/${timestamp}${random}`;
+// };
+
+// // Test connection function
+// export const testConnection = async () => {
+//   try {
+//     const [rows] = await db.promise().query("SELECT 1 + 1 AS result");
+//     console.log("Database connection test successful");
+//     return true;
+//   } catch (error) {
+//     console.error("Database connection test failed:", error);
+//     return false;
+//   }
+// };
+
+// export default db;
+
+>>>>>>> perbaikan-website-fitalenta
 import mysql from "mysql2";
 import dotenv from "dotenv";
 
@@ -19,6 +79,7 @@ const db = mysql.createPool({
 // Get promise-based interface
 const promisePool = db.promise();
 
+<<<<<<< HEAD
 // --- HELPER FUNCTIONS ---
 
 // Helper: Ubah Bulan Angka (0-11) ke Angka Romawi
@@ -28,12 +89,16 @@ const getRomanMonth = () => {
   return months[currentMonthIndex];
 };
 
+=======
+// Helper functions
+>>>>>>> perbaikan-website-fitalenta
 export const generateRegistrationCode = async () => {
   const timestamp = Date.now().toString().slice(-6);
   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
   return `REG-${timestamp}-${random}`;
 };
 
+<<<<<<< HEAD
 /**
  * Generate Invoice Number
  * Format: 131-TG/INV/FITALENTA/<<ROMAN>>/<<YEAR>>
@@ -125,6 +190,22 @@ export const generateReceiptNumber = async () => {
     console.error("Error generating receipt number:", error);
     return `${defaultStart}/TRX/FITALENTA/${romanMonth}/${year}`;
   }
+=======
+export const generateInvoiceNumber = async () => {
+  const year = new Date().getFullYear();
+  const month = String(new Date().getMonth() + 1).padStart(2, "0");
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `INV/${year}/${month}/${timestamp}${random}`;
+};
+
+export const generateReceiptNumber = async () => {
+  const year = new Date().getFullYear();
+  const month = String(new Date().getMonth() + 1).padStart(2, "0");
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `RCP/${year}/${month}/${timestamp}${random}`;
+>>>>>>> perbaikan-website-fitalenta
 };
 
 // Test connection function

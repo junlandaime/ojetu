@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
+<<<<<<< HEAD
 import axios from "axios";
 import { API_BASE_URL } from "./utils/api";
 
@@ -47,6 +48,9 @@ axios.interceptors.response.use(
 );
 
 
+=======
+import "bootstrap-icons/font/bootstrap-icons.css";
+>>>>>>> perbaikan-website-fitalenta
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

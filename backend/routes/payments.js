@@ -8,11 +8,14 @@ import db, {
   generateInvoiceNumber,
   generateReceiptNumber,
 } from "../config/database.js";
+<<<<<<< HEAD
 import {
   sendEmail,
   createInvoiceEmailTemplate,
   createPaymentStatusEmailTemplate,
 } from "../services/emailService.js";
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,6 +23,7 @@ const __dirname = path.dirname(__filename);
 const router = express.Router();
 
 const ensureUploadsDir = () => {
+<<<<<<< HEAD
   const dirs = [
     path.join(__dirname, "../uploads"),
     path.join(__dirname, "../uploads/payments"),
@@ -34,6 +38,17 @@ const ensureUploadsDir = () => {
       fs.mkdirSync(dir, { recursive: true });
     }
   });
+=======
+  const uploadsDir = path.join(__dirname, "../uploads");
+  const paymentsDir = path.join(uploadsDir, "payments");
+
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  if (!fs.existsSync(paymentsDir)) {
+    fs.mkdirSync(paymentsDir, { recursive: true });
+  }
+>>>>>>> perbaikan-website-fitalenta
 };
 
 ensureUploadsDir();
@@ -71,7 +86,10 @@ const getTotalInstallments = (program) => {
   if (!plan) return 4;
 
   if (plan === "none") return 1;
+<<<<<<< HEAD
   if (plan === "3_installments") return 3;
+=======
+>>>>>>> perbaikan-website-fitalenta
   if (plan === "4_installments") return 4;
   if (plan === "6_installments") return 6;
 
@@ -190,6 +208,7 @@ const formatCurrency = (value) => {
     : `Rp ${Math.round(numValue).toLocaleString("id-ID")}`;
 };
 
+<<<<<<< HEAD
 const sanitizeAmountValue = (value, defaultValue = null) => {
   if (value === null || value === undefined) {
     return defaultValue;
@@ -798,6 +817,8 @@ const generateAndSaveDocument = async (type, paymentData, context) => {
 // [END] PDF GENERATOR
 // ==========================================
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.get("/", async (req, res) => {
   try {
     const { status, program, search, start_date, end_date } = req.query;
@@ -958,6 +979,7 @@ router.post(
       }
 
       const proofImage = `/uploads/payments/${req.file.filename}`;
+<<<<<<< HEAD
       const [payments] = await db
         .promise()
         .query(
@@ -1017,6 +1039,15 @@ router.post(
            WHERE id = ?`,
           [proofImage, JSON.stringify(updatedInstallments), req.params.id]
         );
+=======
+
+      await db
+        .promise()
+        .query("UPDATE payments SET proof_image = ? WHERE id = ?", [
+          proofImage,
+          req.params.id,
+        ]);
+>>>>>>> perbaikan-website-fitalenta
 
       res.json({
         success: true,
@@ -1024,7 +1055,10 @@ router.post(
           "Bukti pembayaran berhasil diupload dan menunggu verifikasi admin",
         data: {
           proof_image: proofImage,
+<<<<<<< HEAD
            installment_number: installmentNumber,
+=======
+>>>>>>> perbaikan-website-fitalenta
         },
       });
     } catch (error) {
@@ -1037,14 +1071,18 @@ router.post(
   }
 );
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.post("/:id/create-invoice", async (req, res) => {
   const connection = await db.promise().getConnection();
 
   try {
     await connection.beginTransaction();
 
+<<<<<<< HEAD
     const { installment_number, amount, due_date, notes, verified_by } = req.body;
     const issuerId = verified_by || req.user?.userId || null;
     const sanitizedAmount = sanitizeAmountValue(amount, null);
@@ -1061,6 +1099,17 @@ router.post("/:id/create-invoice", async (req, res) => {
        LEFT JOIN registrations r ON py.registration_id = r.id
        LEFT JOIN programs p ON r.program_id = p.id
        LEFT JOIN users u ON r.user_id = u.id
+=======
+    const { installment_number, amount, due_date, notes, verified_by } =
+      req.body;
+    const paymentId = req.params.id;
+
+    const [payments] = await connection.query(
+      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan
+       FROM payments py
+       LEFT JOIN registrations r ON py.registration_id = r.id
+       LEFT JOIN programs p ON r.program_id = p.id
+>>>>>>> perbaikan-website-fitalenta
        WHERE py.id = ?`,
       [paymentId]
     );
@@ -1076,11 +1125,14 @@ router.post("/:id/create-invoice", async (req, res) => {
     const currentPayment = payments[0];
     const totalInstallments = getTotalInstallments(currentPayment);
 
+<<<<<<< HEAD
     // ---------------------------------------------------------
     // 2. VALIDASI LOGIKA CICILAN (Dari Block 2)
     // ---------------------------------------------------------
     
     // Cek Urutan Cicilan
+=======
+>>>>>>> perbaikan-website-fitalenta
     let expectedInstallment = 1;
     if (currentPayment.status === "pending") {
       expectedInstallment = 1;
@@ -1105,14 +1157,21 @@ router.post("/:id/create-invoice", async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     // Cek Cicilan Sebelumnya Harus Lunas
+=======
+>>>>>>> perbaikan-website-fitalenta
     if (installment_number > 1) {
       const previousStatus = `installment_${installment_number - 1}`;
       const [paidHistory] = await connection.query(
         `SELECT * FROM payment_history 
          WHERE payment_id = ? 
          AND new_status = ? 
+<<<<<<< HEAD
          AND amount_changed > 0`, // Asumsi: amount_changed > 0 menandakan ada uang masuk/lunas
+=======
+         AND amount_changed > 0`,
+>>>>>>> perbaikan-website-fitalenta
         [paymentId, previousStatus]
       );
 
@@ -1125,8 +1184,12 @@ router.post("/:id/create-invoice", async (req, res) => {
       }
     }
 
+<<<<<<< HEAD
     // Validasi Amount
     if (!sanitizedAmount || sanitizedAmount <= 0) {
+=======
+    if (!amount || amount <= 0) {
+>>>>>>> perbaikan-website-fitalenta
       await connection.rollback();
       return res.status(400).json({
         success: false,
@@ -1134,7 +1197,10 @@ router.post("/:id/create-invoice", async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     // Validasi Tanggal (Tidak boleh masa lalu)
+=======
+>>>>>>> perbaikan-website-fitalenta
     if (!due_date) {
       await connection.rollback();
       return res.status(400).json({
@@ -1155,6 +1221,7 @@ router.post("/:id/create-invoice", async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     // ---------------------------------------------------------
     // 3. GENERATE NOMOR BARU & PERSIAPAN DATA UPDATE
     // ---------------------------------------------------------
@@ -1165,6 +1232,8 @@ router.post("/:id/create-invoice", async (req, res) => {
     // [PENTING] Receipt Number TIDAK digenerate disini agar status tetap "Belum Bayar"
     
     // Persiapan JSON History
+=======
+>>>>>>> perbaikan-website-fitalenta
     let installmentAmounts = {};
     try {
       installmentAmounts = currentPayment.installment_amounts
@@ -1174,6 +1243,7 @@ router.post("/:id/create-invoice", async (req, res) => {
       installmentAmounts = {};
     }
 
+<<<<<<< HEAD
     const installmentKey = `installment_${installment_number}`;
     const existingEntry = installmentAmounts[installmentKey] || {};
     const nowIso = new Date().toISOString();
@@ -1193,13 +1263,24 @@ router.post("/:id/create-invoice", async (req, res) => {
       receipt_number: null, // Set NULL agar Frontend mendeteksi ini belum lunas
       
       invoice_issued_at: nowIso,
+=======
+    installmentAmounts[`installment_${installment_number}`] = {
+      amount: amount,
+      due_date: due_date,
+      created_at: new Date().toISOString(),
+      created_by: verified_by,
+      notes: notes,
+>>>>>>> perbaikan-website-fitalenta
     };
 
     const newStatus = `installment_${installment_number}`;
 
+<<<<<<< HEAD
     // ---------------------------------------------------------
     // 4. UPDATE DATABASE
     // ---------------------------------------------------------
+=======
+>>>>>>> perbaikan-website-fitalenta
     await connection.query(
       `UPDATE payments 
        SET status = ?,
@@ -1208,8 +1289,11 @@ router.post("/:id/create-invoice", async (req, res) => {
            current_installment_number = ?,
            installment_amounts = ?,
            is_manual_invoice = TRUE,
+<<<<<<< HEAD
            invoice_number = ?,    -- Update dengan Nomor Invoice Baru
            receipt_number = NULL, -- Update jadi NULL (Reset status bayar)
+=======
+>>>>>>> perbaikan-website-fitalenta
            notes = CONCAT(COALESCE(notes, ''), ?),
            updated_at = NOW()
        WHERE id = ?`,
@@ -1219,16 +1303,23 @@ router.post("/:id/create-invoice", async (req, res) => {
         due_date,
         installment_number,
         JSON.stringify(installmentAmounts),
+<<<<<<< HEAD
         newInvoiceNo, // Masukkan invoice baru
         // Receipt number tidak masuk parameter karena di-hardcode NULL di query
         ` | Manual Invoice: Cicilan ${installment_number} - Amount: Rp ${sanitizedAmount} - Due: ${due_date}`,
+=======
+        ` | Manual Invoice: Cicilan ${installment_number} - Amount: Rp ${amount} - Due: ${due_date}`,
+>>>>>>> perbaikan-website-fitalenta
         paymentId,
       ]
     );
 
+<<<<<<< HEAD
     // ---------------------------------------------------------
     // 5. CATAT HISTORY LOG
     // ---------------------------------------------------------
+=======
+>>>>>>> perbaikan-website-fitalenta
     await connection.query(
       `INSERT INTO payment_history 
        (payment_id, old_status, new_status, notes, changed_by) 
@@ -1237,13 +1328,20 @@ router.post("/:id/create-invoice", async (req, res) => {
         paymentId,
         currentPayment.status,
         newStatus,
+<<<<<<< HEAD
         `Manual invoice created: ${newInvoiceNo} (Cicilan ${installment_number}) - Amount: Rp ${sanitizedAmount} - Due: ${due_date}`,
         issuerId,
+=======
+        `Manual invoice created: Cicilan ${installment_number} - Amount: Rp ${amount} - Due: ${due_date} - ${notes || ""
+        }`,
+        verified_by,
+>>>>>>> perbaikan-website-fitalenta
       ]
     );
 
     await connection.commit();
 
+<<<<<<< HEAD
     // ---------------------------------------------------------
     // 6. SNAPSHOT PDF & EMAIL
     // ---------------------------------------------------------
@@ -1296,6 +1394,8 @@ router.post("/:id/create-invoice", async (req, res) => {
       }
     }
 
+=======
+>>>>>>> perbaikan-website-fitalenta
     res.json({
       success: true,
       message: `Tagihan cicilan ${installment_number} berhasil dibuat`,
@@ -1305,12 +1405,17 @@ router.post("/:id/create-invoice", async (req, res) => {
         amount: amount,
         due_date: due_date,
         current_installment_number: installment_number,
+<<<<<<< HEAD
         invoice_number: newInvoiceNo, // Kembalikan nomor baru
         receipt_number: null          // Konfirmasi status null
       },
       meta: { emailSent },
     });
 
+=======
+      },
+    });
+>>>>>>> perbaikan-website-fitalenta
   } catch (error) {
     await connection.rollback();
     console.error("❌ Error creating manual invoice:", error);
@@ -1323,6 +1428,7 @@ router.post("/:id/create-invoice", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // ============================================================================
 // [FIXED ROUTER] PUT STATUS: INCREMENTAL RECEIPT NUMBER (GLOBAL + LOCAL SCAN)
 // ============================================================================
@@ -1336,13 +1442,18 @@ const getRomanMonth = () => {
   return months[new Date().getMonth()];
 };
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.put("/:id/status", async (req, res) => {
   const connection = await db.promise().getConnection();
 
   try {
     await connection.beginTransaction();
 
+<<<<<<< HEAD
     // 1. Ambil Data Request
+=======
+>>>>>>> perbaikan-website-fitalenta
     const {
       status,
       amount_paid,
@@ -1356,6 +1467,7 @@ router.put("/:id/status", async (req, res) => {
     } = req.body;
     const paymentId = req.params.id;
 
+<<<<<<< HEAD
     console.log(`[DEBUG] Processing Status Update ID: ${paymentId} -> ${status}`);
 
     // 2. Ambil Data Payment Existing (PERBAIKAN: Tambahkan Join ke User & Program)
@@ -1370,23 +1482,45 @@ router.put("/:id/status", async (req, res) => {
        LEFT JOIN registrations r ON py.registration_id = r.id
        LEFT JOIN programs p ON r.program_id = p.id
        LEFT JOIN users u ON r.user_id = u.id -- Join ke tabel Users
+=======
+    const [currentPayments] = await connection.query(
+      `SELECT py.*, p.training_cost as program_training_cost, p.installment_plan as program_installment_plan
+       FROM payments py
+       LEFT JOIN registrations r ON py.registration_id = r.id
+       LEFT JOIN programs p ON r.program_id = p.id
+>>>>>>> perbaikan-website-fitalenta
        WHERE py.id = ?`,
       [paymentId]
     );
 
     if (currentPayments.length === 0) {
       await connection.rollback();
+<<<<<<< HEAD
       return res.status(404).json({ success: false, message: "Payment not found" });
+=======
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found",
+      });
+>>>>>>> perbaikan-website-fitalenta
     }
 
     const currentPayment = currentPayments[0];
     const totalInstallments = getTotalInstallments(currentPayment);
+<<<<<<< HEAD
     const totalAmount = sanitizeAmountValue(currentPayment.program_training_cost, 0);
     const currentAmountPaid = sanitizeAmountValue(currentPayment.amount_paid || 0, 0);
     const newPaymentAmount = sanitizeAmountValue(amount_paid || 0, 0);
     const newTotalPaid = currentAmountPaid + newPaymentAmount;
 
     // 3. Validasi
+=======
+    const totalAmount = parseFloat(currentPayment.program_training_cost);
+    const currentAmountPaid = parseFloat(currentPayment.amount_paid || 0);
+    const newPaymentAmount = parseFloat(amount_paid || 0);
+    const newTotalPaid = currentAmountPaid + newPaymentAmount;
+
+>>>>>>> perbaikan-website-fitalenta
     const validation = await validateStatusProgression(
       currentPayment.status,
       status,
@@ -1398,6 +1532,7 @@ router.put("/:id/status", async (req, res) => {
 
     if (!validation.isValid) {
       await connection.rollback();
+<<<<<<< HEAD
       return res.status(400).json({ success: false, message: validation.error });
     }
 
@@ -1499,17 +1634,82 @@ router.put("/:id/status", async (req, res) => {
             notes = COALESCE(?, notes),
             verified_by = ?, verified_at = NOW(),
             due_date = ?, current_installment_number = ?`;
+=======
+      return res.status(400).json({
+        success: false,
+        message: validation.error,
+        details: {
+          currentStatus: currentPayment.status,
+          requestedStatus: status,
+          currentAmountPaid,
+          newPaymentAmount,
+          totalAmount,
+        },
+      });
+    }
+
+    if (newTotalPaid > totalAmount) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Jumlah pembayaran melebihi total tagihan. Total: ${totalAmount}, Sudah dibayar: ${currentAmountPaid}, Maksimal: ${totalAmount - currentAmountPaid
+          }`,
+      });
+    }
+
+    let finalStatus = status;
+    let receipt_number = currentPayment.receipt_number;
+    let due_date = currentPayment.due_date;
+    let current_installment_number = currentPayment.current_installment_number;
+
+    if (finalStatus === "pending") {
+      current_installment_number = 0;
+    } else if (finalStatus.startsWith("installment_")) {
+      current_installment_number = parseInt(finalStatus.split("_")[1]);
+    } else if (finalStatus === "paid") {
+      current_installment_number = 0;
+    }
+
+    if (newTotalPaid >= totalAmount && finalStatus !== "cancelled") {
+      finalStatus = "paid";
+      current_installment_number = 0;
+
+      if (!receipt_number) {
+        receipt_number = await generateReceiptNumber();
+      }
+    }
+
+    if (
+      !receipt_number &&
+      finalStatus !== "pending" &&
+      finalStatus !== "cancelled" &&
+      newPaymentAmount > 0
+    ) {
+      receipt_number = await generateReceiptNumber();
+    }
+
+    let updateQuery = `UPDATE payments 
+       SET status = ?, amount_paid = ?, receipt_number = ?, notes = COALESCE(?, notes), 
+           verified_by = ?, verified_at = NOW(), due_date = ?, current_installment_number = ?`;
+>>>>>>> perbaikan-website-fitalenta
 
     let updateParams = [
       finalStatus,
       newTotalPaid,
+<<<<<<< HEAD
       receipt_number, 
       noteValue,
       reviewerId,
+=======
+      receipt_number,
+      notes,
+      verified_by,
+>>>>>>> perbaikan-website-fitalenta
       due_date,
       current_installment_number,
     ];
 
+<<<<<<< HEAD
     // 6. Update JSON
     let updatedInstallmentsJson = null;
 
@@ -1551,6 +1751,16 @@ router.put("/:id/status", async (req, res) => {
     if (updatedInstallmentsJson) {
       updateQuery += `, installment_amounts = ?`;
       updateParams.push(updatedInstallmentsJson);
+=======
+    if (is_manual) {
+      updateQuery += `, payment_method = ?, bank_name = ?, account_number = ?, payment_date = ?`;
+      updateParams.push(
+        payment_method || "transfer",
+        bank_name,
+        account_number,
+        payment_date || new Date()
+      );
+>>>>>>> perbaikan-website-fitalenta
     }
 
     updateQuery += ` WHERE id = ?`;
@@ -1558,6 +1768,7 @@ router.put("/:id/status", async (req, res) => {
 
     await connection.query(updateQuery, updateParams);
 
+<<<<<<< HEAD
     // 7. Insert History (SANGAT PENTING: Notes harus mengandung Receipt Number agar terbaca Scanner di masa depan)
     const historyNotes = noteValue || `Receipt generated: ${receipt_number}`; 
     // Pastikan receipt number masuk ke notes!
@@ -1612,6 +1823,53 @@ router.put("/:id/status", async (req, res) => {
     await connection.rollback();
     console.error("❌ Error:", error);
     res.status(500).json({ success: false, message: error.message });
+=======
+    const historyNotes =
+      notes ||
+      (is_manual
+        ? `Manual payment: Rp ${newPaymentAmount} - Status: ${finalStatus}`
+        : `Status berubah dari ${currentPayment.status} ke ${finalStatus} - Pembayaran: Rp ${newPaymentAmount}`);
+
+    await connection.query(
+      `INSERT INTO payment_history 
+       (payment_id, old_status, new_status, old_amount_paid, new_amount_paid, amount_changed, notes, changed_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        paymentId,
+        currentPayment.status,
+        finalStatus,
+        currentAmountPaid,
+        newTotalPaid,
+        newPaymentAmount,
+        historyNotes,
+        verified_by,
+      ]
+    );
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message:
+        "Status pembayaran berhasil diperbarui" +
+        (is_manual ? " (Manual Payment)" : ""),
+      data: {
+        receipt_number,
+        amount_paid: newTotalPaid,
+        status: finalStatus,
+        due_date: due_date,
+        current_installment_number: current_installment_number,
+        is_manual: is_manual,
+      },
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("❌ Error updating payment status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error: " + error.message,
+    });
+>>>>>>> perbaikan-website-fitalenta
   } finally {
     connection.release();
   }
@@ -1819,6 +2077,7 @@ router.post("/manual", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // GET /api/payments/:id/download/:type/:installment
 router.get("/:id/download/:type/:installment", async (req, res) => {
   const { id, type, installment } = req.params; 
@@ -1900,6 +2159,8 @@ router.get("/:id/download/:type/:installment", async (req, res) => {
   }
 });
 
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.get("/:id", async (req, res) => {
   try {
     const [payments] = await db.promise().query(
@@ -1987,6 +2248,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 router.get("/:id/invoice", async (req, res) => {
   try {
     // 1. Ambil Data Payment (Sama seperti sebelumnya)
@@ -2093,6 +2355,333 @@ router.get("/:id/receipt", async (req, res) => {
   } catch (error) {
     console.error("Error serving receipt:", error);
     res.status(500).send("Terjadi kesalahan saat memproses kwitansi.");
+=======
+router.get("/:id/receipt", async (req, res) => {
+  let doc;
+  try {
+    const [payments] = await db.promise().query(
+      `
+      SELECT 
+        py.*,
+        r.registration_code,
+        u.full_name,
+        u.email,
+        u.phone,
+        u.address,
+        p.name as program_name,
+        p.training_cost as program_training_cost,
+        p.departure_cost as program_departure_cost,
+        p.duration as program_duration,
+        p.installment_plan as program_installment_plan,
+        verifier.full_name as verified_by_name
+      FROM payments py
+      LEFT JOIN registrations r ON py.registration_id = r.id
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN programs p ON r.program_id = p.id
+      LEFT JOIN users verifier ON py.verified_by = verifier.id
+      WHERE py.id = ?
+    `,
+      [req.params.id]
+    );
+
+    if (payments.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found",
+      });
+    }
+
+    const payment = payments[0];
+
+    if (!payment.verified_by) {
+      return res.status(400).json({
+        success: false,
+        message: "Kwitansi hanya tersedia untuk pembayaran yang sudah diverifikasi",
+      });
+    }
+
+    const totalAmount = parseFloat(payment.program_training_cost);
+    const amountPaid = parseFloat(payment.amount_paid || 0);
+    const remaining = totalAmount - amountPaid;
+    const progressPercentage = totalAmount > 0 ? (amountPaid / totalAmount) * 100 : 0;
+
+    doc = new PDFDocument({
+      margin: 50,
+      size: 'A4'
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=kwitansi-${payment.receipt_number || payment.invoice_number}.pdf`
+    );
+
+    doc.pipe(res);
+
+    const primaryColor = '#2c3e50';
+    const secondaryColor = '#007bff';
+    const successColor = '#28a745';
+    const lightGray = '#f8f9fa';
+    const borderGray = '#dee2e6';
+    const textMuted = '#6c757d';
+
+    doc.fillColor(primaryColor)
+      .fontSize(18)
+      .font('Helvetica-Bold')
+      .text('KWITANSI PEMBAYARAN', { align: 'center' });
+
+    doc.fontSize(12)
+      .text('Program Magang Perusahaan', { align: 'center' });
+
+    doc.moveDown(0.5);
+
+    doc.fontSize(9)
+      .fillColor(textMuted)
+      .text('FITALENTA', { align: 'center' })
+      .text('Jl. Ganesha No.15E, Lb. Siliwangi, Kec. Coblong Bandung 40132', { align: 'center' })
+      .text('Telp: (021) 123-4567 | Email: admin@fitalenta.com', { align: 'center' });
+
+    doc.moveDown(1);
+
+    doc.strokeColor(borderGray)
+      .lineWidth(1)
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .stroke();
+
+    doc.moveDown(1);
+
+    const receiptDate = payment.payment_date
+      ? new Date(payment.payment_date).toLocaleDateString("id-ID")
+      : new Date().toLocaleDateString("id-ID");
+
+    doc.fontSize(10);
+
+    doc.fillColor(primaryColor)
+      .text(`No. Kwitansi: ${payment.receipt_number || payment.invoice_number}`)
+      .text(`No. Invoice: ${payment.invoice_number}`)
+      .text(`Tanggal: ${receiptDate}`)
+      .text(`Status: ${getStatusText(payment.status)}`);
+
+    doc.moveDown(1);
+
+    if (payment.status.startsWith('installment_')) {
+      const installmentNum = payment.status.split('_')[1];
+      let installmentAmount = 0;
+
+      if (payment.installment_amounts) {
+        try {
+          const installmentAmounts = typeof payment.installment_amounts === 'string'
+            ? JSON.parse(payment.installment_amounts)
+            : payment.installment_amounts;
+
+          const installmentKey = `installment_${installmentNum}`;
+          if (installmentAmounts[installmentKey]?.amount) {
+            installmentAmount = parseFloat(installmentAmounts[installmentKey].amount);
+          }
+        } catch (e) {
+          console.error("Error parsing installment_amounts:", e);
+        }
+      }
+
+      if (installmentAmount === 0) {
+        const [history] = await db.promise().query(
+          `SELECT amount_changed FROM payment_history 
+           WHERE payment_id = ? AND new_status = ? 
+           ORDER BY changed_at DESC LIMIT 1`,
+          [payment.id, payment.status]
+        );
+        installmentAmount = history.length > 0 ? parseFloat(history[0].amount_changed) : (totalAmount / 4);
+      }
+
+      doc.fillColor('#fff3cd')
+        .rect(50, doc.y, doc.page.width - 100, 40)
+        .fill();
+
+      doc.strokeColor('#ffd43b')
+        .rect(50, doc.y, doc.page.width - 100, 40)
+        .stroke();
+
+      doc.fillColor('#856404')
+        .fontSize(10)
+        .text(`Cicilan Ke-${installmentNum}`, 60, doc.y + 10)
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text(formatCurrency(installmentAmount), 60, doc.y + 25);
+
+      doc.y += 50;
+    }
+
+    doc.moveDown(0.5);
+
+    doc.fillColor(secondaryColor)
+      .fontSize(11)
+      .font('Helvetica-Bold')
+      .text('DATA PESERTA:');
+
+    doc.fillColor(primaryColor)
+      .fontSize(10)
+      .font('Helvetica')
+      .text(`Nama Lengkap: ${payment.full_name || 'N/A'}`)
+      .text(`Email: ${payment.email || 'N/A'}`)
+      .text(`Telepon: ${payment.phone || 'N/A'}`);
+
+    if (payment.address) {
+      doc.text(`Alamat: ${payment.address}`);
+    }
+
+    doc.moveDown(1);
+
+    doc.fillColor(secondaryColor)
+      .fontSize(11)
+      .font('Helvetica-Bold')
+      .text('DETAIL PROGRAM:');
+
+    doc.fillColor(primaryColor)
+      .fontSize(10)
+      .font('Helvetica')
+      .text(`Program: ${payment.program_name || 'N/A'}`)
+      .text(`Durasi: ${payment.program_duration || 'N/A'}`)
+      .text(`Total Biaya: ${formatCurrency(totalAmount)}`)
+      .text(`Plan Cicilan: ${payment.program_installment_plan || '4 cicilan'}`);
+
+    doc.moveDown(1);
+
+    doc.fillColor(secondaryColor)
+      .fontSize(11)
+      .font('Helvetica-Bold')
+      .text('PROGRESS PEMBAYARAN:');
+
+    doc.fillColor(primaryColor)
+      .fontSize(10)
+      .text(`Progress: ${progressPercentage.toFixed(1)}%`)
+      .text(`Sudah Dibayar: ${formatCurrency(amountPaid)}`)
+      .text(`Total Tagihan: ${formatCurrency(totalAmount)}`)
+      .text(`Sisa: ${formatCurrency(remaining)}`);
+
+    doc.moveDown(1);
+
+    doc.fillColor(secondaryColor)
+      .fontSize(11)
+      .font('Helvetica-Bold')
+      .text('RINCIAN PEMBAYARAN:');
+
+    const tableTop = doc.y + 5;
+    let currentY = tableTop;
+
+    doc.fillColor(lightGray)
+      .rect(50, currentY, doc.page.width - 100, 20)
+      .fill();
+
+    doc.fillColor(primaryColor)
+      .fontSize(9)
+      .font('Helvetica-Bold')
+      .text('KETERANGAN', 55, currentY + 7)
+      .text('JUMLAH', doc.page.width - 100, currentY + 7, { align: 'right' });
+
+    currentY += 20;
+
+    const items = [
+      { description: `Biaya ${payment.program_name || ''}`, amount: totalAmount },
+      { description: 'TOTAL TAGIHAN', amount: totalAmount, isTotal: true },
+      { description: 'SUDAH DIBAYAR', amount: amountPaid, isTotal: true }
+    ];
+
+    if (remaining > 0) {
+      items.push({ description: 'SISA TAGIHAN', amount: remaining, isTotal: true });
+    }
+
+    items.forEach((item, index) => {
+      if (index % 2 === 0 && !item.isTotal) {
+        doc.fillColor(lightGray)
+          .rect(50, currentY, doc.page.width - 100, 18)
+          .fill();
+      }
+
+      doc.fillColor(item.isTotal ? primaryColor : textMuted)
+        .fontSize(item.isTotal ? 10 : 9)
+        .font(item.isTotal ? 'Helvetica-Bold' : 'Helvetica')
+        .text(item.description, 55, currentY + 5)
+        .text(formatCurrency(item.amount), 50, currentY + 5, {
+          width: doc.page.width - 110,
+          align: 'right'
+        });
+
+      currentY += 18;
+    });
+
+    doc.y = currentY + 10;
+
+    const statusText = payment.status === "paid"
+      ? "LUNAS"
+      : getStatusText(payment.status).toUpperCase();
+
+    doc.fillColor(payment.status === "paid" ? successColor : secondaryColor)
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text(`STATUS: ${statusText}`, { align: 'center' });
+
+    doc.moveDown(1);
+
+    if (payment.status === "paid" || payment.verified_by) {
+      doc.fillColor(secondaryColor)
+        .fontSize(11)
+        .font('Helvetica-Bold')
+        .text('KONFIRMASI PEMBAYARAN:');
+
+      doc.fillColor(primaryColor)
+        .fontSize(10)
+        .font('Helvetica')
+        .text(`Status: ${getStatusText(payment.status)}`)
+        .text(`Tanggal Pembayaran: ${receiptDate}`)
+        .text(`Metode: ${payment.payment_method || 'Transfer Bank'}`);
+
+      if (payment.bank_name) {
+        doc.text(`Bank: ${payment.bank_name}`);
+      }
+
+      if (payment.verified_by_name) {
+        doc.text(`Terverifikasi oleh: ${payment.verified_by_name}`);
+      }
+
+      doc.moveDown(1);
+    }
+
+    const signatureY = Math.max(doc.y, doc.page.height - 100);
+
+    doc.fillColor(primaryColor)
+      .fontSize(10)
+      .text(`Bandung, ${receiptDate}`, 400, signatureY, { width: 150, align: 'center' })
+      .moveTo(400, signatureY + 20)
+      .lineTo(550, signatureY + 20)
+      .stroke()
+      .text('Admin FITALENTA', 400, signatureY + 30, { width: 150, align: 'center' });
+
+    const footerY = doc.page.height - 40;
+
+    doc.fillColor(textMuted)
+      .fontSize(8)
+      .text('** Kwitansi ini sah dan dapat digunakan sebagai bukti pembayaran yang valid **',
+        { align: 'center', lineGap: 3 })
+      .text('Terima kasih telah mempercayai program magang kami', { align: 'center' })
+      .text(`Generated on: ${new Date().toLocaleString('id-ID')}`, { align: 'center' });
+
+    doc.end();
+
+  } catch (error) {
+    console.error("Error generating receipt PDF:", error);
+
+    if (doc) {
+      doc.end();
+    }
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: "Gagal membuat PDF kwitansi: " + error.message,
+      });
+    }
+>>>>>>> perbaikan-website-fitalenta
   }
 });
 

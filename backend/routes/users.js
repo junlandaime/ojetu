@@ -1,10 +1,14 @@
 import express from "express";
+<<<<<<< HEAD
 import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
+=======
+>>>>>>> perbaikan-website-fitalenta
 import db from "../config/database.js";
 
 const router = express.Router();
 
+<<<<<<< HEAD
 const ensureAuthenticated = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
@@ -177,6 +181,22 @@ router.put("/me", ensureAuthenticated, profileValidators, async (req, res) => {
     });
     } finally {
     connection.release();
+=======
+router.get("/profile", async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        message: "User profile endpoint",
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+>>>>>>> perbaikan-website-fitalenta
   }
 });
 

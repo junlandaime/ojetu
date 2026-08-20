@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+<<<<<<< HEAD
     const checkAuthStatus = async () => {
       try {
         const response = await axios.get("/api/auth/session");
@@ -47,6 +48,57 @@ export const AuthProvider = ({ children }) => {
       if (response.data.success) {
         const { user: userData } = response.data.data;
         setUser(userData);
+=======
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+
+      if (token && userData) {
+        const response = await axios.get("/api/auth/check", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          setUser(JSON.parse(userData));
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        } else {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          delete axios.defaults.headers.common["Authorization"];
+        }
+      }
+    } catch (error) {
+      console.error("Auth check error:", error);
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      delete axios.defaults.headers.common["Authorization"];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email, password, isAdmin = false) => {
+    try {
+      const endpoint = isAdmin ? "/api/auth/admin/login" : "/api/auth/login";
+      const response = await axios.post(endpoint, {
+        email: isAdmin ? undefined : email,
+        username: isAdmin ? email : undefined,
+        password,
+      });
+
+      if (response.data.success) {
+        const { token, user: userData } = response.data.data;
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(userData));
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        setUser(userData);
+
+>>>>>>> perbaikan-website-fitalenta
         return { success: true, user: userData };
       } else {
         return { success: false, message: response.data.message };
@@ -62,6 +114,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post("/api/auth/register", userData);
 
       if (response.data.success) {
+<<<<<<< HEAD
         const payload = response.data.data;
         if (payload?.user) {
           setUser(payload.user);
@@ -83,6 +136,21 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       const message =
         error.response?.data?.message || error.message || "Registration failed";
+=======
+        const { token, user: newUser } = response.data.data;
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(newUser));
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        setUser(newUser);
+
+        return { success: true, user: newUser };
+      } else {
+        return { success: false, message: response.data.message };
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || "Registration failed";
+>>>>>>> perbaikan-website-fitalenta
       return { success: false, message };
     }
   };
@@ -93,6 +161,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+<<<<<<< HEAD
+=======
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      delete axios.defaults.headers.common["Authorization"];
+>>>>>>> perbaikan-website-fitalenta
       setUser(null);
     }
   };

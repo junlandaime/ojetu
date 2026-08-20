@@ -19,7 +19,10 @@ import ProgramManagement from "./pages/ProgramManagement";
 import UserManagement from "./pages/UserManagement";
 import AboutUs from "./pages/AboutUs";
 import Contact from "./pages/Contact";
+<<<<<<< HEAD
 import VerifyEmail from "./pages/VerifyEmail";
+=======
+>>>>>>> perbaikan-website-fitalenta
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
@@ -132,6 +135,7 @@ function App() {
             </Layout>
           }
         />
+<<<<<<< HEAD
         <Route
           path="/verify-email/:token"
           element={
@@ -140,6 +144,8 @@ function App() {
             </Layout>
           }
         />
+=======
+>>>>>>> perbaikan-website-fitalenta
 
         {/* Public Routes yang HANYA untuk yang belum login */}
         <Route

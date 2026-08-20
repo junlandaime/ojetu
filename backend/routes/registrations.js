@@ -4,6 +4,7 @@ import {
   generateRegistrationCode,
   generateInvoiceNumber,
 } from "../config/database.js";
+<<<<<<< HEAD
 // --- TAMBAHAN LIBRARY EXPORT ---
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
@@ -14,6 +15,11 @@ const router = express.Router();
 // ==========================================
 // 1. LIST DATA (PAGINATION/FILTER)
 // ==========================================
+=======
+
+const router = express.Router();
+
+>>>>>>> perbaikan-website-fitalenta
 router.get("/", async (req, res) => {
   try {
     const {
@@ -158,14 +164,28 @@ router.get("/", async (req, res) => {
 
     query += " ORDER BY r.registration_date DESC";
 
+<<<<<<< HEAD
     const [registrations] = await db.promise().query(query, params);
 
+=======
+    // console.log("Executing registration query:", query);
+    // console.log("With parameters:", params);
+
+    const [registrations] = await db.promise().query(query, params);
+
+    // console.log(`Found ${registrations.length} registrations`);
+
+>>>>>>> perbaikan-website-fitalenta
     res.json({
       success: true,
       data: registrations,
       count: registrations.length,
     });
   } catch (error) {
+<<<<<<< HEAD
+=======
+    // console.error("Error fetching registrations:", error);
+>>>>>>> perbaikan-website-fitalenta
     res.status(500).json({
       success: false,
       message: "Internal server error: " + error.message,
@@ -173,9 +193,12 @@ router.get("/", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // ==========================================
 // 2. STATISTICS SUMMARY
 // ==========================================
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.get("/statistics/summary", async (req, res) => {
   try {
     const [totalResult] = await db.promise().query(
@@ -260,6 +283,7 @@ router.get("/statistics/summary", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // ==========================================
 // 3. EXPORT EXCEL (Harus sebelum /:id)
 // ==========================================
@@ -516,6 +540,8 @@ router.get("/export/pdf", async (req, res) => {
 // ==========================================
 // 5. GET DETAIL (ROUTE DYNAMIC)
 // ==========================================
+=======
+>>>>>>> perbaikan-website-fitalenta
 router.get("/:id", async (req, res) => {
   try {
     const registrationId = req.params.id;
@@ -831,10 +857,14 @@ router.post("/", async (req, res) => {
 
     const [users] = await db
       .promise()
+<<<<<<< HEAD
       .query(
         "SELECT id, full_name, email, allow_multiple_programs FROM users WHERE id = ?",
         [user_id]
       );
+=======
+      .query("SELECT id, full_name, email FROM users WHERE id = ?", [user_id]);
+>>>>>>> perbaikan-website-fitalenta
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -866,6 +896,7 @@ router.post("/", async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     const allowMultiplePrograms = users[0].allow_multiple_programs === 1;
 
     if (!allowMultiplePrograms) {
@@ -888,6 +919,8 @@ router.post("/", async (req, res) => {
     }
 
 
+=======
+>>>>>>> perbaikan-website-fitalenta
     const [existingRegistrations] = await db
       .promise()
       .query(
@@ -955,9 +988,13 @@ router.post("/", async (req, res) => {
 
       const registrationId = result.insertId;
 
+<<<<<<< HEAD
       const invoiceNumber = `REQ-${registrationCode}`;
 
       // const invoiceNumber = await generateInvoiceNumber();
+=======
+      const invoiceNumber = await generateInvoiceNumber();
+>>>>>>> perbaikan-website-fitalenta
 
       await connection.query(
         `INSERT INTO payments 

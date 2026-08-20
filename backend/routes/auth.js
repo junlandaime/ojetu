@@ -1,6 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+<<<<<<< HEAD
 import crypto from "crypto";
 import validator from "validator";
 import db from "../config/database.js";
@@ -94,10 +95,36 @@ const buildVerificationUrl = (token) => {
 const buildResetPasswordUrl = (token) => {
   const baseUrl = process.env.APP_URL || "http://localhost:3000";
   return `${baseUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+=======
+import db from "../config/database.js";
+
+const router = express.Router();
+
+// Middleware untuk cek apakah sudah login
+const checkAlreadyLoggedIn = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Jika sudah login, tolak akses ke endpoint public
+      return res.status(403).json({
+        success: false,
+        message: "Anda sudah login, tidak dapat mengakses halaman ini"
+      });
+    } catch (error) {
+      // Token invalid, lanjutkan
+      next();
+    }
+  } else {
+    next();
+  }
+>>>>>>> perbaikan-website-fitalenta
 };
 
 // Register - hanya untuk participant
 router.post("/register", checkAlreadyLoggedIn, async (req, res) => {
+<<<<<<< HEAD
   const { email, password, full_name, phone, address } = req.body;
 
   if (!email || !password || !full_name) {
@@ -144,10 +171,38 @@ router.post("/register", checkAlreadyLoggedIn, async (req, res) => {
         success: false,
         message:
           "Email sudah pernah digunakan dan menunggu verifikasi. Periksa kotak masuk Anda atau gunakan menu kirim ulang verifikasi.",
+=======
+  try {
+    const { email, password, full_name, phone, address } = req.body;
+
+    if (!email || !password || !full_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, password, and full name are required",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    const [existingUsers] = await db
+      .promise()
+      .query("SELECT id FROM users WHERE email = ?", [email]);
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email",
+>>>>>>> perbaikan-website-fitalenta
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+<<<<<<< HEAD
     const [userResult] = await connection.query(
       `INSERT INTO users (email, password, full_name, phone, address, user_type, is_verified, verification_token_sent_at)
        VALUES (?, ?, ?, ?, ?, 'participant', 0, NOW())`,
@@ -256,6 +311,40 @@ router.get("/verify-email/:token", async (req, res) => {
   } catch (error) {
     console.error("Verify email error", error);
     return res.status(500).json({
+=======
+
+    const [result] = await db
+      .promise()
+      .query(
+        "INSERT INTO users (email, password, full_name, phone, address, user_type) VALUES (?, ?, ?, ?, ?, 'participant')",
+        [email, hashedPassword, full_name, phone, address]
+      );
+
+    const token = jwt.sign(
+      { userId: result.insertId, email, userType: "participant" },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: {
+        token,
+        user: {
+          id: result.insertId,
+          email,
+          full_name,
+          phone,
+          address,
+          user_type: "participant",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({
+>>>>>>> perbaikan-website-fitalenta
       success: false,
       message: "Internal server error during registration",
     });
@@ -263,6 +352,7 @@ router.get("/verify-email/:token", async (req, res) => {
 });
 
 // Login participant
+<<<<<<< HEAD
 router.post("/resend-verification", async (req, res) => {
   const { email } = req.body;
 
@@ -367,17 +457,39 @@ router.post("/login", checkAlreadyLoggedIn, async (req, res) => {
       .promise()
       .query(
         `SELECT * FROM users WHERE email = ? AND user_type = 'participant'`,
+=======
+router.post("/login", checkAlreadyLoggedIn, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    const [users] = await db
+      .promise()
+      .query(
+        'SELECT * FROM users WHERE email = ? AND user_type = "participant"',
+>>>>>>> perbaikan-website-fitalenta
         [email]
       );
 
     if (users.length === 0) {
       return res.status(401).json({
         success: false,
+<<<<<<< HEAD
          message: "Email atau password salah",
+=======
+        message: "Invalid email or password",
+>>>>>>> perbaikan-website-fitalenta
       });
     }
 
     const user = users[0];
+<<<<<<< HEAD
 if (!user.is_verified) {
       return res.status(403).json({
         success: false,
@@ -409,6 +521,28 @@ if (!user.is_verified) {
       success: true,
       message: "Login berhasil",
       data: {
+=======
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, userType: "participant" },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      message: "Login successful",
+      data: {
+        token,
+>>>>>>> perbaikan-website-fitalenta
         user: {
           id: user.id,
           email: user.email,
@@ -421,13 +555,20 @@ if (!user.is_verified) {
     });
   } catch (error) {
     console.error("Login error:", error);
+<<<<<<< HEAD
     return res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat login",
+=======
+    res.status(500).json({
+      success: false,
+      message: "Internal server error during login",
+>>>>>>> perbaikan-website-fitalenta
     });
   }
 });
 
+<<<<<<< HEAD
 
 router.post("/admin/login", checkAlreadyLoggedIn, async (req, res) => {
   
@@ -448,11 +589,34 @@ if (!username || !password) {
         [username]
       );
 
+=======
+// Login admin
+router.post("/admin/login", checkAlreadyLoggedIn, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username and password are required",
+      });
+    }
+
+    const [admins] = await db
+      .promise()
+      .query('SELECT * FROM users WHERE email = ? AND user_type = "admin"', [
+        username,
+      ]);
+>>>>>>> perbaikan-website-fitalenta
 
     if (admins.length === 0) {
       return res.status(401).json({
         success: false,
+<<<<<<< HEAD
         message: "Kredensial admin salah",
+=======
+        message: "Invalid admin credentials",
+>>>>>>> perbaikan-website-fitalenta
       });
     }
 
@@ -462,6 +626,7 @@ if (!username || !password) {
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
+<<<<<<< HEAD
        message: "Kredensial admin salah",
       });
     }
@@ -483,6 +648,23 @@ if (!username || !password) {
       message: "Login admin berhasil",
       data: {
 
+=======
+        message: "Invalid admin credentials",
+      });
+    }
+
+    const token = jwt.sign(
+      { userId: admin.id, username: admin.email, userType: "admin" },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      message: "Admin login successful",
+      data: {
+        token,
+>>>>>>> perbaikan-website-fitalenta
         user: {
           id: admin.id,
           email: admin.email,
@@ -494,13 +676,20 @@ if (!username || !password) {
     });
   } catch (error) {
     console.error("Admin login error:", error);
+<<<<<<< HEAD
     return res.status(500).json({
       success: false,
       message: "Terjadi kesalahan saat login admin",
+=======
+    res.status(500).json({
+      success: false,
+      message: "Internal server error during admin login",
+>>>>>>> perbaikan-website-fitalenta
     });
   }
 });
 
+<<<<<<< HEAD
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
@@ -670,6 +859,41 @@ router.get("/check", requireAuth, respondWithSession);
 router.post("/logout", (req, res) => {
   clearAuthCookie(res);
   return res.json({ success: true, message: "Logout berhasil" });
+=======
+// Logout endpoint
+router.post("/logout", (req, res) => {
+  res.json({
+    success: true,
+    message: "Logout successful"
+  });
+});
+
+// Check auth status
+router.get("/check", (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return res.json({
+      success: false,
+      message: "No token provided"
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.json({
+      success: true,
+      data: {
+        user: decoded
+      }
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: "Invalid token"
+    });
+  }
+>>>>>>> perbaikan-website-fitalenta
 });
 
 export default router;

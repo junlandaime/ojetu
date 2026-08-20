@@ -4,8 +4,12 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import db, { testConnection } from "./config/database.js";
+<<<<<<< HEAD
 import rateLimiter from "./middleware/rateLimiter.js";
 import authenticateRequest from "./middleware/auth.js";
+=======
+import jwt from "jsonwebtoken";
+>>>>>>> perbaikan-website-fitalenta
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,11 +27,15 @@ import reportRoutes from "./routes/reports.js";
 import programCategoriesRoutes from "./routes/program-categories.js";
 import wilayahRoutes from "./routes/wilayah.js";
 import uploadRoutes from "./routes/uploads.js";
+<<<<<<< HEAD
 import successStoriesRoutes from "./routes/successStories.js";
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 dotenv.config();
 
 const app = express();
+<<<<<<< HEAD
 app.disable("x-powered-by");
 const PORT = process.env.PORT || 5000;
 
@@ -94,6 +102,35 @@ app.use(rateLimiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(authenticateRequest);
+=======
+const PORT = process.env.PORT || 5000;
+
+app.use(
+  cors({
+    origin: process.env.APP_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      console.log("Invalid token:", error.message);
+    }
+  }
+
+  next();
+});
+>>>>>>> perbaikan-website-fitalenta
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -125,7 +162,10 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/program-categories", programCategoriesRoutes);
 app.use("/api/wilayah", wilayahRoutes);
 app.use("/api/uploads", uploadRoutes);
+<<<<<<< HEAD
 app.use("/api/success-stories", successStoriesRoutes);
+=======
+>>>>>>> perbaikan-website-fitalenta
 
 app.use((error, req, res, next) => {
   console.error("Error:", error);
