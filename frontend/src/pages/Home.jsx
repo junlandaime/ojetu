@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { getProgramImage } from "../utils/programImages";
 
 /* =========================================================
    STATIC CONTENT
@@ -1038,7 +1039,7 @@ const Home = () => {
                                         <div className="home-program-image">
                                             <img
                                                 src={
-                                                    program.image
+                                                    getProgramImage(program)
                                                 }
                                                 alt={
                                                     program.name
