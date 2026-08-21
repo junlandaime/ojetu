@@ -40,7 +40,71 @@ const normalizeProgramName = (value = "") => {
     return String(value)
         .trim()
         .toLowerCase()
+        .replace(/[()]/g, "")
         .replace(/[-_\s]+/g, "");
+};
+
+
+/* =========================================================
+   CARD NAME ORDER
+========================================================= */
+const getProgramNameOrder = (program) => {
+    const name = normalizeProgramName(
+        program?.name || ""
+    );
+
+
+    if (name.includes("reguler") || name.includes("regular")) {
+        return 1;
+    }
+
+    if (name.includes("asrama")) {
+        return 2;
+    }
+
+    if (name.includes("hybrid")) {
+        return 3;
+    }
+
+    if (name.includes("fasttrack") || name.includes("fast")) {
+        return 4;
+    }
+
+    if (name.includes("beasiswa")) {
+        return 5;
+    }
+
+    if (name.includes("gijinkoku")) {
+        return 6;
+    }
+
+    if (
+        name.includes("jishusei") ||
+        name.includes("magang")
+    ) {
+        return 7;
+    }
+
+    if (
+        name.includes("ssw") ||
+        name.includes("tokutei") ||
+        name.includes("ginou")
+    ) {
+        return 8;
+    }
+
+    if (name.includes("amto")) {
+        return 9;
+    }
+
+    if (name.includes("hse")) {
+        return 10;
+    }
+
+    if (name.includes("korea")) {
+        return 11;
+    }
+    return 999;
 };
 
 /* =========================================================
@@ -90,13 +154,11 @@ const getProgramKey = (program) => {
 /* =========================================================
    PROGRAM FORMAT
 ========================================================= */
-const getProgramFormatKey = (
-    program
-) => {
+const getProgramFormatKey = (program) => {
+
     const format =
         normalizeProgramName(
-            program?.program_format ||
-            ""
+            program?.program_format || ""
         );
 
     const programName =
@@ -111,27 +173,19 @@ const getProgramFormatKey = (
         return "reguler";
     }
 
-    if (
-        format === "asrama"
-    ) {
+    if (format === "asrama") {
         return "asrama";
     }
 
-    if (
-        format === "hybrid"
-    ) {
+    if (format === "hybrid") {
         return "hybrid";
     }
 
-    if (
-        format === "fasttrack"
-    ) {
+    if (format === "fasttrack") {
         return "fasttrack";
     }
 
-    if (
-        format === "beasiswa"
-    ) {
+    if (format === "beasiswa") {
         return "beasiswa";
     }
 
@@ -142,9 +196,7 @@ const getProgramFormatKey = (
         return "studi";
     }
 
-    if (
-        format === "nonasrama"
-    ) {
+    if (format === "nonasrama") {
         return "nonasrama";
     }
 
@@ -155,50 +207,27 @@ const getProgramFormatKey = (
         return "teknis";
     }
 
-    /*
-     * Fallback sementara untuk data lama
-     * yang belum memiliki program_format.
-     */
+    // fallback data lama
     if (
-        programName.includes(
-            "reguler"
-        ) ||
-        programName.includes(
-            "regular"
-        )
+        programName.includes("reguler") ||
+        programName.includes("regular")
     ) {
         return "reguler";
     }
 
-    if (
-        programName.includes(
-            "asrama"
-        )
-    ) {
+    if (programName.includes("asrama")) {
         return "asrama";
     }
 
-    if (
-        programName.includes(
-            "hybrid"
-        )
-    ) {
+    if (programName.includes("hybrid")) {
         return "hybrid";
     }
 
-    if (
-        programName.includes(
-            "fasttrack"
-        )
-    ) {
+    if (programName.includes("fasttrack")) {
         return "fasttrack";
     }
 
-    if (
-        programName.includes(
-            "beasiswa"
-        )
-    ) {
+    if (programName.includes("beasiswa")) {
         return "beasiswa";
     }
 
@@ -206,141 +235,38 @@ const getProgramFormatKey = (
 };
 
 /* =========================================================
-   PROGRAM CONFIG
-========================================================= */
-const getProgramConfig = (
-    program
-) => {
-    const key =
-        getProgramKey(
-            program
-        );
-
-    return PROGRAM_FILTERS.find(
-        (item) =>
-            item.key === key
-    );
-};
-
-/* =========================================================
-   CATEGORY ORDER
-========================================================= */
-const getProgramOrder = (
-    program
-) => {
-    const config =
-        getProgramConfig(
-            program
-        );
-
-    if (config) {
-        return config.order;
-    }
-
-    const databaseOrder =
-        Number(
-            program?.sort_order
-        );
-
-    if (
-        Number.isFinite(
-            databaseOrder
-        ) &&
-        databaseOrder >= 1 &&
-        databaseOrder <= 4
-    ) {
-        return databaseOrder;
-    }
-
-    return 999;
-};
-
-/* =========================================================
-   FORMAT ORDER
-========================================================= */
-const getProgramFormatOrder = (
-    program
-) => {
-    const format =
-        getProgramFormatKey(
-            program
-        );
-
-    const order = {
-        reguler: 1,
-        asrama: 2,
-        hybrid: 3,
-        fasttrack: 4,
-        beasiswa: 5,
-        studi: 6,
-        nonasrama: 7,
-        teknis: 8,
-    };
-
-    return (
-        order[format] ||
-        999
-    );
-};
-
-/* =========================================================
    SORT PROGRAMS
 ========================================================= */
-const sortPrograms = (
-    data = []
-) => {
-    return [...data].sort(
-        (a, b) => {
-            const first =
-                getProgramOrder(
-                    a
-                );
+const sortPrograms = (data = []) => {
+    return [...data].sort((a,b)=>{
+        const first =
+            getProgramNameOrder(a);
+        const second =
+            getProgramNameOrder(b);
 
-            const second =
-                getProgramOrder(
-                    b
-                );
+        if(first !== second){
+            return first - second;
+        }
 
-            if (
-                first !== second
-            ) {
-                return (
-                    first -
-                    second
-                );
-            }
+        const firstFormat =
+            getProgramFormatKey(a);
+        const secondFormat =
+            getProgramFormatKey(b);
 
-            const firstFormat =
-                getProgramFormatOrder(
-                    a
-                );
-
-            const secondFormat =
-                getProgramFormatOrder(
-                    b
-                );
-
-            if (
-                firstFormat !==
-                secondFormat
-            ) {
-                return (
-                    firstFormat -
-                    secondFormat
-                );
-            }
-
-            return String(
-                a?.name || ""
-            ).localeCompare(
-                String(
-                    b?.name ||
-                    ""
-                ),
+        if(firstFormat !== secondFormat){
+            return firstFormat.localeCompare(
+                secondFormat,
                 "id"
             );
         }
-    );
+
+        return String(a?.name || "")
+            .localeCompare(
+                String(b?.name || ""),
+                "id"
+            );
+
+    });
 };
 
 /* =========================================================
