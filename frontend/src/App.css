@@ -415,7 +415,7 @@ body {
             rgba(0, 41, 75, 0.9),
             rgba(0, 29, 53, 0.9)
     ),
-    url("/images/contact_us") center/cover;
+    url("/images/contact_us.jpg") center/cover;
 }
 
 .contact-info-card {
