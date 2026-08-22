@@ -1,0 +1,472 @@
+.fitalenta-chatbot {
+    --fitalenta-primary: #4057d6;
+    --fitalenta-primary-dark: #2f43ae;
+    --fitalenta-navy: #172448;
+    --fitalenta-blue-light: #6678f0;
+    --fitalenta-lavender: #adb5ff;
+    --fitalenta-background: #f8f9fd;
+    --fitalenta-white: #ffffff;
+    --fitalenta-text: #27324d;
+    --fitalenta-muted: #7d879e;
+    --fitalenta-border: #e3e7f0;
+    position: fixed;
+    right: 24px;
+    bottom: 22px;
+    z-index: 99999;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* =========================
+   FLOATING BUTTON
+========================= */
+.fitalenta-chatbot-launcher {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 52px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #6879f2 0%, #4057d6 50%, #3048b7 100%);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 10px 28px rgba(23, 36, 72, 0.28);
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+.fitalenta-chatbot-launcher:hover {
+    filter: brightness(1.05);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(23, 36, 72, 0.34);
+}
+.fitalenta-chatbot-launcher-icon {
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fitalenta-chatbot-launcher-icon svg {
+    width: 23px;
+    height: 23px;
+}
+
+/* =========================
+   CHAT WINDOW
+========================= */
+.fitalenta-chatbot-window {
+    width: 390px;
+    height: 520px;
+    max-width: calc(100vw - 28px);
+    max-height: calc(100vh - 28px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(23, 36, 72, 0.08);
+    border-radius: 18px;
+    background: var(--fitalenta-white);
+    box-shadow: 0 22px 60px rgba(15, 28, 60, 0.26);
+}
+
+/* =========================
+   HEADER
+========================= */
+.fitalenta-chatbot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #5e71ee 0%, #4057d6 48%, #3047b4 100%);
+    color: #fff;
+    flex-shrink: 0;
+}
+.fitalenta-chatbot-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.fitalenta-chatbot-avatar {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.1));
+    color: #fff;
+}
+.fitalenta-chatbot-avatar svg {
+    width: 22px;
+    height: 22px;
+}
+.fitalenta-chatbot-header-title {
+    min-width: 0;
+}
+.fitalenta-chatbot-header-title h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+.fitalenta-chatbot-header-title span {
+    display: block;
+    margin-top: 3px;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 9px;
+    line-height: 1.2;
+    font-weight: 500;
+}
+.fitalenta-chatbot-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.fitalenta-chatbot-header-actions button {
+    width: 33px;
+    height: 33px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.92);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.fitalenta-chatbot-header-actions button:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+.fitalenta-chatbot-header-actions svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* =========================
+   MESSAGES
+========================= */
+.fitalenta-chatbot-messages {
+    flex: 1;
+    min-height: 0;
+    padding: 15px 13px;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #fafbff 0%, #f8f9fd 100%);
+    scroll-behavior: smooth;
+}
+.fitalenta-chatbot-messages::-webkit-scrollbar {
+    width: 5px;
+}
+.fitalenta-chatbot-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+.fitalenta-chatbot-messages::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #cdd3e2;
+}
+.fitalenta-chat-message-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 12px;
+}
+.fitalenta-chat-message-row.is-user {
+    justify-content: flex-end;
+}
+.fitalenta-chat-message-row.is-bot {
+    justify-content: flex-start;
+}
+.fitalenta-chat-message-avatar {
+    width: 27px;
+    height: 27px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #5268ea 0%, #3d53d0 100%);
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(64, 87, 214, 0.18);
+}
+.fitalenta-chat-message-avatar svg {
+    width: 16px;
+    height: 16px;
+}
+.fitalenta-chat-message-bubble {
+    max-width: 79%;
+    padding: 10px 12px;
+    border: 1px solid var(--fitalenta-border);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--fitalenta-text);
+    font-size: 12.5px;
+    line-height: 1.6;
+    word-break: break-word;
+    box-shadow: 0 2px 7px rgba(20, 35, 70, 0.04);
+}
+.fitalenta-chat-message-row.is-bot .fitalenta-chat-message-bubble {
+    border-top-left-radius: 4px;
+}
+.fitalenta-chat-message-row.is-user .fitalenta-chat-message-bubble {
+    border: 0;
+    border-top-right-radius: 4px;
+    background: linear-gradient(135deg, #6578f0 0%, #4057d6 54%, #344bbd 100%);
+    color: #fff;
+    box-shadow: 0 5px 13px rgba(64, 87, 214, 0.2);
+}
+
+/* =========================
+   BOT TEXT FORMATTING
+========================= */
+.fitalenta-chat-paragraph {
+    margin: 0 0 8px;
+}
+.fitalenta-chat-paragraph:last-child {
+    margin-bottom: 0;
+}
+.fitalenta-chat-list {
+    margin: 5px 0 9px;
+    padding-left: 20px;
+}
+.fitalenta-chat-list li {
+    margin-bottom: 5px;
+    padding-left: 2px;
+}
+.fitalenta-chat-list li:last-child {
+    margin-bottom: 0;
+}
+.fitalenta-chat-heading {
+    display: block;
+    margin: 5px 0 8px;
+    color: var(--fitalenta-navy);
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 700;
+}
+.fitalenta-chat-message-row.is-user .fitalenta-chat-heading {
+    color: #fff;
+}
+
+/* =========================
+   TYPING INDICATOR
+========================= */
+.fitalenta-chat-typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 48px;
+    padding: 11px 12px;
+    border: 1px solid var(--fitalenta-border);
+    border-radius: 14px;
+    border-top-left-radius: 4px;
+    background: #fff;
+}
+.fitalenta-chat-typing span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--fitalenta-muted);
+    animation: fitalentaTyping 1.2s infinite ease-in-out;
+}
+.fitalenta-chat-typing span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+.fitalenta-chat-typing span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+@keyframes fitalentaTyping {
+    0%,
+    60%,
+    100% {
+        opacity: 0.35;
+        transform: translateY(0);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+
+/* =========================
+   FAQ
+========================= */
+.fitalenta-chatbot-faq {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--fitalenta-border);
+    background: #fff;
+    flex-shrink: 0;
+}
+.fitalenta-chatbot-faq-label {
+    flex-shrink: 0;
+    color: var(--fitalenta-muted);
+    font-size: 10px;
+    font-weight: 800;
+}
+.fitalenta-chatbot-faq-list {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+}
+.fitalenta-chatbot-faq-list::-webkit-scrollbar {
+    height: 3px;
+}
+.fitalenta-chatbot-faq-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #ccd2df;
+}
+.fitalenta-chatbot-faq-list button {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border: 1px solid var(--fitalenta-border);
+    border-radius: 999px;
+    background: #fff;
+    color: #5f6b83;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.fitalenta-chatbot-faq-list button:hover:not(:disabled) {
+    border-color: var(--fitalenta-primary);
+    background: rgba(64, 87, 214, 0.06);
+    color: var(--fitalenta-primary);
+}
+.fitalenta-chatbot-faq-list button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =========================
+   INPUT
+========================= */
+.fitalenta-chatbot-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 10px 10px;
+    border-top: 1px solid var(--fitalenta-border);
+    background: #fff;
+    flex-shrink: 0;
+}
+.fitalenta-chatbot-input-wrapper input {
+    flex: 1;
+    min-width: 0;
+    height: 42px;
+    padding: 0 13px;
+    border: 1px solid #dfe4ee;
+    border-radius: 12px;
+    outline: none;
+    background: #fff;
+    color: var(--fitalenta-text);
+    font-size: 12.5px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.fitalenta-chatbot-input-wrapper input::placeholder {
+    color: #9ca5b6;
+}
+.fitalenta-chatbot-input-wrapper input:focus {
+    border-color: var(--fitalenta-primary);
+    box-shadow: 0 0 0 3px rgba(64, 87, 214, 0.09);
+}
+.fitalenta-chatbot-input-wrapper input:disabled {
+    background: #f5f6fa;
+}
+.fitalenta-chatbot-input-wrapper button {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #aeb8ff 0%, #8191ef 100%);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+}
+.fitalenta-chatbot-input-wrapper button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #8797f2 0%, #596ddd 100%);
+    transform: translateY(-1px);
+}
+.fitalenta-chatbot-input-wrapper button:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+}
+.fitalenta-chatbot-input-wrapper button svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+@media (max-width: 600px) {
+    .fitalenta-chatbot {
+        right: 12px;
+        bottom: 12px;
+    }
+    .fitalenta-chatbot-launcher {
+        width: 54px;
+        height: 54px;
+        min-height: 54px;
+        justify-content: center;
+        padding: 0;
+        border-radius: 50%;
+    }
+    .fitalenta-chatbot-launcher > span:last-child {
+        display: none;
+    }
+    .fitalenta-chatbot-window {
+        width: calc(100vw - 24px);
+        height: calc(100vh - 24px);
+        max-width: none;
+        max-height: none;
+        border-radius: 16px;
+    }
+    .fitalenta-chatbot-header {
+        padding: 11px 12px;
+    }
+    .fitalenta-chatbot-header-title h2 {
+        font-size: 13.5px;
+    }
+    .fitalenta-chatbot-header-title span {
+        font-size: 8.5px;
+    }
+    .fitalenta-chatbot-avatar {
+        width: 36px;
+        height: 36px;
+    }
+    .fitalenta-chatbot-messages {
+        padding: 13px 10px;
+    }
+    .fitalenta-chat-message-bubble {
+        max-width: 84%;
+        font-size: 12.5px;
+    }
+}
+
+/* =========================
+   VERY SMALL MOBILE
+========================= */
+@media (max-width: 380px) {
+    .fitalenta-chatbot-header-title h2 {
+        font-size: 13px;
+    }
+    .fitalenta-chatbot-header-title span {
+        display: none;
+    }
+    .fitalenta-chatbot-faq-label {
+        display: none;
+    }
+}
