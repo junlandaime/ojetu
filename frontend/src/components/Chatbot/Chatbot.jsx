@@ -14,6 +14,18 @@ const INITIAL_MESSAGE = {
     text: "Halo! Saya FITALENTA AI Assistant. Ada yang bisa saya bantu seputar layanan konsultasi, program pelatihan, atau panduan pengembangan karier Anda?",
 };
 
+const FALLBACK_MESSAGE =
+    "Mohon maaf, saya belum dapat menjawab pertanyaan Anda dengan tepat.\n\nUntuk mendapatkan informasi yang lebih lengkap dan sesuai kebutuhan Anda, silakan hubungi tim FITALENTA melalui WhatsApp.";
+
+const WHATSAPP_URL =
+    "https://wa.me/6281110119273";
+
+const WHATSAPP_NUMBER =
+    "+62 811-1011-9273";
+
+const EMAIL_FITALENTA =
+    "info@fitalenta.co.id";
+
 const FAQ_ITEMS = [
     "Apakah program tersedia secara online?",
     "Bagaimana cara mendaftar?",
@@ -30,9 +42,11 @@ const getSessionId = () => {
     if (!sessionId) {
         if (
             typeof crypto !== "undefined" &&
-            typeof crypto.randomUUID === "function"
+            typeof crypto.randomUUID ===
+            "function"
         ) {
-            sessionId = crypto.randomUUID();
+            sessionId =
+                crypto.randomUUID();
         } else {
             sessionId =
                 Date.now().toString(36) +
@@ -65,7 +79,9 @@ const getSavedMessages = () => {
             JSON.parse(savedHistory);
 
         if (
-            !Array.isArray(parsedHistory) ||
+            !Array.isArray(
+                parsedHistory
+            ) ||
             parsedHistory.length === 0
         ) {
             return [INITIAL_MESSAGE];
@@ -82,7 +98,10 @@ const getSavedMessages = () => {
     }
 };
 
-const createMessage = (sender, text) => {
+const createMessage = (
+    sender,
+    text
+) => {
     return {
         id:
             Date.now() +
@@ -94,7 +113,9 @@ const createMessage = (sender, text) => {
     };
 };
 
-const getRecentHistory = (messages) => {
+const getRecentHistory = (
+    messages
+) => {
     return messages
         .filter(
             (item) =>
@@ -111,7 +132,9 @@ const getRecentHistory = (messages) => {
         }));
 };
 
-const extractBotReply = (data) => {
+const extractBotReply = (
+    data
+) => {
     if (!data) {
         return null;
     }
@@ -144,68 +167,119 @@ const extractBotReply = (data) => {
     const foundReply =
         possibleReplies.find(
             (value) =>
-                typeof value === "string" &&
-                value.trim().length > 0
+                typeof value ===
+                "string" &&
+                value.trim().length >
+                0
         );
 
     return foundReply || null;
 };
 
-const containsAny = (text, keywords) => {
+const isUnableToAnswer = (
+    text
+) => {
+    if (!text) {
+        return true;
+    }
+
+    const normalizedText =
+        text
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+
+    const fallbackIndicators = [
+        "belum dapat memberikan jawaban",
+        "belum bisa memberikan jawaban",
+        "belum dapat menjawab",
+        "belum bisa menjawab",
+        "belum dapat memberikan informasi",
+        "belum bisa memberikan informasi",
+        "tidak dapat memberikan jawaban",
+        "tidak bisa memberikan jawaban",
+        "tidak dapat menjawab",
+        "tidak bisa menjawab",
+        "tidak menemukan jawaban",
+        "belum menemukan jawaban",
+        "informasi yang lebih jelas",
+        "informasi tersebut tidak tersedia",
+        "informasi tersebut belum tersedia",
+        "agar mendapatkan informasi yang lebih jelas",
+        "hubungi tim fitalenta",
+        "hubungi fitalenta",
+        "hubungi tim fitalenta melalui whatsapp",
+        "melalui whatsapp",
+        "silakan hubungi",
+        "maaf, saya belum",
+        "maaf saya belum",
+        "maaf, saya tidak",
+        "maaf saya tidak",
+    ];
+
+    return fallbackIndicators.some(
+        (indicator) =>
+            normalizedText.includes(
+                indicator
+            )
+    );
+};
+
+const containsAny = (
+    text,
+    keywords
+) => {
     const normalizedText =
         text.toLowerCase();
 
-    return keywords.some((keyword) =>
-        normalizedText.includes(
-            keyword.toLowerCase()
-        )
+    return keywords.some(
+        (keyword) =>
+            normalizedText.includes(
+                keyword.toLowerCase()
+            )
     );
 };
 
-const getPreviousUserMessages = (messages) => {
-    return messages.filter(
-        (item) => item.sender === "user"
-    );
-};
-
-const getPreviousAssistantMessages = (
+const getLastUserMessage = (
     messages
 ) => {
-    return messages.filter(
-        (item) => item.sender === "bot"
-    );
-};
-
-const getLastUserMessage = (messages) => {
-    const userMessages =
-        getPreviousUserMessages(
-            messages
-        );
-
-    if (userMessages.length === 0) {
-        return "";
+    for (
+        let index =
+            messages.length - 1;
+        index >= 0;
+        index--
+    ) {
+        if (
+            messages[index]
+                .sender === "user"
+        ) {
+            return messages[index]
+                .text;
+        }
     }
 
-    return userMessages[
-    userMessages.length - 1
-        ].text;
+    return "";
 };
 
 const getLastAssistantMessage = (
     messages
 ) => {
-    const assistantMessages =
-        getPreviousAssistantMessages(
-            messages
-        );
-
-    if (assistantMessages.length === 0) {
-        return "";
+    for (
+        let index =
+            messages.length - 1;
+        index >= 0;
+        index--
+    ) {
+        if (
+            messages[index]
+                .sender === "bot"
+        ) {
+            return messages[index]
+                .text;
+        }
     }
 
-    return assistantMessages[
-    assistantMessages.length - 1
-        ].text;
+    return "";
 };
 
 const buildContextualMessage = (
@@ -224,18 +298,20 @@ const buildContextualMessage = (
 ${message}
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
 - Jawab langsung sesuai pertanyaan.
-- Gunakan paragraf pendek agar mudah dibaca.
+- Gunakan paragraf pendek.
 - Jika terdapat beberapa pilihan, gunakan daftar bullet.
 - Jika terdapat langkah atau urutan, gunakan daftar bernomor.
-- Jangan membuat tabel Markdown.
+- Jangan menggunakan tabel Markdown.
 - Jangan mengulang informasi yang tidak diperlukan.
 `.trim();
     }
 
     const previousUserMessage =
-        getLastUserMessage(messages);
+        getLastUserMessage(
+            messages
+        );
 
     const previousAssistantMessage =
         getLastAssistantMessage(
@@ -244,32 +320,6 @@ Instruksi jawaban:
 
     const previousContext =
         getRecentHistory(messages);
-
-    const previousUserMessagesText =
-        previousContext
-            .filter(
-                (item) =>
-                    item.role ===
-                    "user"
-            )
-            .map(
-                (item) =>
-                    item.content
-            )
-            .join(" | ");
-
-    const previousAssistantMessagesText =
-        previousContext
-            .filter(
-                (item) =>
-                    item.role ===
-                    "assistant"
-            )
-            .map(
-                (item) =>
-                    item.content
-            )
-            .join(" | ");
 
     const isProgramFollowUp =
         containsAny(message, [
@@ -305,20 +355,14 @@ Pengguna sebelumnya bertanya:
 Jawaban AI sebelumnya:
 "${previousAssistantMessage}"
 
-Riwayat percakapan yang relevan:
-${previousUserMessagesText}
-
-${previousAssistantMessagesText}
-
 Pertanyaan pengguna sekarang:
 "${message}"
 
 Pahami pertanyaan sekarang sebagai pertanyaan lanjutan dari percakapan sebelumnya. Karena pengguna sebelumnya sedang membahas ketersediaan program secara online, maka ketika pengguna bertanya "apa saja programnya", maksudnya adalah program yang tersedia secara online, bukan seluruh program FITALENTA.
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
 - Jawab langsung dan fokus pada konteks percakapan sebelumnya.
-- Jangan kembali memberikan seluruh daftar program jika konteks menunjukkan pengguna sedang mempersempit pertanyaan.
 - Jika terdapat beberapa program, gunakan daftar bernomor atau bullet.
 - Gunakan paragraf pendek.
 - Jangan menggunakan tabel Markdown.
@@ -352,11 +396,10 @@ Pertanyaan pengguna sekarang:
 Pahami pertanyaan ini sebagai pertanyaan lanjutan terhadap topik sebelumnya dan fokuskan jawaban hanya pada pilihan yang tersedia secara online.
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
-- Gunakan bullet jika ada beberapa pilihan.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
+- Gunakan bullet jika terdapat beberapa pilihan.
 - Gunakan paragraf pendek.
 - Jangan mengulang informasi yang tidak diperlukan.
-- Jangan menggunakan tabel Markdown.
 `.trim();
     }
 
@@ -389,10 +432,9 @@ Pertanyaan pengguna sekarang:
 Pahami pertanyaan ini sebagai pertanyaan lanjutan terhadap program atau layanan yang sedang dibahas sebelumnya. Berikan biaya untuk konteks program atau layanan tersebut, bukan seluruh daftar harga FITALENTA.
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
-- Jika ada beberapa biaya, gunakan daftar bernomor atau bullet.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
+- Jika terdapat beberapa biaya, gunakan daftar bernomor atau bullet.
 - Gunakan paragraf pendek.
-- Jangan menggunakan tabel Markdown.
 `.trim();
     }
 
@@ -422,10 +464,9 @@ Pertanyaan pengguna sekarang:
 Jelaskan cara mendaftar untuk program atau layanan yang sedang dibahas sebelumnya.
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
 - Jika menjelaskan tahapan, gunakan daftar bernomor.
 - Gunakan kalimat yang singkat dan jelas.
-- Jangan menggunakan tabel Markdown.
 `.trim();
     }
 
@@ -462,10 +503,9 @@ Pertanyaan pengguna sekarang:
 Jawab sebagai kelanjutan dari percakapan sebelumnya. Jangan memulai topik baru dan jangan meminta pengguna mengulangi informasi yang sudah diberikan.
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
 - Gunakan daftar bullet atau nomor jika sesuai.
 - Gunakan paragraf pendek.
-- Jangan menggunakan tabel Markdown.
 `.trim();
     }
 
@@ -483,24 +523,154 @@ Pertanyaan pengguna sekarang:
 Jawab dengan mempertimbangkan konteks percakapan sebelumnya.
 
 Instruksi jawaban:
-- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD/PUEBI yang berlaku.
+- Gunakan Bahasa Indonesia yang baik, jelas, sopan, dan sesuai kaidah EYD.
 - Gunakan paragraf pendek.
 - Gunakan daftar bullet untuk beberapa pilihan atau item.
 - Gunakan daftar bernomor untuk langkah atau urutan.
-- Jangan membuat tabel Markdown.
 - Jawab secara langsung dan tidak bertele-tele.
 `.trim();
 };
 
-const formatBotText = (text) => {
+const renderInlineText = (
+    line
+) => {
+    const urlRegex =
+        /(https?:\/\/[^\s]+|wa\.me\/[^\s]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/g;
+
+    const parts =
+        line.split(urlRegex);
+
+    return parts.map(
+        (part, index) => {
+            if (
+                /^https?:\/\//i.test(
+                    part
+                )
+            ) {
+                const cleanUrl =
+                    part.replace(
+                        /[.,!?;:]$/,
+                        ""
+                    );
+
+                return (
+                    <a
+                        key={index}
+                        href={cleanUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="fitalenta-chat-link"
+                    >
+                        {cleanUrl}
+                    </a>
+                );
+            }
+
+            if (
+                /^wa\.me\//i.test(
+                    part
+                )
+            ) {
+                const cleanValue =
+                    part.replace(
+                        /[.,!?;:]$/,
+                        ""
+                    );
+
+                return (
+                    <a
+                        key={index}
+                        href={`https://${cleanValue}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="fitalenta-chat-link"
+                    >
+                        {cleanValue}
+                    </a>
+                );
+            }
+
+            if (
+                /^[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}$/.test(
+                    part
+                )
+            ) {
+                return (
+                    <a
+                        key={index}
+                        href={`mailto:${part}`}
+                        className="fitalenta-chat-link"
+                    >
+                        {part}
+                    </a>
+                );
+            }
+
+            const boldParts =
+                part.split(
+                    /(\*\*[^*]+\*\*|__[^_]+__)/
+                );
+
+            return boldParts.map(
+                (
+                    boldPart,
+                    boldIndex
+                ) => {
+                    if (
+                        (
+                            boldPart.startsWith(
+                                "**"
+                            ) &&
+                            boldPart.endsWith(
+                                "**"
+                            )
+                        ) ||
+                        (
+                            boldPart.startsWith(
+                                "__"
+                            ) &&
+                            boldPart.endsWith(
+                                "__"
+                            )
+                        )
+                    ) {
+                        return (
+                            <strong
+                                key={`${index}-${boldIndex}`}
+                            >
+                                {boldPart.slice(
+                                    2,
+                                    -2
+                                )}
+                            </strong>
+                        );
+                    }
+
+                    return (
+                        <span
+                            key={`${index}-${boldIndex}`}
+                        >
+                            {boldPart}
+                        </span>
+                    );
+                }
+            );
+        }
+    );
+};
+
+const formatBotText = (
+    text
+) => {
     if (!text) {
         return null;
     }
 
-    const normalizedText = text
-        .replace(/\r\n/g, "\n")
-        .replace(/\r/g, "\n")
-        .trim();
+    const normalizedText =
+        text
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            .trim();
 
     const lines =
         normalizedText.split("\n");
@@ -511,7 +681,10 @@ const formatBotText = (text) => {
     let numberedItems = [];
 
     const flushBulletList = () => {
-        if (bulletItems.length === 0) {
+        if (
+            bulletItems.length ===
+            0
+        ) {
             return;
         }
 
@@ -521,9 +694,14 @@ const formatBotText = (text) => {
                 className="fitalenta-chat-list"
             >
                 {bulletItems.map(
-                    (item, index) => (
+                    (
+                        item,
+                        index
+                    ) => (
                         <li key={index}>
-                            {item}
+                            {renderInlineText(
+                                item
+                            )}
                         </li>
                     )
                 )}
@@ -535,7 +713,8 @@ const formatBotText = (text) => {
 
     const flushNumberedList = () => {
         if (
-            numberedItems.length === 0
+            numberedItems.length ===
+            0
         ) {
             return;
         }
@@ -546,9 +725,14 @@ const formatBotText = (text) => {
                 className="fitalenta-chat-list"
             >
                 {numberedItems.map(
-                    (item, index) => (
+                    (
+                        item,
+                        index
+                    ) => (
                         <li key={index}>
-                            {item}
+                            {renderInlineText(
+                                item
+                            )}
                         </li>
                     )
                 )}
@@ -558,148 +742,183 @@ const formatBotText = (text) => {
         numberedItems = [];
     };
 
-    const renderInlineText = (line) => {
-        const parts =
-            line.split(
-                /(\*\*[^*]+\*\*|__[^_]+__)/
-            );
+    lines.forEach(
+        (rawLine) => {
+            const line =
+                rawLine.trim();
 
-        return parts.map(
-            (part, index) => {
-                if (
-                    (part.startsWith(
-                            "**"
-                        ) &&
-                        part.endsWith(
-                            "**"
-                        )) ||
-                    (part.startsWith(
-                            "__"
-                        ) &&
-                        part.endsWith(
-                            "__"
-                        ))
-                ) {
-                    return (
-                        <strong
-                            key={index}
-                        >
-                            {part.slice(
-                                2,
-                                -2
-                            )}
-                        </strong>
-                    );
-                }
-
-                return (
-                    <span
-                        key={index}
-                    >
-                        {part}
-                    </span>
-                );
+            if (!line) {
+                flushBulletList();
+                flushNumberedList();
+                return;
             }
-        );
-    };
 
-    lines.forEach((rawLine) => {
-        const line = rawLine.trim();
+            const bulletMatch =
+                line.match(
+                    /^(?:[-*•])\s+(.+)$/
+                );
 
-        if (!line) {
+            if (bulletMatch) {
+                flushNumberedList();
+
+                bulletItems.push(
+                    bulletMatch[1].trim()
+                );
+
+                return;
+            }
+
+            const numberedMatch =
+                line.match(
+                    /^\d+[.)]\s+(.+)$/
+                );
+
+            if (numberedMatch) {
+                flushBulletList();
+
+                numberedItems.push(
+                    numberedMatch[1].trim()
+                );
+
+                return;
+            }
+
             flushBulletList();
             flushNumberedList();
 
-            return;
-        }
+            const headingMatch =
+                line.match(
+                    /^(#{1,3})\s+(.+)$/
+                );
 
-        const bulletMatch =
-            line.match(
-                /^(?:[-*•])\s+(.+)$/
-            );
+            if (headingMatch) {
+                elements.push(
+                    <strong
+                        key={`heading-${elements.length}`}
+                        className="fitalenta-chat-heading"
+                    >
+                        {renderInlineText(
+                            headingMatch[2]
+                        )}
+                    </strong>
+                );
 
-        if (bulletMatch) {
-            flushNumberedList();
+                return;
+            }
 
-            bulletItems.push(
-                bulletMatch[1].trim()
-            );
+            const boldOnlyMatch =
+                line.match(
+                    /^\*\*(.+)\*\*$/
+                );
 
-            return;
-        }
+            if (boldOnlyMatch) {
+                elements.push(
+                    <strong
+                        key={`strong-${elements.length}`}
+                        className="fitalenta-chat-heading"
+                    >
+                        {
+                            boldOnlyMatch[1]
+                        }
+                    </strong>
+                );
 
-        const numberedMatch =
-            line.match(
-                /^\d+[.)]\s+(.+)$/
-            );
+                return;
+            }
 
-        if (numberedMatch) {
-            flushBulletList();
-
-            numberedItems.push(
-                numberedMatch[1].trim()
-            );
-
-            return;
-        }
-
-        flushBulletList();
-        flushNumberedList();
-
-        const headingMatch =
-            line.match(
-                /^(#{1,3})\s+(.+)$/
-            );
-
-        if (headingMatch) {
             elements.push(
-                <strong
-                    key={`heading-${elements.length}`}
-                    className="fitalenta-chat-heading"
+                <p
+                    key={`paragraph-${elements.length}`}
+                    className="fitalenta-chat-paragraph"
                 >
                     {renderInlineText(
-                        headingMatch[2]
+                        line
                     )}
-                </strong>
+                </p>
             );
-
-            return;
         }
-
-        const boldOnlyMatch =
-            line.match(
-                /^\*\*(.+)\*\*$/
-            );
-
-        if (boldOnlyMatch) {
-            elements.push(
-                <strong
-                    key={`strong-${elements.length}`}
-                    className="fitalenta-chat-heading"
-                >
-                    {
-                        boldOnlyMatch[1]
-                    }
-                </strong>
-            );
-
-            return;
-        }
-
-        elements.push(
-            <p
-                key={`paragraph-${elements.length}`}
-                className="fitalenta-chat-paragraph"
-            >
-                {renderInlineText(line)}
-            </p>
-        );
-    });
+    );
 
     flushBulletList();
     flushNumberedList();
 
     return elements;
+};
+
+const FallbackMessage = () => {
+    return (
+        <div className="fitalenta-chat-fallback">
+            <p className="fitalenta-chat-paragraph">
+                Mohon maaf, saya belum
+                dapat menjawab
+                pertanyaan Anda
+                dengan tepat.
+            </p>
+
+            <p className="fitalenta-chat-paragraph">
+                Untuk mendapatkan
+                informasi yang lebih
+                lengkap dan sesuai
+                kebutuhan Anda,
+                silakan hubungi tim
+                FITALENTA melalui
+                WhatsApp.
+            </p>
+
+            <div className="fitalenta-chat-whatsapp-info">
+                <span>
+                    WhatsApp:{" "}
+                    {WHATSAPP_NUMBER}
+                </span>
+            </div>
+
+            <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fitalenta-chat-whatsapp-button"
+            >
+                <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M20.5 11.3a8.4 8.4 0 0 1-12.4 7.3L4 20l1.4-4a8.4 8.4 0 1 1 15.1-4.7Z"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                    <path
+                        d="M8.7 8.4c.2-.4.4-.5.7-.5h.5c.2 0 .4.1.5.4l.6 1.4c.1.3.1.5-.1.7l-.4.5c-.1.1-.1.3 0 .5.4.7 1 1.3 1.7 1.8.6.4 1.1.6 1.5.7.2 0 .3 0 .4-.2l.5-.6c.2-.2.4-.2.7-.1l1.4.6c.3.1.4.3.4.6v.5c0 .3-.1.5-.4.7-.4.3-.9.5-1.4.5-.8 0-1.9-.3-3.2-1.1-1.1-.7-2.1-1.7-2.8-2.8-.8-1.3-1.1-2.4-1.1-3.2 0-.5.2-1 .5-1.4Z"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </svg>
+
+                <span>
+                    Chat via WhatsApp
+                </span>
+            </a>
+
+            <p className="fitalenta-chat-fallback-email">
+                Anda juga dapat
+                menghubungi kami melalui
+                email{" "}
+                <a
+                    href={`mailto:${EMAIL_FITALENTA}`}
+                    className="fitalenta-chat-link"
+                >
+                    {EMAIL_FITALENTA}
+                </a>
+                .
+            </p>
+        </div>
+    );
 };
 
 const BotIcon = () => {
@@ -760,6 +979,7 @@ const SendIcon = () => {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
+                strokeLinecap="round"
                 strokeLinejoin="round"
             />
             <path
@@ -813,7 +1033,9 @@ const Chatbot = () => {
         useState(false);
 
     const [messages, setMessages] =
-        useState(getSavedMessages);
+        useState(
+            getSavedMessages
+        );
 
     const [input, setInput] =
         useState("");
@@ -831,7 +1053,9 @@ const Chatbot = () => {
         try {
             localStorage.setItem(
                 HISTORY_STORAGE_KEY,
-                JSON.stringify(messages)
+                JSON.stringify(
+                    messages
+                )
             );
         } catch (error) {
             console.error(
@@ -844,142 +1068,168 @@ const Chatbot = () => {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView(
             {
-                behavior: "smooth",
+                behavior:
+                    "smooth",
             }
         );
-    }, [messages, loading]);
+    }, [
+        messages,
+        loading,
+    ]);
 
     useEffect(() => {
         if (!isOpen) {
             return undefined;
         }
 
-        const timeout = setTimeout(() => {
-            inputRef.current?.focus();
-        }, 150);
+        const timeout =
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 150);
 
-        return () => {
-            clearTimeout(timeout);
-        };
+        return () =>
+            clearTimeout(
+                timeout
+            );
     }, [isOpen]);
 
-    const handleSendMessage = async (
-        customMessage = null
-    ) => {
-        const message = (
-            customMessage !== null
-                ? customMessage
-                : input
-        ).trim();
+    const handleSendMessage =
+        async (
+            customMessage = null
+        ) => {
+            const message = (
+                customMessage !==
+                null
+                    ? customMessage
+                    : input
+            ).trim();
 
-        if (!message || loading) {
-            return;
-        }
-
-        const userMessage =
-            createMessage(
-                "user",
-                message
-            );
-
-        const updatedMessages = [
-            ...messages,
-            userMessage,
-        ];
-
-        setMessages(
-            updatedMessages
-        );
-
-        setInput("");
-        setLoading(true);
-
-        try {
-            const sessionId =
-                getSessionId();
-
-            const history =
-                getRecentHistory(
-                    updatedMessages
-                );
-
-            const contextualMessage =
-                buildContextualMessage(
-                    message,
-                    messages
-                );
-
-            console.log(
-                "FITALENTA AI message:",
-                contextualMessage
-            );
-
-            console.log(
-                "FITALENTA AI history:",
-                history
-            );
-
-            const data =
-                await sendChatMessage({
-                    message:
-                    contextualMessage,
-                    sessionId,
-                    history,
-                });
-
-            console.log(
-                "FITALENTA AI response:",
-                data
-            );
-
-            const reply =
-                extractBotReply(data);
-
-            if (!reply) {
-                throw new Error(
-                    "Response chatbot tidak berisi jawaban."
-                );
+            if (
+                !message ||
+                loading
+            ) {
+                return;
             }
 
-            const botMessage =
+            const userMessage =
                 createMessage(
-                    "bot",
-                    reply
+                    "user",
+                    message
                 );
 
+            const updatedMessages = [
+                ...messages,
+                userMessage,
+            ];
+
             setMessages(
-                (currentMessages) => [
-                    ...currentMessages,
-                    botMessage,
-                ]
-            );
-        } catch (error) {
-            console.error(
-                "FITALENTA AI error:",
-                error
+                updatedMessages
             );
 
-            const errorMessage =
-                createMessage(
-                    "bot",
-                    "Maaf, terjadi gangguan saat menghubungi FITALENTA AI. Silakan coba lagi beberapa saat."
+            setInput("");
+            setLoading(true);
+
+            try {
+                const sessionId =
+                    getSessionId();
+
+                const history =
+                    getRecentHistory(
+                        updatedMessages
+                    );
+
+                const contextualMessage =
+                    buildContextualMessage(
+                        message,
+                        messages
+                    );
+
+                console.log(
+                    "FITALENTA AI message:",
+                    contextualMessage
                 );
 
-            setMessages(
-                (currentMessages) => [
-                    ...currentMessages,
-                    errorMessage,
-                ]
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
+                console.log(
+                    "FITALENTA AI history:",
+                    history
+                );
+
+                const data =
+                    await sendChatMessage(
+                        {
+                            message:
+                            contextualMessage,
+                            sessionId,
+                            history,
+                        }
+                    );
+
+                console.log(
+                    "FITALENTA AI response:",
+                    data
+                );
+
+                let reply =
+                    extractBotReply(
+                        data
+                    );
+
+                if (
+                    !reply ||
+                    isUnableToAnswer(
+                        reply
+                    )
+                ) {
+                    reply =
+                        FALLBACK_MESSAGE;
+                }
+
+                const botMessage =
+                    createMessage(
+                        "bot",
+                        reply
+                    );
+
+                setMessages(
+                    (
+                        currentMessages
+                    ) => [
+                        ...currentMessages,
+                        botMessage,
+                    ]
+                );
+            } catch (error) {
+                console.error(
+                    "FITALENTA AI error:",
+                    error
+                );
+
+                const errorMessage =
+                    createMessage(
+                        "bot",
+                        FALLBACK_MESSAGE
+                    );
+
+                setMessages(
+                    (
+                        currentMessages
+                    ) => [
+                        ...currentMessages,
+                        errorMessage,
+                    ]
+                );
+            } finally {
+                setLoading(
+                    false
+                );
+            }
+        };
 
     const handleSubmit = (
         event
     ) => {
         event.preventDefault();
+
         handleSendMessage();
     };
 
@@ -1014,7 +1264,9 @@ const Chatbot = () => {
                     type="button"
                     className="fitalenta-chatbot-launcher"
                     onClick={() =>
-                        setIsOpen(true)
+                        setIsOpen(
+                            true
+                        )
                     }
                     aria-label="Buka FITALENTA AI"
                 >
@@ -1023,7 +1275,8 @@ const Chatbot = () => {
                     </span>
 
                     <span>
-                        Tanya FITALENTA AI
+                        Tanya
+                        FITALENTA AI
                     </span>
                 </button>
             )}
@@ -1041,11 +1294,15 @@ const Chatbot = () => {
 
                             <div className="fitalenta-chatbot-header-title">
                                 <h2>
-                                    FITALENTA AI Assistant
+                                    FITALENTA
+                                    AI
+                                    Assistant
                                 </h2>
 
                                 <span>
-                                    Virtual Career Assistant
+                                    Virtual
+                                    Career
+                                    Assistant
                                 </span>
                             </div>
                         </div>
@@ -1079,7 +1336,9 @@ const Chatbot = () => {
 
                     <div className="fitalenta-chatbot-messages">
                         {messages.map(
-                            (message) => (
+                            (
+                                message
+                            ) => (
                                 <div
                                     key={
                                         message.id
@@ -1100,11 +1359,18 @@ const Chatbot = () => {
 
                                     <div className="fitalenta-chat-message-bubble">
                                         {message.sender ===
-                                        "bot"
-                                            ? formatBotText(
-                                                message.text
+                                        "bot" ? (
+                                            message.text ===
+                                            FALLBACK_MESSAGE ? (
+                                                <FallbackMessage />
+                                            ) : (
+                                                formatBotText(
+                                                    message.text
+                                                )
                                             )
-                                            : message.text}
+                                        ) : (
+                                            message.text
+                                        )}
                                     </div>
                                 </div>
                             )
@@ -1187,7 +1453,9 @@ const Chatbot = () => {
                             disabled={
                                 loading
                             }
-                            maxLength={1000}
+                            maxLength={
+                                1000
+                            }
                             autoComplete="off"
                         />
 
