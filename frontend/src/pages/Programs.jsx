@@ -4,50 +4,32 @@ import axios from "axios";
 import helpers from "../utils/helpers";
 
 /* =========================================================
-   PROGRAM ORDER
+   CATEGORY FILTERS
 ========================================================= */
 const PROGRAM_FILTERS = [
     {
-        key: "reguler",
-        label: "Reguler",
-        fullName: "Program Reguler",
+        key: "penyaluran",
+        label: "Penyaluran",
+        fullName: "Penyaluran",
         order: 1,
     },
     {
-        key: "asrama",
-        label: "Asrama",
-        fullName: "Program Asrama",
+        key: "pelatihan",
+        label: "Pelatihan",
+        fullName: "Pelatihan",
         order: 2,
-    },
-    {
-        key: "hybrid",
-        label: "Hybrid",
-        fullName: "Program Hybrid",
-        order: 3,
-    },
-    {
-        key: "fasttrack",
-        label: "Fast Track",
-        fullName: "Program Fast Track",
-        order: 4,
-    },
-    {
-        key: "beasiswa",
-        label: "Beasiswa",
-        fullName: "Program Beasiswa",
-        order: 5,
-    },
-    {
-        key: "gijinkoku",
-        label: "Gijinkoku",
-        fullName: "Program Gijinkoku",
-        order: 6,
     },
     {
         key: "korea",
         label: "Korea",
-        fullName: "Program Korea",
-        order: 7,
+        fullName: "Korea",
+        order: 3,
+    },
+    {
+        key: "amto",
+        label: "AMTO",
+        fullName: "AMTO",
+        order: 4,
     },
 ];
 
@@ -58,169 +40,364 @@ const normalizeProgramName = (value = "") => {
     return String(value)
         .trim()
         .toLowerCase()
+        .replace(/[()]/g, "")
         .replace(/[-_\s]+/g, "");
 };
-const getProgramKey = (program) => {
-    const values = [
-        program?.name,
-        program?.category_name,
-    ].map((value) =>
-        normalizeProgramName(value)
+
+
+/* =========================================================
+   CARD NAME ORDER
+========================================================= */
+const getProgramNameOrder = (program) => {
+    const name = normalizeProgramName(
+        program?.name || ""
     );
+
+
+    if (name.includes("reguler") || name.includes("regular")) {
+        return 1;
+    }
+
+    if (name.includes("asrama")) {
+        return 2;
+    }
+
+    if (name.includes("hybrid")) {
+        return 3;
+    }
+
+    if (name.includes("fasttrack") || name.includes("fast")) {
+        return 4;
+    }
+
+    if (name.includes("beasiswa")) {
+        return 5;
+    }
+
+    if (name.includes("gijinkoku")) {
+        return 6;
+    }
+
     if (
-        values.some(
-            (value) =>
-                value.includes("reguler") ||
-                value.includes("regular")
+        name.includes("jishusei") ||
+        name.includes("magang")
+    ) {
+        return 7;
+    }
+
+    if (
+        name.includes("ssw") ||
+        name.includes("tokutei") ||
+        name.includes("ginou")
+    ) {
+        return 8;
+    }
+
+    if (name.includes("amto")) {
+        return 9;
+    }
+
+    if (name.includes("hse")) {
+        return 10;
+    }
+
+    if (name.includes("korea")) {
+        return 11;
+    }
+    return 999;
+};
+
+/* =========================================================
+   CATEGORY KEY
+========================================================= */
+const getProgramKey = (program) => {
+    const categoryName =
+        normalizeProgramName(
+            program?.category_name || ""
+        );
+
+    if (
+        categoryName.includes(
+            "penyaluran"
         )
     ) {
-        return "reguler";
+        return "penyaluran";
     }
+
     if (
-        values.some((value) =>
-            value.includes("asrama")
+        categoryName.includes(
+            "pelatihan"
         )
     ) {
-        return "asrama";
+        return "pelatihan";
     }
+
     if (
-        values.some((value) =>
-            value.includes("hybrid")
-        )
-    ) {
-        return "hybrid";
-    }
-    if (
-        values.some((value) =>
-            value.includes("fasttrack")
-        )
-    ) {
-        return "fasttrack";
-    }
-    if (
-        values.some((value) =>
-            value.includes("beasiswa")
-        )
-    ) {
-        return "beasiswa";
-    }
-    if (
-        values.some((value) =>
-            value.includes("gijinkoku")
-        )
-    ) {
-        return "gijinkoku";
-    }
-    if (
-        values.some((value) =>
-            value.includes("korea")
+        categoryName.includes(
+            "korea"
         )
     ) {
         return "korea";
     }
+
+    if (
+        categoryName.includes(
+            "amto"
+        )
+    ) {
+        return "amto";
+    }
+
     return "unknown";
 };
-const getProgramConfig = (program) => {
-    const key = getProgramKey(program);
-    return PROGRAM_FILTERS.find(
-        (item) => item.key === key
-    );
-};
-const getProgramOrder = (program) => {
-    const databaseOrder = Number(
-        program?.sort_order
-    );
+
+/* =========================================================
+   PROGRAM FORMAT
+========================================================= */
+const getProgramFormatKey = (program) => {
+
+    const format =
+        normalizeProgramName(
+            program?.program_format || ""
+        );
+
+    const programName =
+        normalizeProgramName(
+            program?.name || ""
+        );
+
     if (
-        Number.isFinite(databaseOrder) &&
-        databaseOrder >= 1 &&
-        databaseOrder <= 7
+        format === "reguler" ||
+        format === "regular"
     ) {
-        return databaseOrder;
+        return "reguler";
     }
-    const config =
-        getProgramConfig(program);
-    return config?.order || 999;
+
+    if (format === "asrama") {
+        return "asrama";
+    }
+
+    if (format === "hybrid") {
+        return "hybrid";
+    }
+
+    if (format === "fasttrack") {
+        return "fasttrack";
+    }
+
+    if (format === "beasiswa") {
+        return "beasiswa";
+    }
+
+    if (
+        format === "studi" ||
+        format === "study"
+    ) {
+        return "studi";
+    }
+
+    if (format === "nonasrama") {
+        return "nonasrama";
+    }
+
+    if (
+        format === "teknis" ||
+        format === "technical"
+    ) {
+        return "teknis";
+    }
+
+    // fallback data lama
+    if (
+        programName.includes("reguler") ||
+        programName.includes("regular")
+    ) {
+        return "reguler";
+    }
+
+    if (programName.includes("asrama")) {
+        return "asrama";
+    }
+
+    if (programName.includes("hybrid")) {
+        return "hybrid";
+    }
+
+    if (programName.includes("fasttrack")) {
+        return "fasttrack";
+    }
+
+    if (programName.includes("beasiswa")) {
+        return "beasiswa";
+    }
+
+    return "unknown";
 };
+
+/* =========================================================
+   SORT PROGRAMS
+========================================================= */
 const sortPrograms = (data = []) => {
-    return [...data].sort((a, b) => {
+    return [...data].sort((a,b)=>{
         const first =
-            getProgramOrder(a);
+            getProgramNameOrder(a);
         const second =
-            getProgramOrder(b);
-        if (first !== second) {
+            getProgramNameOrder(b);
+
+        if(first !== second){
             return first - second;
         }
-        return String(
-            a?.name || ""
-        ).localeCompare(
-            String(b?.name || ""),
-            "id"
-        );
+
+        const firstFormat =
+            getProgramFormatKey(a);
+        const secondFormat =
+            getProgramFormatKey(b);
+
+        if(firstFormat !== secondFormat){
+            return firstFormat.localeCompare(
+                secondFormat,
+                "id"
+            );
+        }
+
+        return String(a?.name || "")
+            .localeCompare(
+                String(b?.name || ""),
+                "id"
+            );
+
     });
 };
-const getProgramDisplayName = (program) => {
-    const config =
-        getProgramConfig(program);
+
+/* =========================================================
+   DISPLAY NAME
+========================================================= */
+const getProgramDisplayName = (
+    program
+) => {
     return (
-        config?.fullName ||
         program?.name ||
         "-"
     );
 };
-const getCategoryDisplayName = (program) => {
-    const config =
-        getProgramConfig(program);
+
+const getCategoryDisplayName = (
+    program
+) => {
     return (
-        config?.label ||
         program?.category_name ||
         "-"
     );
 };
-const isHybridProgram = (program) => {
+
+const getProgramFormatDisplayName = (
+    program
+) => {
     return (
-        getProgramKey(program) ===
-        "hybrid"
+        program?.program_format ||
+        "-"
     );
 };
-const getInstallmentText = (program) => {
+
+/* =========================================================
+   HYBRID PROGRAM
+========================================================= */
+const isHybridProgram = (
+    program
+) => {
+    const programFormat =
+        normalizeProgramName(
+            program?.program_format ||
+            ""
+        );
+
+    const programName =
+        normalizeProgramName(
+            program?.name ||
+            ""
+        );
+
+    return (
+        programFormat ===
+        "hybrid" ||
+        programName.includes(
+            "hybrid"
+        )
+    );
+};
+
+/* =========================================================
+   INSTALLMENT
+========================================================= */
+const getInstallmentText = (
+    program
+) => {
     if (!program) {
         return "-";
     }
+
     const plan =
         program.installment_plan;
-    if (!plan || plan === "none") {
+
+    if (
+        !plan ||
+        plan === "none"
+    ) {
         return "Bayar Penuh";
     }
+
     if (plan === "dp") {
-        const downPayment = Number(
-            program.down_payment || 0
-        );
-        if (downPayment > 0) {
+        const downPayment =
+            Number(
+                program.down_payment ||
+                0
+            );
+
+        if (
+            downPayment > 0
+        ) {
             return `DP ${helpers.formatCurrency(
                 downPayment
             )}`;
         }
+
         return "DP / Uang Muka";
     }
+
     const installmentMatch =
         String(plan).match(
             /^(\d+)_installments$/
         );
-    if (installmentMatch) {
+
+    if (
+        installmentMatch
+    ) {
         return `${installmentMatch[1]} Cicilan`;
     }
+
     return "-";
 };
-const getQuotaPercentage = (program) => {
+
+/* =========================================================
+   QUOTA
+========================================================= */
+const getQuotaPercentage = (
+    program
+) => {
     const capacity =
-        Number(program?.capacity) || 0;
+        Number(
+            program?.capacity
+        ) || 0;
+
     const participants =
         Number(
             program?.current_participants
         ) || 0;
+
     if (capacity <= 0) {
         return 0;
     }
+
     return Math.min(
         100,
         Math.max(
@@ -236,12 +413,21 @@ const getQuotaPercentage = (program) => {
    PROGRAMS
 ========================================================= */
 const Programs = () => {
-    const [programs, setPrograms] =
-        useState([]);
-    const [loading, setLoading] =
-        useState(true);
-    const [error, setError] =
-        useState("");
+    const [
+        programs,
+        setPrograms,
+    ] = useState([]);
+
+    const [
+        loading,
+        setLoading,
+    ] = useState(true);
+
+    const [
+        error,
+        setError,
+    ] = useState("");
+
     const [
         selectedCategory,
         setSelectedCategory,
@@ -257,46 +443,73 @@ const Programs = () => {
     /* =========================================================
        FETCH PROGRAMS
     ========================================================= */
-    const fetchPrograms = async () => {
-        try {
-            setLoading(true);
-            setError("");
-            const response =
-                await axios.get(
-                    "/api/programs"
+    const fetchPrograms =
+        async () => {
+            try {
+                setLoading(
+                    true
                 );
-            if (
-                response.data?.success
-            ) {
-                const data =
-                    Array.isArray(
-                        response.data.data
-                    )
-                        ? response.data.data
-                        : [];
-                setPrograms(
-                    sortPrograms(data)
-                );
-            } else {
-                setPrograms([]);
+
                 setError(
-                    "Gagal memuat data program."
+                    ""
+                );
+
+                const response =
+                    await axios.get(
+                        "/api/programs"
+                    );
+
+                if (
+                    response.data
+                        ?.success
+                ) {
+                    const data =
+                        Array.isArray(
+                            response
+                                .data
+                                .data
+                        )
+                            ? response
+                                .data
+                                .data
+                            : [];
+
+                    setPrograms(
+                        sortPrograms(
+                            data
+                        )
+                    );
+                } else {
+                    setPrograms(
+                        []
+                    );
+
+                    setError(
+                        "Gagal memuat data program."
+                    );
+                }
+            } catch (error) {
+                console.error(
+                    "Error fetching programs:",
+                    error
+                );
+
+                setPrograms(
+                    []
+                );
+
+                setError(
+                    error.response
+                        ?.data
+                        ?.message ||
+                    "Gagal memuat program. Silakan coba kembali."
+                );
+            } finally {
+                setLoading(
+                    false
                 );
             }
-        } catch (error) {
-            console.error(
-                "Error fetching programs:",
-                error
-            );
-            setPrograms([]);
-            setError(
-                error.response?.data?.message ||
-                "Gagal memuat program. Silakan coba kembali."
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
 
     /* =========================================================
        ORDERED PROGRAMS
@@ -336,6 +549,7 @@ const Programs = () => {
             ) {
                 return orderedPrograms;
             }
+
             return orderedPrograms.filter(
                 (program) =>
                     getProgramKey(
@@ -355,6 +569,7 @@ const Programs = () => {
         return (
             <div className="container py-5 text-center">
                 <div className="spinner-border text-primary mb-3"></div>
+
                 <h5>
                     Memuat program...
                 </h5>
@@ -372,9 +587,11 @@ const Programs = () => {
                     <h4>
                         Gagal Memuat Program
                     </h4>
+
                     <p>
                         {error}
                     </p>
+
                     <button
                         type="button"
                         className="btn btn-primary"
@@ -403,6 +620,7 @@ const Programs = () => {
                     <h1 className="fw-bold">
                         Program FITALENTA Tersedia
                     </h1>
+
                     <p className="text-muted">
                         Pilih program yang sesuai dengan minat dan kemampuan Anda
                     </p>
@@ -415,7 +633,7 @@ const Programs = () => {
                     0 && (
                         <div className="mb-4">
                             <div
-                                className="btn-group"
+                                className="btn-group flex-wrap"
                                 role="group"
                             >
                                 <button
@@ -434,6 +652,7 @@ const Programs = () => {
                                 >
                                     Semua Program
                                 </button>
+
                                 {availableFilters.map(
                                     (
                                         category
@@ -476,6 +695,7 @@ const Programs = () => {
                                 <h5>
                                     Tidak ada program yang tersedia
                                 </h5>
+
                                 <p className="mb-0">
                                     Silakan coba kategori lain atau hubungi administrator.
                                 </p>
@@ -490,15 +710,18 @@ const Programs = () => {
                                     isHybridProgram(
                                         program
                                     );
+
                                 const jobMatchingCost =
                                     Number(
                                         program.job_matching_cost ||
                                         0
                                     );
+
                                 const quotaPercentage =
                                     getQuotaPercentage(
                                         program
                                     );
+
                                 return (
                                     <div
                                         key={
@@ -517,11 +740,21 @@ const Programs = () => {
                                                         program
                                                     )}
                                                 </span>
+
                                                 <h5 className="program-title">
                                                     {getProgramDisplayName(
                                                         program
                                                     )}
                                                 </h5>
+
+                                                {program.program_format && (
+                                                    <div className="program-format-type">
+                                                        <span>Tipe:</span>
+                                                        <strong>
+                                                            {getProgramFormatDisplayName(program)}
+                                                        </strong>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* =========================================================
@@ -532,32 +765,38 @@ const Programs = () => {
                                                     {program.description ||
                                                         "Informasi program belum tersedia."}
                                                 </p>
+
                                                 <div className="program-info-grid">
                                                     <div className="info-item">
                                                         <h6>
                                                             <i className="bi bi-calendar-event me-2"></i>
                                                             Jadwal
                                                         </h6>
+
                                                         <p>
                                                             {program.schedule ||
                                                                 "-"}
                                                         </p>
                                                     </div>
+
                                                     <div className="info-item">
                                                         <h6>
                                                             <i className="bi bi-clock-history me-2"></i>
                                                             Durasi
                                                         </h6>
+
                                                         <p>
                                                             {program.duration ||
                                                                 "-"}
                                                         </p>
                                                     </div>
+
                                                     <div className="info-item">
                                                         <h6>
                                                             <i className="bi bi-geo-alt-fill me-2"></i>
                                                             Lokasi
                                                         </h6>
+
                                                         <p>
                                                             {program.location ||
                                                                 "-"}
@@ -574,6 +813,7 @@ const Programs = () => {
                                                             <i className="bi bi-mortarboard-fill me-1"></i>
                                                             Biaya Pelatihan
                                                         </small>
+
                                                         <h6>
                                                             {helpers.formatCurrency(
                                                                 program.training_cost ||
@@ -581,11 +821,13 @@ const Programs = () => {
                                                             )}
                                                         </h6>
                                                     </div>
+
                                                     <div className="program-price-box">
                                                         <small>
                                                             <i className="bi bi-airplane-fill me-1"></i>
                                                             Biaya Keberangkatan
                                                         </small>
+
                                                         <h6>
                                                             {helpers.formatCurrency(
                                                                 program.departure_cost ||
@@ -607,6 +849,7 @@ const Programs = () => {
                                                                     <i className="bi bi-person-workspace me-1"></i>
                                                                     Pendampingan Job Matching
                                                                 </small>
+
                                                                 <h6>
                                                                     {helpers.formatCurrency(
                                                                         jobMatchingCost
@@ -624,6 +867,7 @@ const Programs = () => {
                                                         <i className="bi bi-wallet2 me-2"></i>
                                                         Skema Pembayaran
                                                     </h6>
+
                                                     <p>
                                                         {getInstallmentText(
                                                             program
@@ -640,6 +884,7 @@ const Programs = () => {
                                                             <i className="bi bi-people-fill me-2"></i>
                                                             Kuota
                                                         </span>
+
                                                         <span>
                                                             {program.current_participants ||
                                                                 0}
@@ -648,6 +893,7 @@ const Programs = () => {
                                                                 0}
                                                         </span>
                                                     </div>
+
                                                     <div className="progress mt-2">
                                                         <div
                                                             className="progress-bar"
@@ -670,6 +916,7 @@ const Programs = () => {
                                                     <i className="bi bi-eye-fill me-2"></i>
                                                     Detail Program
                                                 </Link>
+
                                                 <Link
                                                     to="/register"
                                                     className="btn btn-primary w-100"
@@ -677,6 +924,7 @@ const Programs = () => {
                                                     <i className="bi bi-pencil-square me-2"></i>
                                                     Daftar Sekarang
                                                 </Link>
+
                                                 <div className="program-footer-text">
                                                     Program resmi persiapan kerja ke luar negeri
                                                 </div>
