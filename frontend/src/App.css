@@ -415,7 +415,7 @@ body {
             rgba(0, 41, 75, 0.9),
             rgba(0, 29, 53, 0.9)
     ),
-    url("/images/contact_us") center/cover;
+    url("/images/contact_us.jpg") center/cover;
 }
 
 .contact-info-card {
@@ -30609,5 +30609,341 @@ body:has(.admin-sidebar.admin-sidebar-collapsed)
     }
     .payment-page .payment-detail-card dd{
         max-width:58%;
+    }
+}
+
+/* =====================================
+   PROGRAM FORMAT TYPE BADGE
+===================================== */
+
+.program-format-type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+
+.program-format-type span {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,.85);
+}
+
+
+.program-format-type strong {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .3px;
+    backdrop-filter: blur(6px);
+}
+
+/* =========================================================
+   PROGRAM MANAGEMENT TABLE - ENHANCED
+========================================================= */
+
+.program-content-card {
+    border: 1px solid #e9e3f1;
+    border-radius: 28px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfbfe 100%);
+    box-shadow: 0 14px 40px rgba(31, 41, 85, 0.06);
+}
+
+.program-card-heading {
+    padding: 28px 30px 22px;
+    border-bottom: 1px solid #eee8f5;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfafe 100%);
+}
+
+.program-table-wrapper {
+    overflow-x: auto;
+    background: transparent;
+}
+
+.program-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+}
+
+.program-table thead th {
+    background: #f8f5fc;
+    color: #6d6b86;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 16px 18px;
+    border-bottom: 1px solid #ece6f3;
+    vertical-align: middle;
+}
+
+.program-table tbody td {
+    padding: 20px 18px;
+    border-bottom: 1px solid #f1edf6;
+    vertical-align: middle;
+    font-size: 14px;
+    color: #2a3558;
+    background: transparent;
+    transition: background-color 0.2s ease;
+}
+
+.program-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.program-table tbody tr:hover td {
+    background: #fcfbff;
+}
+
+/* Lebar kolom */
+.program-table th:nth-child(1),
+.program-table td:nth-child(1) {
+    width: 41%;
+}
+
+.program-table th:nth-child(2),
+.program-table td:nth-child(2) {
+    width: 10%;
+}
+
+.program-table th:nth-child(3),
+.program-table td:nth-child(3) {
+    width: 18%;
+}
+
+.program-table th:nth-child(4),
+.program-table td:nth-child(4) {
+    width: 10%;
+}
+
+.program-table th:nth-child(5),
+.program-table td:nth-child(5) {
+    width: 10%;
+}
+
+.program-table th:nth-child(6),
+.program-table td:nth-child(6) {
+    width: 8%;
+}
+
+.program-table th:nth-child(7),
+.program-table td:nth-child(7) {
+    width: 10%;
+}
+
+/* Program info */
+.program-table-program {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.program-table-program small {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9592aa;
+}
+
+.program-table-program strong {
+    font-size: 15px;
+    line-height: 1.45;
+    font-weight: 800;
+    color: #1e3162;
+}
+
+/* Badge kategori */
+.program-category-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f5f1fc 0%, #efe9fa 100%);
+    color: #574fc9;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    border: 1px solid #e7ddf8;
+    white-space: nowrap;
+}
+
+/* Durasi */
+.program-table-duration {
+    display: inline-block;
+    color: #4a5578;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+/* Kuota */
+.program-table-capacity {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.program-table-capacity-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #495270;
+}
+
+.program-capacity-track {
+    width: 100%;
+    max-width: 90px;
+    height: 6px;
+    background: #ece8f2;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.program-capacity-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7f6dff 0%, #9a8cff 100%);
+}
+
+/* Harga */
+.program-table-price {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 800;
+    color: #1f366a;
+    white-space: nowrap;
+}
+
+/* Status */
+.program-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.program-status-badge i {
+    font-size: 10px;
+}
+
+.program-status-success {
+    background: linear-gradient(180deg, #f2fbf5 0%, #ebf8ef 100%);
+    color: #2f8a5d;
+    border-color: #cde8d7;
+}
+
+.program-status-secondary {
+    background: linear-gradient(180deg, #f4f5f7 0%, #eef0f3 100%);
+    color: #70778a;
+    border-color: #dfe3e8;
+}
+
+.program-status-warning {
+    background: linear-gradient(180deg, #fff9eb 0%, #fff3d8 100%);
+    color: #c68a15;
+    border-color: #f3ddb0;
+}
+
+/* Aksi */
+.program-table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.program-table-action-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    outline: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(31, 41, 85, 0.05);
+}
+
+.program-table-action-btn i {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.program-table-action-edit {
+    background: #f4f1ff;
+    color: #5f52d9;
+    border: 1px solid #ddd5ff;
+}
+
+.program-table-action-edit:hover {
+    background: #ebe5ff;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(95, 82, 217, 0.15);
+}
+
+.program-table-action-delete {
+    background: #fff4f4;
+    color: #d96d6d;
+    border: 1px solid #f4d3d3;
+}
+
+.program-table-action-delete:hover {
+    background: #ffeaea;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(217, 109, 109, 0.15);
+}
+
+/* Footer tabel */
+.program-table-footer {
+    padding: 18px 22px;
+    border-top: 1px solid #eee8f5;
+    background: #fbf9fd;
+}
+
+.program-table-footer > div {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #7d7894;
+    font-size: 13px;
+}
+
+.program-table-footer i {
+    color: #7a6ff0;
+}
+
+/* Responsive minor */
+@media (max-width: 1399.98px) {
+    .program-table thead th,
+    .program-table tbody td {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .program-table-program strong {
+        font-size: 14px;
     }
 }
