@@ -158,6 +158,7 @@ CREATE TABLE `placement_status` (
 CREATE TABLE `programs` (
                             `id` int NOT NULL,
                             `category_id` int DEFAULT NULL,
+                            `program_format` varchar(100) DEFAULT NULL,
                             `name` varchar(255) NOT NULL,
                             `description` text,
                             `requirements` text,
@@ -216,6 +217,7 @@ CREATE TABLE `programs` (
 INSERT INTO `programs` (
     `id`,
     `category_id`,
+    `program_format`,
     `name`,
     `description`,
     `requirements`,
