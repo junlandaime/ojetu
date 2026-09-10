@@ -2,8 +2,12 @@ import express from "express";
 import db from "../config/database.js";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
+import { requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// Laporan keuangan hanya dapat diakses oleh admin
+router.use(requireAdmin);
 
 router.get("/financial/summary", async (req, res) => {
   try {

@@ -1,8 +1,18 @@
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config();
 
 const JWT_COOKIE_NAME = process.env.JWT_COOKIE_NAME || "access_token";
-const JWT_SECRET = process.env.JWT_SECRET || "";
 const COOKIE_MAX_AGE_DAYS = parseInt(process.env.JWT_COOKIE_MAX_AGE_DAYS || "7", 10);
+
+const getJwtSecret = () => process.env.JWT_SECRET || "";
 
 const parseCookies = (cookieHeader = "") => {
   return cookieHeader.split(";").reduce((acc, part) => {
@@ -42,17 +52,24 @@ export const authenticateRequest = (req, res, next) => {
   }
 
   const token = getAuthToken(req);
+  const secret = getJwtSecret();
 
-  if (!token || !JWT_SECRET) {
+  if (!token || !secret) {
     return next();
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    const decoded = jwt.verify(token, secret);
+    req.user = {
+      ...decoded,
+      id: decoded.id || decoded.userId,
+      userId: decoded.userId || decoded.id,
+      userType: decoded.userType || decoded.role,
+      role: decoded.role || decoded.userType,
+    };
   } catch (error) {
     if (error.name !== "TokenExpiredError") {
-      console.warn("Invalid auth token provided", error.message);
+      console.warn("Invalid auth token provided:", error.message);
     }
   }
 
@@ -98,8 +115,6 @@ export const setAuthCookie = (res, token) => {
 
   const maxAge = COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
   const secure = process.env.NODE_ENV === "production";
-  // "none" diperlukan untuk cross-domain (frontend & backend beda subdomain)
-  // sameSite "none" hanya valid jika secure=true
   const sameSite = secure ? "none" : "lax";
 
   res.cookie(JWT_COOKIE_NAME, token, {

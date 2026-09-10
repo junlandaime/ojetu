@@ -1,11 +1,28 @@
 import express from "express";
 import db from "../config/database.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// Wajib terautentikasi untuk seluruh dashboard user
+router.use(requireAuth);
 
 router.get("/:userId", async (req, res) => {
   try {
     const userId = req.params.userId;
+
+    const isSelf =
+      String(req.user.userId) === String(userId) ||
+      String(req.user.id) === String(userId);
+    const isAdmin =
+      req.user.userType === "admin" || req.user.role === "admin";
+
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki izin untuk melihat dashboard ini",
+      });
+    }
 
     const [users] = await db
       .promise()
@@ -140,9 +157,23 @@ router.get("/registration/:registrationId", async (req, res) => {
       });
     }
 
+    const reg = registrations[0];
+    const isOwner =
+      String(req.user.userId) === String(reg.user_id) ||
+      String(req.user.id) === String(reg.user_id);
+    const isAdmin =
+      req.user.userType === "admin" || req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki izin untuk melihat data ini",
+      });
+    }
+
     res.json({
       success: true,
-      data: registrations[0],
+      data: reg,
     });
   } catch (error) {
     console.error("Error fetching registration details:", error);

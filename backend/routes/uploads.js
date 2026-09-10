@@ -3,11 +3,16 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+const ALLOWED_PHOTO_EXTS = [".jpg", ".jpeg", ".png", ".webp"];
+const ALLOWED_DOC_EXTS = [".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx"];
+const ALLOWED_PAYMENT_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".pdf"];
 
 const ensureUploadsDir = (subdir = "") => {
   const uploadsDir = path.join(__dirname, "../uploads");
@@ -15,13 +20,19 @@ const ensureUploadsDir = (subdir = "") => {
 
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
-    // console.log("Created uploads directory:", uploadsDir);
   }
 
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
-    // console.log("Created subdirectory:", targetDir);
   }
+};
+
+const getBaseUrl = (req) => {
+  const envUrl = process.env.API_URL || process.env.BACKEND_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, "");
+  }
+  return `${req.protocol}://${req.get("host")}`;
 };
 
 const photoStorage = multer.diskStorage({
@@ -30,11 +41,12 @@ const photoStorage = multer.diskStorage({
     cb(null, path.join(__dirname, "../uploads/photos"));
   },
   filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_PHOTO_EXTS.includes(ext)) {
+      return cb(new Error("Ekstensi foto tidak valid. Hanya format JPG, JPEG, PNG, dan WebP yang diizinkan."));
+    }
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const filename = "photo-" + uniqueSuffix + ext;
-    // console.log("Saving photo as:", filename);
-    cb(null, filename);
+    cb(null, `photo-${uniqueSuffix}${ext}`);
   },
 });
 
@@ -44,12 +56,13 @@ const documentStorage = multer.diskStorage({
     cb(null, path.join(__dirname, "../uploads/documents"));
   },
   filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_DOC_EXTS.includes(ext)) {
+      return cb(new Error("Ekstensi dokumen tidak valid. Hanya JPG, PNG, PDF, atau DOC/DOCX yang diizinkan."));
+    }
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const docType = req.body.type || "document";
-    const filename = `${docType}-${uniqueSuffix}${ext}`;
-    // console.log("Saving document as:", filename);
-    cb(null, filename);
+    const docType = (req.body.type || "document").replace(/[^a-zA-Z0-9_-]/g, "");
+    cb(null, `${docType}-${uniqueSuffix}${ext}`);
   },
 });
 
@@ -59,17 +72,19 @@ const paymentStorage = multer.diskStorage({
     cb(null, path.join(__dirname, "../uploads/payments"));
   },
   filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_PAYMENT_EXTS.includes(ext)) {
+      return cb(new Error("Ekstensi bukti pembayaran tidak valid. Hanya JPG, JPEG, PNG, WebP, atau PDF yang diizinkan."));
+    }
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const filename = `payment-${uniqueSuffix}${ext}`;
-    // console.log("Saving payment proof as:", filename);
-    cb(null, filename);
+    cb(null, `payment-${uniqueSuffix}${ext}`);
   },
 });
 
-const createFileFilter = (allowedTypes, errorMessage) => {
+const createFileFilter = (allowedMimes, allowedExts, errorMessage) => {
   return (req, file, cb) => {
-    if (allowedTypes.includes(file.mimetype)) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedMimes.includes(file.mimetype) && allowedExts.includes(ext)) {
       cb(null, true);
     } else {
       cb(new Error(errorMessage), false);
@@ -80,8 +95,9 @@ const createFileFilter = (allowedTypes, errorMessage) => {
 const uploadPhoto = multer({
   storage: photoStorage,
   fileFilter: createFileFilter(
-    ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"],
-    "Hanya file gambar (JPEG, JPG, PNG, GIF, WebP) yang diizinkan untuk foto!"
+    ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+    ALLOWED_PHOTO_EXTS,
+    "Hanya file gambar (JPEG, JPG, PNG, WebP) yang diizinkan untuk foto!"
   ),
   limits: {
     fileSize: 5 * 1024 * 1024,
@@ -97,9 +113,10 @@ const uploadDocument = multer({
       "image/png",
       "application/pdf",
       "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ],
-    "Hanya file JPG, PNG, PDF, atau DOC/DOCX yang diizinkan!"
+    ALLOWED_DOC_EXTS,
+    "Hanya file JPG, PNG, PDF, atau DOC/DOCX yang diizinkan untuk dokumen!"
   ),
   limits: {
     fileSize: 10 * 1024 * 1024,
@@ -109,13 +126,17 @@ const uploadDocument = multer({
 const uploadPayment = multer({
   storage: paymentStorage,
   fileFilter: createFileFilter(
-    ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"],
-    "Hanya file gambar yang diizinkan untuk bukti pembayaran!"
+    ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"],
+    ALLOWED_PAYMENT_EXTS,
+    "Hanya file gambar atau PDF yang diizinkan untuk bukti pembayaran!"
   ),
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
 });
+
+// Seluruh endpoint upload wajib login
+router.use(requireAuth);
 
 router.post("/photo", uploadPhoto.single("file"), async (req, res) => {
   try {
@@ -137,7 +158,7 @@ router.post("/photo", uploadPhoto.single("file"), async (req, res) => {
         original_name: req.file.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
-        full_url: `http://localhost:5000${filePath}`
+        full_url: `${getBaseUrl(req)}${filePath}`,
       },
     });
   } catch (error) {
@@ -167,7 +188,7 @@ router.post("/document", uploadDocument.single("file"), async (req, res) => {
       });
     }
 
-    const docType = req.body.type || "document";
+    const docType = (req.body.type || "document").replace(/[^a-zA-Z0-9_-]/g, "");
     const filePath = `/uploads/documents/${req.file.filename}`;
 
     res.json({
@@ -180,7 +201,7 @@ router.post("/document", uploadDocument.single("file"), async (req, res) => {
         file_size: req.file.size,
         mime_type: req.file.mimetype,
         document_type: docType,
-        full_url: `http://localhost:5000${filePath}`
+        full_url: `${getBaseUrl(req)}${filePath}`,
       },
     });
   } catch (error) {
@@ -221,7 +242,7 @@ router.post("/payment", uploadPayment.single("file"), async (req, res) => {
         original_name: req.file.originalname,
         file_size: req.file.size,
         mime_type: req.file.mimetype,
-        full_url: `http://localhost:5000${filePath}`
+        full_url: `${getBaseUrl(req)}${filePath}`,
       },
     });
   } catch (error) {
@@ -251,7 +272,8 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
       });
     }
 
-    const uploadedFiles = req.files.map(file => {
+    const baseUrl = getBaseUrl(req);
+    const uploadedFiles = req.files.map((file) => {
       const filePath = `/uploads/documents/${file.filename}`;
       return {
         file_path: filePath,
@@ -259,24 +281,22 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
         original_name: file.originalname,
         file_size: file.size,
         mime_type: file.mimetype,
-        full_url: `http://localhost:5000${filePath}`
+        full_url: `${baseUrl}${filePath}`,
       };
     });
-
-    // console.log(`${uploadedFiles.length} files uploaded successfully`);
 
     res.json({
       success: true,
       message: `${uploadedFiles.length} file berhasil diupload`,
       data: {
-        files: uploadedFiles
+        files: uploadedFiles,
       },
     });
   } catch (error) {
     console.error("❌ Error uploading multiple files:", error);
 
     if (req.files) {
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         fs.unlink(file.path, (unlinkError) => {
           if (unlinkError) {
             console.error("Error deleting uploaded file:", unlinkError);
@@ -292,7 +312,7 @@ router.post("/multiple", uploadDocument.array("files", 5), async (req, res) => {
   }
 });
 
-router.delete("/file", async (req, res) => {
+router.delete("/file", requireAdmin, async (req, res) => {
   try {
     const { file_path } = req.body;
 
@@ -303,14 +323,14 @@ router.delete("/file", async (req, res) => {
       });
     }
 
-    if (!file_path.startsWith('/uploads/')) {
+    if (!file_path.startsWith("/uploads/")) {
       return res.status(400).json({
         success: false,
         message: "Path file tidak valid",
       });
     }
 
-    const fullPath = path.join(__dirname, '..', file_path);
+    const fullPath = path.join(__dirname, "..", file_path);
 
     if (!fs.existsSync(fullPath)) {
       return res.status(404).json({
@@ -320,8 +340,6 @@ router.delete("/file", async (req, res) => {
     }
 
     fs.unlinkSync(fullPath);
-
-    // console.log("File deleted successfully:", file_path);
 
     res.json({
       success: true,
@@ -336,27 +354,27 @@ router.delete("/file", async (req, res) => {
   }
 });
 
-router.get("/health", async (req, res) => {
+router.get("/health", requireAdmin, async (req, res) => {
   try {
     const uploadsDir = path.join(__dirname, "../uploads");
     const subdirs = ["photos", "documents", "payments"];
 
     const healthStatus = {
       uploads_dir: fs.existsSync(uploadsDir),
-      subdirectories: {}
+      subdirectories: {},
     };
 
-    subdirs.forEach(subdir => {
+    subdirs.forEach((subdir) => {
       const subdirPath = path.join(uploadsDir, subdir);
       healthStatus.subdirectories[subdir] = {
         exists: fs.existsSync(subdirPath),
-        writable: false
+        writable: false,
       };
 
       if (healthStatus.subdirectories[subdir].exists) {
         try {
           const testFile = path.join(subdirPath, `test-${Date.now()}.tmp`);
-          fs.writeFileSync(testFile, 'test');
+          fs.writeFileSync(testFile, "test");
           fs.unlinkSync(testFile);
           healthStatus.subdirectories[subdir].writable = true;
         } catch (error) {
@@ -365,17 +383,19 @@ router.get("/health", async (req, res) => {
       }
     });
 
-    const allHealthy = healthStatus.uploads_dir &&
-      Object.values(healthStatus.subdirectories).every(dir => dir.exists && dir.writable);
+    const allHealthy =
+      healthStatus.uploads_dir &&
+      Object.values(healthStatus.subdirectories).every(
+        (dir) => dir.exists && dir.writable
+      );
 
     res.json({
       success: true,
       data: {
         healthy: allHealthy,
         ...healthStatus,
-        total_space: await getDiskSpace(),
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error("❌ Error checking upload health:", error);
@@ -386,28 +406,13 @@ router.get("/health", async (req, res) => {
   }
 });
 
-async function getDiskSpace() {
-  try {
-    const fsPromises = await import('fs/promises');
-    const stats = await fsPromises.statfs(path.join(__dirname, "../uploads"));
-
-    return {
-      free: (stats.bfree * stats.bsize) / (1024 * 1024 * 1024),
-      total: (stats.blocks * stats.bsize) / (1024 * 1024 * 1024),
-      available: (stats.bavail * stats.bsize) / (1024 * 1024 * 1024)
-    };
-  } catch (error) {
-    console.error("Error getting disk space:", error);
-    return null;
-  }
-}
-
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     let message = "Error upload file";
 
     if (error.code === "LIMIT_FILE_SIZE") {
-      message = "File terlalu besar. Maksimal 5MB untuk foto dan 10MB untuk dokumen.";
+      message =
+        "File terlalu besar. Maksimal 5MB untuk foto dan 10MB untuk dokumen.";
     } else if (error.code === "LIMIT_FILE_COUNT") {
       message = "Terlalu banyak file diupload";
     } else if (error.code === "LIMIT_UNEXPECTED_FILE") {
@@ -416,14 +421,14 @@ router.use((error, req, res, next) => {
 
     return res.status(400).json({
       success: false,
-      message
+      message,
     });
   }
 
   if (error.message) {
     return res.status(400).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 

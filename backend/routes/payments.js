@@ -8,6 +8,7 @@ import db, {
   generateInvoiceNumber,
   generateReceiptNumber,
 } from "../config/database.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -179,7 +180,7 @@ const formatCurrency = (value) => {
     : `Rp ${Math.round(numValue).toLocaleString("id-ID")}`;
 };
 
-router.get("/", async (req, res) => {
+router.get("/", requireAdmin, async (req, res) => {
   try {
     const { status, program, search, start_date, end_date } = req.query;
 
@@ -248,7 +249,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/statistics", async (req, res) => {
+router.get("/statistics", requireAdmin, async (req, res) => {
   try {
     const [stats] = await db.promise().query(`
       SELECT 
@@ -292,8 +293,21 @@ router.get("/statistics", async (req, res) => {
   }
 });
 
-router.get("/user/:userId", async (req, res) => {
+router.get("/user/:userId", requireAuth, async (req, res) => {
   try {
+    const isSelf =
+      String(req.user.userId) === String(req.params.userId) ||
+      String(req.user.id) === String(req.params.userId);
+    const isAdmin =
+      req.user.userType === "admin" || req.user.role === "admin";
+
+    if (!isSelf && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki izin untuk melihat riwayat pembayaran ini",
+      });
+    }
+
     const [payments] = await db.promise().query(
       `
       SELECT 
@@ -328,9 +342,39 @@ router.get("/user/:userId", async (req, res) => {
 
 router.post(
   "/:id/upload-proof",
+  requireAuth,
   upload.single("proof_image"),
   async (req, res) => {
     try {
+      const [existing] = await db
+        .promise()
+        .query(
+          `SELECT py.id, r.user_id FROM payments py 
+           LEFT JOIN registrations r ON py.registration_id = r.id 
+           WHERE py.id = ?`,
+          [req.params.id]
+        );
+
+      if (existing.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Pembayaran tidak ditemukan",
+        });
+      }
+
+      const isOwner =
+        req.user.userId === existing[0].user_id ||
+        req.user.id === existing[0].user_id;
+      const isAdmin =
+        req.user.userType === "admin" || req.user.role === "admin";
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Anda tidak memiliki izin untuk mengunggah bukti pembayaran ini",
+        });
+      }
+
       if (!req.file) {
         return res.status(400).json({
           success: false,
@@ -365,7 +409,7 @@ router.post(
   }
 );
 
-router.post("/:id/create-invoice", async (req, res) => {
+router.post("/:id/create-invoice", requireAdmin, async (req, res) => {
   const connection = await db.promise().getConnection();
 
   try {
@@ -546,7 +590,7 @@ router.post("/:id/create-invoice", async (req, res) => {
   }
 });
 
-router.put("/:id/status", async (req, res) => {
+router.put("/:id/status", requireAdmin, async (req, res) => {
   const connection = await db.promise().getConnection();
 
   try {
@@ -732,7 +776,7 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
-router.post("/manual", async (req, res) => {
+router.post("/manual", requireAdmin, async (req, res) => {
   const connection = await db.promise().getConnection();
 
   try {
@@ -934,13 +978,14 @@ router.post("/manual", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAuth, async (req, res) => {
   try {
     const [payments] = await db.promise().query(
       `
       SELECT 
         py.*,
         r.registration_code,
+        r.user_id,
         u.full_name,
         u.email,
         u.phone,
@@ -968,6 +1013,20 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    const payment = payments[0];
+    const isOwner =
+      String(req.user.userId) === String(payment.user_id) ||
+      String(req.user.id) === String(payment.user_id);
+    const isAdmin =
+      req.user.userType === "admin" || req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki izin untuk melihat detail pembayaran ini",
+      });
+    }
+
     const [history] = await db.promise().query(
       `
       SELECT 
@@ -985,8 +1044,6 @@ router.get("/:id", async (req, res) => {
     `,
       [req.params.id]
     );
-
-    const payment = payments[0];
 
     const totalInstallments = getTotalInstallments(payment);
 
@@ -1021,7 +1078,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.get("/:id/receipt", async (req, res) => {
+router.get("/:id/receipt", requireAuth, async (req, res) => {
   let doc;
   try {
     const [payments] = await db.promise().query(
@@ -1029,6 +1086,7 @@ router.get("/:id/receipt", async (req, res) => {
       SELECT 
         py.*,
         r.registration_code,
+        r.user_id,
         u.full_name,
         u.email,
         u.phone,
@@ -1057,6 +1115,18 @@ router.get("/:id/receipt", async (req, res) => {
     }
 
     const payment = payments[0];
+    const isOwner =
+      String(req.user.userId) === String(payment.user_id) ||
+      String(req.user.id) === String(payment.user_id);
+    const isAdmin =
+      req.user.userType === "admin" || req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki izin untuk mengunduh kwitansi ini",
+      });
+    }
 
     if (!payment.verified_by) {
       return res.status(400).json({
@@ -1349,7 +1419,7 @@ router.get("/:id/receipt", async (req, res) => {
   }
 });
 
-router.get("/registrations/active", async (req, res) => {
+router.get("/registrations/active", requireAdmin, async (req, res) => {
   try {
     const [registrations] = await db.promise().query(`
       SELECT 

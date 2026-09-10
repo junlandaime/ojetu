@@ -1,5 +1,6 @@
 import express from "express";
 import { promisePool } from "../config/database.js";
+import { requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -340,6 +341,7 @@ router.get(
 ========================================================= */
 router.post(
     "/sync-participants",
+    requireAdmin,
     async (req, res) => {
         try {
             const updatedCount =
@@ -472,6 +474,7 @@ router.get(
 ========================================================= */
 router.put(
     "/:id",
+    requireAdmin,
     async (req, res) => {
         try {
             const programId =
@@ -906,6 +909,7 @@ router.put(
 ========================================================= */
 router.post(
     "/",
+    requireAdmin,
     async (req, res) => {
         try {
             const {
@@ -1239,6 +1243,7 @@ router.post(
 ========================================================= */
 router.delete(
     "/:id",
+    requireAdmin,
     async (req, res) => {
         try {
             const programId =

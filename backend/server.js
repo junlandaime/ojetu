@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import db, { testConnection } from "./config/database.js";
-import jwt from "jsonwebtoken";
+import { authenticateRequest } from "./middleware/auth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,36 +23,50 @@ import programCategoriesRoutes from "./routes/program-categories.js";
 import wilayahRoutes from "./routes/wilayah.js";
 import uploadRoutes from "./routes/uploads.js";
 
+dotenv.config({ path: path.join(__dirname, ".env") });
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Konfigurasi daftar origin CORS yang diizinkan (fleksibel untuk production & staging)
+const rawOrigins = [
+  process.env.APP_URL,
+  process.env.FRONTEND_URL,
+  ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://registrasi.fitalenta.co.id",
+  "https://try.fitalenta.co.id",
+];
+
+const allowedOrigins = rawOrigins
+  .filter(Boolean)
+  .map((url) => url.trim().replace(/\/$/, ""));
+
 app.use(
   cors({
-    origin: process.env.APP_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Mengizinkan request tanpa origin (mobile apps, server-to-server, curl)
+      if (!origin) return callback(null, true);
+      const normalized = origin.replace(/\/$/, "");
+      if (
+        allowedOrigins.includes(normalized) ||
+        process.env.NODE_ENV !== "production"
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     credentials: true,
   })
 );
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-    } catch (error) {
-      console.log("Invalid token:", error.message);
-    }
-  }
-
-  next();
-});
+// Autentikasi global middleware
+app.use(authenticateRequest);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

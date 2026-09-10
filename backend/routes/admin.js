@@ -5,10 +5,15 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { requireAdmin } from "../middleware/auth.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+// Lindungi seluruh endpoint admin hanya untuk user dengan role admin
+router.use(requireAdmin);
 
 const deleteFileSafely = (filePath) => {
   if (!filePath) return false;

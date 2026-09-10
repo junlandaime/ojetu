@@ -1,7 +1,10 @@
 import express from "express";
 import db from "../config/database.js";
+import { requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
+
+router.use(requireAdmin);
 
 router.get("/", async (req, res) => {
   try {

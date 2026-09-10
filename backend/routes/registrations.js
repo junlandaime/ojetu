@@ -4,10 +4,11 @@ import {
   generateRegistrationCode,
   generateInvoiceNumber,
 } from "../config/database.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+router.get("/", requireAdmin, async (req, res) => {
   try {
     const {
       program,
@@ -172,7 +173,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/statistics/summary", async (req, res) => {
+router.get("/statistics/summary", requireAdmin, async (req, res) => {
   try {
     const [totalResult] = await db.promise().query(
       "SELECT COUNT(*) as total FROM registrations"
@@ -256,7 +257,7 @@ router.get("/statistics/summary", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAuth, async (req, res) => {
   try {
     const registrationId = req.params.id;
 
@@ -308,9 +309,20 @@ router.get("/:id", async (req, res) => {
       });
     }
 
+    const registration = registrations[0];
+    const isOwner = req.user.userId === registration.user_id || req.user.id === registration.user_id;
+    const isAdmin = req.user.userType === "admin" || req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki izin untuk melihat pendaftaran ini",
+      });
+    }
+
     res.json({
       success: true,
-      data: registrations[0],
+      data: registration,
     });
   } catch (error) {
     console.error("Error fetching registration:", error);
@@ -321,7 +333,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id/selection", async (req, res) => {
+router.put("/:id/selection", requireAdmin, async (req, res) => {
   try {
     const { status, notes, evaluated_by, test_score } = req.body;
 
@@ -379,7 +391,7 @@ router.put("/:id/selection", async (req, res) => {
   }
 });
 
-router.put("/:id/placement", async (req, res) => {
+router.put("/:id/placement", requireAdmin, async (req, res) => {
   try {
     const { status, company_name, placement_date, notes } = req.body;
 
@@ -434,7 +446,7 @@ router.put("/:id/placement", async (req, res) => {
   }
 });
 
-router.put("/:id/payment", async (req, res) => {
+router.put("/:id/payment", requireAdmin, async (req, res) => {
   try {
     const { status, amount_paid, payment_date, receipt_number, notes, verified_by } =
       req.body;
@@ -522,7 +534,7 @@ router.put("/:id/payment", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   try {
     const {
       program_id,
@@ -553,7 +565,8 @@ router.post("/", async (req, res) => {
       user_data = {},
     } = req.body;
 
-    const user_id = req.body.user_id || req.user?.userId;
+    const isAdmin = req.user?.userType === "admin" || req.user?.role === "admin";
+    const user_id = isAdmin && req.body.user_id ? req.body.user_id : (req.user?.userId || req.user?.id);
 
     if (!program_id) {
       return res.status(400).json({
@@ -745,7 +758,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:id/registration-status", async (req, res) => {
+router.put("/:id/registration-status", requireAdmin, async (req, res) => {
   try {
     const { status, notes, evaluated_by } = req.body;
     const registrationId = req.params.id;
@@ -836,7 +849,7 @@ router.put("/:id/registration-status", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const registrationId = req.params.id;
 

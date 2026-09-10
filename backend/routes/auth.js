@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../config/database.js";
+import rateLimiter from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ const checkAlreadyLoggedIn = (req, res, next) => {
 };
 
 // Register - hanya untuk participant
-router.post("/register", checkAlreadyLoggedIn, async (req, res) => {
+router.post("/register", rateLimiter, checkAlreadyLoggedIn, async (req, res) => {
   try {
     const { email, password, full_name, phone, address } = req.body;
 
@@ -96,7 +97,7 @@ router.post("/register", checkAlreadyLoggedIn, async (req, res) => {
 });
 
 // Login participant
-router.post("/login", checkAlreadyLoggedIn, async (req, res) => {
+router.post("/login", rateLimiter, checkAlreadyLoggedIn, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -162,7 +163,7 @@ router.post("/login", checkAlreadyLoggedIn, async (req, res) => {
 });
 
 // Login admin
-router.post("/admin/login", checkAlreadyLoggedIn, async (req, res) => {
+router.post("/admin/login", rateLimiter, checkAlreadyLoggedIn, async (req, res) => {
   try {
     const { username, password } = req.body;
 

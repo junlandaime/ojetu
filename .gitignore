@@ -4,9 +4,20 @@ node_modules/
 
 # Production builds
 build/
+*.map
 
 # Environment variables
+.env
+.env.*
+*.env
 backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+!.env.example
+!backend/.env.example
+!backend/.env.exampe
+!frontend/.env.example
 
 # Logs
 npm-debug.log*
@@ -47,6 +58,21 @@ backend/uploads/photos/*
 !backend/uploads/documents/.gitkeep
 !backend/uploads/payments/.gitkeep
 !backend/uploads/photos/.gitkeep
+
+# Storage (Invoices & Receipts - data transaksi/pribadi)
+backend/storage/invoices/*
+backend/storage/receipts/*
+
+!backend/storage/invoices/.gitkeep
+!backend/storage/receipts/.gitkeep
+
+# Backup & Archive files
+*.zip
+*.tar.gz
+*.rar
+*.bak
+*copy*
+*copy.*
 
 # Temporary files
 tmp/
