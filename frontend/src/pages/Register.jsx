@@ -2,820 +2,901 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const MAIN_SITE = "https://www.fitalenta.co.id/";
+
 const Register = () => {
-    const [formData, setFormData] = useState({
-        full_name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        phone: "",
-        address: "",
-    });
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
 
-    const { register, isAuthenticated, isAdmin, loading: authLoading } = useAuth();
-    const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    useEffect(() => {
-        if (!authLoading && isAuthenticated) {
-            navigate(isAdmin ? "/admin" : "/dashboard", { replace: true });
-        }
-    }, [isAuthenticated, isAdmin, authLoading, navigate]);
+  const {
+    register,
+    isAuthenticated,
+    isAdmin,
+    loading: authLoading,
+  } = useAuth();
 
-    const passwordChecks = useMemo(
-        () => ({
-            length: formData.password.length >= 6,
-            letter: /[A-Za-z]/.test(formData.password),
-            number: /\d/.test(formData.password),
-            match:
-                formData.confirmPassword.length > 0 &&
-                formData.password === formData.confirmPassword,
-        }),
-        [formData.password, formData.confirmPassword]
-    );
+  const navigate = useNavigate();
 
-    const passwordStrength = useMemo(() => {
-        if (!formData.password) {
-            return {
-                label: "Belum diisi",
-                level: 0,
-                className: "",
-            };
-        }
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate(isAdmin ? "/admin" : "/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, isAdmin, authLoading, navigate]);
 
-        let score = 0;
+  const passwordChecks = useMemo(
+    () => ({
+      length: formData.password.length >= 6,
+      match:
+        formData.confirmPassword.length > 0 &&
+        formData.password === formData.confirmPassword,
+    }),
+    [formData.password, formData.confirmPassword]
+  );
 
-        if (formData.password.length >= 6) score += 1;
-        if (formData.password.length >= 8) score += 1;
-        if (/[A-Z]/.test(formData.password) && /[a-z]/.test(formData.password)) {
-            score += 1;
-        }
-        if (/\d/.test(formData.password)) score += 1;
-        if (/[^A-Za-z0-9]/.test(formData.password)) score += 1;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-        if (score <= 1) {
-            return {
-                label: "Lemah",
-                level: 1,
-                className: "weak",
-            };
-        }
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
 
-        if (score <= 3) {
-            return {
-                label: "Cukup",
-                level: 2,
-                className: "medium",
-            };
-        }
+    if (error) setError("");
+  };
 
-        return {
-            label: "Kuat",
-            level: 3,
-            className: "strong",
-        };
-    }, [formData.password]);
+  const handlePhoneChange = (event) => {
+    const numericValue = event.target.value.replace(/\D/g, "").slice(0, 15);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      phone: numericValue,
+    }));
 
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+    if (error) setError("");
+  };
 
-        if (error) {
-            setError("");
-        }
-    };
+  const validateForm = () => {
+    const fullName = formData.full_name.trim();
+    const email = formData.email.trim();
+    const phone = formData.phone.trim();
 
-    const handlePhoneChange = (e) => {
-        const numericValue = e.target.value.replace(/\D/g, "").slice(0, 15);
-
-        setFormData((prev) => ({
-            ...prev,
-            phone: numericValue,
-        }));
-
-        if (error) {
-            setError("");
-        }
-    };
-
-    const validateForm = () => {
-        const fullName = formData.full_name.trim();
-        const email = formData.email.trim();
-
-        if (!fullName || !email || !formData.password || !formData.confirmPassword) {
-            return "Semua field yang bertanda * harus diisi.";
-        }
-
-        if (fullName.length < 3) {
-            return "Nama lengkap minimal terdiri dari 3 karakter.";
-        }
-
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!emailPattern.test(email)) {
-            return "Format email tidak valid.";
-        }
-
-        if (formData.password.length < 6) {
-            return "Password harus minimal 6 karakter.";
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            return "Password dan konfirmasi password tidak sama.";
-        }
-
-        if (formData.phone && formData.phone.length < 10) {
-            return "Nomor telepon minimal terdiri dari 10 digit.";
-        }
-
-        return "";
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-
-        const validationError = validateForm();
-
-        if (validationError) {
-            setError(validationError);
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-            });
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const submitData = {
-                full_name: formData.full_name.trim(),
-                email: formData.email.trim().toLowerCase(),
-                password: formData.password,
-                phone: formData.phone.trim(),
-                address: formData.address.trim(),
-            };
-
-            const result = await register(submitData);
-
-            if (!result.success) {
-                setError(
-                    result.message ||
-                    "Registrasi belum berhasil. Silakan periksa kembali data Anda."
-                );
-
-                window.scrollTo({
-                    top: 0,
-                    behavior: "smooth",
-                });
-            }
-        } catch (err) {
-            console.error("Register error:", err);
-
-            setError(
-                "Terjadi kendala saat membuat akun. Silakan coba kembali beberapa saat lagi."
-            );
-
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (authLoading) {
-        return (
-            <main className="register-page">
-                <div className="register-loading">
-                    <div className="register-loading-card">
-                        <div className="register-loading-icon">
-                            <div className="spinner-border" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-
-                        <strong>Memeriksa autentikasi</strong>
-                        <span>Mohon tunggu beberapa saat...</span>
-                    </div>
-                </div>
-            </main>
-        );
+    if (
+      !fullName ||
+      !email ||
+      !phone ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
+      return "Semua field wajib diisi.";
     }
 
+    if (fullName.length < 3) {
+      return "Nama pengguna minimal terdiri dari 3 karakter.";
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(email)) {
+      return "Format email tidak valid.";
+    }
+
+    if (phone.length < 10) {
+      return "Nomor telepon minimal terdiri dari 10 digit.";
+    }
+
+    if (formData.password.length < 6) {
+      return "Password harus minimal 6 karakter.";
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      return "Password dan konfirmasi password tidak sama.";
+    }
+
+    return "";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const submitData = {
+        full_name: formData.full_name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        address: "",
+      };
+
+      const result = await register(submitData);
+
+      if (!result.success) {
+        setError(
+          result.message ||
+            "Registrasi belum berhasil. Silakan periksa kembali data Anda."
+        );
+      }
+    } catch (err) {
+      console.error("Register error:", err);
+      setError(
+        "Terjadi kendala saat membuat akun. Silakan coba kembali beberapa saat lagi."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (authLoading) {
     return (
-        <main className="register-page">
-            <div className="register-decoration register-decoration-left" />
-            <div className="register-decoration register-decoration-right" />
-
-            <div className="register-shell">
-                {/* HERO */}
-                <section className="register-hero">
-                    <div className="register-hero-eyebrow">
-                        <i className="bi bi-stars" aria-hidden="true" />
-                        <span>PORTAL PESERTA FITALENTA</span>
-                    </div>
-
-                    <h1>Mulai Perjalanan Anda Bersama FITALENTA</h1>
-
-                    <p className="register-hero-description">
-                        Buat akun peserta untuk mendaftar program, melengkapi data diri,
-                        mengunggah dokumen, dan memantau proses pendaftaran Anda
-                    </p>
-
-                    <div className="register-hero-benefits">
-                        <div className="register-benefit-item">
-                            <span className="register-benefit-icon">
-                                <i className="bi bi-lightning-charge" aria-hidden="true" />
-                            </span>
-
-                            <span>Pendaftaran cepat</span>
-                        </div>
-
-                        <div className="register-benefit-item">
-                            <span className="register-benefit-icon">
-                                <i className="bi bi-shield-check" aria-hidden="true" />
-                            </span>
-
-                            <span>Data terlindungi</span>
-                        </div>
-
-                        <div className="register-benefit-item">
-                            <span className="register-benefit-icon">
-                                <i className="bi bi-briefcase" aria-hidden="true" />
-                            </span>
-
-                            <span>Siap memilih program</span>
-                        </div>
-                    </div>
-                </section>
-
-                {/* REGISTER CARD */}
-                <section className="register-card">
-                    <header className="register-card-header">
-                        <div className="register-card-header-icon">
-                            <i className="bi bi-person-plus" aria-hidden="true" />
-                        </div>
-
-                        <div className="register-card-header-content">
-                            <span className="register-card-eyebrow">AKUN PESERTA BARU</span>
-
-                            <h2>Registrasi Akun Peserta</h2>
-
-                            <p>
-                                Lengkapi informasi berikut untuk membuat akun FITALENTA Anda
-                            </p>
-                        </div>
-                    </header>
-
-                    <div className="register-card-body">
-                        {error && (
-                            <div className="register-error" role="alert">
-                                <div className="register-error-icon">
-                                    <i
-                                        className="bi bi-exclamation-triangle"
-                                        aria-hidden="true"
-                                    />
-                                </div>
-
-                                <div className="register-error-content">
-                                    <strong>Registrasi belum berhasil</strong>
-                                    <span>{error}</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <form onSubmit={handleSubmit} noValidate>
-                            {/* ACCOUNT INFORMATION */}
-                            <div className="register-form-section">
-                                <div className="register-section-heading">
-                                    <div className="register-section-icon">
-                                        <i className="bi bi-person-vcard" aria-hidden="true" />
-                                    </div>
-
-                                    <div className="register-section-content">
-                                        <strong>Informasi Akun</strong>
-                                        <span>
-                                            Gunakan identitas dan email aktif yang dapat Anda akses.
-                                        </span>
-                                    </div>
-
-                                    <span className="register-required-badge">Wajib</span>
-                                </div>
-
-                                <div className="register-form-grid">
-                                    {/* FULL NAME */}
-                                    <div className="register-field">
-                                        <label htmlFor="full_name" className="register-label">
-                                            Nama Lengkap
-                                            <span>*</span>
-                                        </label>
-
-                                        <div className="register-input-wrapper">
-                                            <span className="register-input-icon">
-                                                <i className="bi bi-person" aria-hidden="true" />
-                                            </span>
-
-                                            <input
-                                                id="full_name"
-                                                type="text"
-                                                name="full_name"
-                                                value={formData.full_name}
-                                                onChange={handleChange}
-                                                placeholder="Masukkan nama lengkap"
-                                                autoComplete="name"
-                                                disabled={loading}
-                                                maxLength={100}
-                                                required
-                                            />
-                                        </div>
-
-                                        <div className="register-field-help">
-                                            <i className="bi bi-info-circle" aria-hidden="true" />
-                                            <span>
-                                                Gunakan nama lengkap sesuai identitas resmi Anda.
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* EMAIL */}
-                                    <div className="register-field">
-                                        <label htmlFor="email" className="register-label">
-                                            Email Address
-                                            <span>*</span>
-                                        </label>
-
-                                        <div className="register-input-wrapper">
-                                            <span className="register-input-icon">
-                                                <i className="bi bi-envelope" aria-hidden="true" />
-                                            </span>
-
-                                            <input
-                                                id="email"
-                                                type="email"
-                                                name="email"
-                                                value={formData.email}
-                                                onChange={handleChange}
-                                                placeholder="contoh@email.com"
-                                                autoComplete="email"
-                                                disabled={loading}
-                                                maxLength={150}
-                                                required
-                                            />
-                                        </div>
-
-                                        <div className="register-field-help">
-                                            <i className="bi bi-info-circle" aria-hidden="true" />
-                                            <span>
-                                                Email ini akan digunakan untuk login ke FITALENTA.
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* SECURITY */}
-                            <div className="register-form-section">
-                                <div className="register-section-heading">
-                                    <div className="register-section-icon">
-                                        <i className="bi bi-shield-lock" aria-hidden="true" />
-                                    </div>
-
-                                    <div className="register-section-content">
-                                        <strong>Keamanan Akun</strong>
-                                        <span>
-                                            Buat password yang mudah Anda ingat tetapi sulit ditebak
-                                        </span>
-                                    </div>
-
-                                    <span className="register-required-badge">Wajib</span>
-                                </div>
-
-                                <div className="register-form-grid">
-                                    {/* PASSWORD */}
-                                    <div className="register-field">
-                                        <label htmlFor="password" className="register-label">
-                                            Password
-                                            <span>*</span>
-                                        </label>
-
-                                        <div className="register-input-wrapper">
-                                            <span className="register-input-icon">
-                                                <i className="bi bi-lock" aria-hidden="true" />
-                                            </span>
-
-                                            <input
-                                                id="password"
-                                                type={showPassword ? "text" : "password"}
-                                                name="password"
-                                                value={formData.password}
-                                                onChange={handleChange}
-                                                placeholder="Minimal 6 karakter"
-                                                autoComplete="new-password"
-                                                disabled={loading}
-                                                minLength={6}
-                                                required
-                                            />
-
-                                            <button
-                                                type="button"
-                                                className="register-password-toggle"
-                                                onClick={() => setShowPassword((prev) => !prev)}
-                                                disabled={loading}
-                                                aria-label={
-                                                    showPassword
-                                                        ? "Sembunyikan password"
-                                                        : "Tampilkan password"
-                                                }
-                                                title={
-                                                    showPassword
-                                                        ? "Sembunyikan password"
-                                                        : "Tampilkan password"
-                                                }
-                                            >
-                                                <i
-                                                    className={
-                                                        showPassword ? "bi bi-eye-slash" : "bi bi-eye"
-                                                    }
-                                                    aria-hidden="true"
-                                                />
-                                            </button>
-                                        </div>
-
-                                        <div className="register-password-strength">
-                                            <div className="register-password-strength-header">
-                                                <span>Kekuatan password</span>
-
-                                                <strong className={passwordStrength.className}>
-                                                    {passwordStrength.label}
-                                                </strong>
-                                            </div>
-
-                                            <div className="register-password-strength-bars">
-                                                {[1, 2, 3].map((level) => (
-                                                    <span
-                                                        key={level}
-                                                        className={
-                                                            passwordStrength.level >= level
-                                                                ? passwordStrength.className
-                                                                : ""
-                                                        }
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* CONFIRM PASSWORD */}
-                                    <div className="register-field">
-                                        <label
-                                            htmlFor="confirmPassword"
-                                            className="register-label"
-                                        >
-                                            Konfirmasi Password
-                                            <span>*</span>
-                                        </label>
-
-                                        <div className="register-input-wrapper">
-                                            <span className="register-input-icon">
-                                                <i className="bi bi-lock-fill" aria-hidden="true" />
-                                            </span>
-
-                                            <input
-                                                id="confirmPassword"
-                                                type={showConfirmPassword ? "text" : "password"}
-                                                name="confirmPassword"
-                                                value={formData.confirmPassword}
-                                                onChange={handleChange}
-                                                placeholder="Ulangi password Anda"
-                                                autoComplete="new-password"
-                                                disabled={loading}
-                                                required
-                                            />
-
-                                            <button
-                                                type="button"
-                                                className="register-password-toggle"
-                                                onClick={() =>
-                                                    setShowConfirmPassword((prev) => !prev)
-                                                }
-                                                disabled={loading}
-                                                aria-label={
-                                                    showConfirmPassword
-                                                        ? "Sembunyikan konfirmasi password"
-                                                        : "Tampilkan konfirmasi password"
-                                                }
-                                                title={
-                                                    showConfirmPassword
-                                                        ? "Sembunyikan konfirmasi password"
-                                                        : "Tampilkan konfirmasi password"
-                                                }
-                                            >
-                                                <i
-                                                    className={
-                                                        showConfirmPassword
-                                                            ? "bi bi-eye-slash"
-                                                            : "bi bi-eye"
-                                                    }
-                                                    aria-hidden="true"
-                                                />
-                                            </button>
-                                        </div>
-
-                                        {formData.confirmPassword && (
-                                            <div
-                                                className={`register-password-match ${
-                                                    passwordChecks.match ? "matched" : "unmatched"
-                                                }`}
-                                            >
-                                                <i
-                                                    className={
-                                                        passwordChecks.match
-                                                            ? "bi bi-check-circle"
-                                                            : "bi bi-exclamation-circle"
-                                                    }
-                                                    aria-hidden="true"
-                                                />
-
-                                                <span>
-                                                    {passwordChecks.match
-                                                        ? "Password sudah sesuai."
-                                                        : "Konfirmasi password belum sama."}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="register-password-requirements">
-                                    <div
-                                        className={
-                                            passwordChecks.length ? "completed" : ""
-                                        }
-                                    >
-                                        <i
-                                            className={
-                                                passwordChecks.length
-                                                    ? "bi bi-check-circle-fill"
-                                                    : "bi bi-circle"
-                                            }
-                                            aria-hidden="true"
-                                        />
-                                        <span>Minimal 6 karakter</span>
-                                    </div>
-
-                                    <div
-                                        className={
-                                            passwordChecks.letter ? "completed" : ""
-                                        }
-                                    >
-                                        <i
-                                            className={
-                                                passwordChecks.letter
-                                                    ? "bi bi-check-circle-fill"
-                                                    : "bi bi-circle"
-                                            }
-                                            aria-hidden="true"
-                                        />
-                                        <span>Memiliki huruf</span>
-                                    </div>
-
-                                    <div
-                                        className={
-                                            passwordChecks.number ? "completed" : ""
-                                        }
-                                    >
-                                        <i
-                                            className={
-                                                passwordChecks.number
-                                                    ? "bi bi-check-circle-fill"
-                                                    : "bi bi-circle"
-                                            }
-                                            aria-hidden="true"
-                                        />
-                                        <span>Memiliki angka</span>
-                                    </div>
-
-                                    <div
-                                        className={
-                                            passwordChecks.match ? "completed" : ""
-                                        }
-                                    >
-                                        <i
-                                            className={
-                                                passwordChecks.match
-                                                    ? "bi bi-check-circle-fill"
-                                                    : "bi bi-circle"
-                                            }
-                                            aria-hidden="true"
-                                        />
-                                        <span>Konfirmasi sesuai</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ADDITIONAL INFORMATION */}
-                            <div className="register-form-section">
-                                <div className="register-section-heading">
-                                    <div className="register-section-icon">
-                                        <i className="bi bi-card-text" aria-hidden="true" />
-                                    </div>
-
-                                    <div className="register-section-content">
-                                        <strong>Informasi Tambahan</strong>
-                                        <span>
-                                            Informasi ini membantu melengkapi profil dasar akun Anda
-                                        </span>
-                                    </div>
-
-                                    <span className="register-optional-badge">Opsional</span>
-                                </div>
-
-                                <div className="register-form-grid">
-                                    {/* PHONE */}
-                                    <div className="register-field">
-                                        <label htmlFor="phone" className="register-label">
-                                            Nomor Telepon
-                                        </label>
-
-                                        <div className="register-input-wrapper">
-                                            <span className="register-input-icon">
-                                                <i className="bi bi-phone" aria-hidden="true" />
-                                            </span>
-
-                                            <input
-                                                id="phone"
-                                                type="tel"
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handlePhoneChange}
-                                                placeholder="08xxxxxxxxxx"
-                                                autoComplete="tel"
-                                                inputMode="numeric"
-                                                disabled={loading}
-                                                maxLength={15}
-                                            />
-                                        </div>
-
-                                        <div className="register-field-help">
-                                            <i className="bi bi-info-circle" aria-hidden="true" />
-                                            <span>
-                                                Masukkan nomor aktif yang dapat dihubungi
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* ADDRESS */}
-                                    <div className="register-field">
-                                        <label htmlFor="address" className="register-label">
-                                            Alamat
-                                        </label>
-
-                                        <div className="register-textarea-wrapper">
-                                            <span className="register-textarea-icon">
-                                                <i className="bi bi-geo-alt" aria-hidden="true" />
-                                            </span>
-
-                                            <textarea
-                                                id="address"
-                                                name="address"
-                                                value={formData.address}
-                                                onChange={handleChange}
-                                                placeholder="Masukkan alamat tempat tinggal"
-                                                autoComplete="street-address"
-                                                disabled={loading}
-                                                rows={4}
-                                                maxLength={500}
-                                            />
-                                        </div>
-
-                                        <div className="register-field-counter">
-                                            {formData.address.length}/500 karakter
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* INFORMATION */}
-                            <div className="register-information">
-                                <div className="register-information-icon">
-                                    <i className="bi bi-info-circle" aria-hidden="true" />
-                                </div>
-
-                                <div className="register-information-content">
-                                    <strong>Sebelum membuat akun</strong>
-
-                                    <div className="register-information-grid">
-                                        <div>
-                                            <i className="bi bi-check2" aria-hidden="true" />
-                                            <span>Pastikan email yang digunakan aktif dan valid</span>
-                                        </div>
-
-                                        <div>
-                                            <i className="bi bi-check2" aria-hidden="true" />
-                                            <span>
-                                                Gunakan data pribadi yang sesuai dengan identitas Anda
-                                            </span>
-                                        </div>
-
-                                        <div>
-                                            <i className="bi bi-check2" aria-hidden="true" />
-                                            <span>
-                                                Setelah registrasi, Anda dapat melanjutkan pendaftaran
-                                                program
-                                            </span>
-                                        </div>
-
-                                        <div>
-                                            <i className="bi bi-check2" aria-hidden="true" />
-                                            <span>
-                                                Simpan informasi login Anda dan jangan berikan password
-                                                kepada orang lain
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* SUBMIT */}
-                            <button
-                                type="submit"
-                                className="register-submit-btn"
-                                disabled={loading}
-                            >
-                                <span className="register-submit-main">
-                                    {loading ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm" aria-hidden="true"
-                                            />
-                                            <span>Mendaftarkan Akun...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-person-plus" aria-hidden="true" />
-                                            <span>Buat Akun Peserta</span>
-                                        </>
-                                    )}
-                                </span>
-
-                                {!loading && (
-                                    <i className="bi bi-arrow-right" aria-hidden="true" />
-                                )}
-                            </button>
-
-                            {/* LOGIN */}
-                            <div className="register-login-section">
-                                <div className="register-divider">
-                                    <span>Sudah punya akun?</span>
-                                </div>
-
-                                <p>
-                                    Sudah terdaftar sebagai peserta FITALENTA?
-                                    <Link to="/login">
-                                        Login Sekarang
-                                        <i className="bi bi-arrow-right" aria-hidden="true" />
-                                    </Link>
-                                </p>
-                            </div>
-                        </form>
-                    </div>
-
-                    {/* SECURITY FOOTER */}
-                    <footer className="register-card-footer">
-                        <i className="bi bi-shield-check" aria-hidden="true" />
-                        <span>
-                            Data Anda digunakan untuk proses registrasi dan layanan FITALENTA
-                        </span>
-                    </footer>
-                </section>
-
-                {/* HELP */}
-                <Link to="/contact" className="register-help-card">
-                    <span className="register-help-icon">
-                        <i className="bi bi-question-circle" aria-hidden="true" />
-                    </span>
-
-                    <span className="register-help-content">
-                        <small>Mengalami kendala saat membuat akun?</small>
-                        <strong>Hubungi tim FITALENTA untuk mendapatkan bantuan</strong>
-                    </span>
-
-                    <span className="register-help-arrow">
-                        <i className="bi bi-arrow-right" aria-hidden="true" />
-                    </span>
-                </Link>
-            </div>
+      <>
+        <main className="simple-register-page">
+          <div className="simple-register-loading">
+            <div className="spinner-border" role="status" aria-label="Memuat" />
+            <strong>Memeriksa autentikasi...</strong>
+          </div>
         </main>
+        <RegisterStyle />
+      </>
     );
+  }
+
+  return (
+    <>
+      <main className="simple-register-page">
+        <section className="simple-register-shell">
+          <div className="simple-register-intro">
+            <a href={MAIN_SITE} className="simple-register-back">
+              <i className="bi bi-arrow-left" />
+              <span>Kembali ke FITALENTA</span>
+            </a>
+
+            <div className="simple-register-intro-content">
+              <span className="simple-register-eyebrow">
+                FITALENTA REGISTRATION
+              </span>
+
+              <h1>Buat akun peserta</h1>
+
+              <p>
+                Daftar dengan data dasar terlebih dahulu. Kelengkapan profil
+                dapat Anda isi setelah berhasil masuk ke akun FITALENTA.
+              </p>
+
+              <div className="simple-register-benefits">
+                <div>
+                  <span>
+                    <i className="bi bi-check2" />
+                  </span>
+                  <p>
+                    <strong>Registrasi lebih cepat</strong>
+                    <small>Hanya informasi dasar untuk membuat akun.</small>
+                  </p>
+                </div>
+
+                <div>
+                  <span>
+                    <i className="bi bi-check2" />
+                  </span>
+                  <p>
+                    <strong>Lengkapi setelah login</strong>
+                    <small>
+                      Alamat dan data pendaftaran diisi setelah akun aktif.
+                    </small>
+                  </p>
+                </div>
+
+                <div>
+                  <span>
+                    <i className="bi bi-check2" />
+                  </span>
+                  <p>
+                    <strong>Pilih program FITALENTA</strong>
+                    <small>
+                      Gunakan akun untuk melanjutkan proses pendaftaran program.
+                    </small>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="simple-register-form-side">
+            <div className="simple-register-card">
+              <header className="simple-register-card-header">
+                <div className="simple-register-icon">
+                  <i className="bi bi-person-plus" />
+                </div>
+
+                <div>
+                  <span>AKUN PESERTA BARU</span>
+                  <h2>Registrasi</h2>
+                  <p>Masukkan data berikut untuk membuat akun.</p>
+                </div>
+              </header>
+
+              {error && (
+                <div className="simple-register-error" role="alert">
+                  <i className="bi bi-exclamation-circle" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form
+                onSubmit={handleSubmit}
+                className="simple-register-form"
+                noValidate
+              >
+                <div className="simple-register-field">
+                  <label htmlFor="full_name">Nama Pengguna</label>
+
+                  <div className="simple-register-input">
+                    <i className="bi bi-person" />
+                    <input
+                      id="full_name"
+                      type="text"
+                      name="full_name"
+                      value={formData.full_name}
+                      onChange={handleChange}
+                      placeholder="Masukkan nama lengkap"
+                      autoComplete="name"
+                      maxLength={100}
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="simple-register-field">
+                  <label htmlFor="email">Email</label>
+
+                  <div className="simple-register-input">
+                    <i className="bi bi-envelope" />
+                    <input
+                      id="email"
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="contoh@email.com"
+                      autoComplete="email"
+                      maxLength={150}
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="simple-register-field">
+                  <label htmlFor="phone">Nomor Telepon</label>
+
+                  <div className="simple-register-input">
+                    <i className="bi bi-phone" />
+                    <input
+                      id="phone"
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handlePhoneChange}
+                      placeholder="08xxxxxxxxxx"
+                      autoComplete="tel"
+                      inputMode="numeric"
+                      maxLength={15}
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="simple-register-field">
+                  <label htmlFor="password">Password</label>
+
+                  <div className="simple-register-input simple-register-password">
+                    <i className="bi bi-lock" />
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Minimal 6 karakter"
+                      autoComplete="new-password"
+                      minLength={6}
+                      disabled={loading}
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      disabled={loading}
+                      aria-label={
+                        showPassword
+                          ? "Sembunyikan password"
+                          : "Tampilkan password"
+                      }
+                    >
+                      <i
+                        className={
+                          showPassword ? "bi bi-eye-slash" : "bi bi-eye"
+                        }
+                      />
+                    </button>
+                  </div>
+
+                  {formData.password && (
+                    <small
+                      className={
+                        passwordChecks.length
+                          ? "simple-register-valid"
+                          : "simple-register-hint"
+                      }
+                    >
+                      <i
+                        className={
+                          passwordChecks.length
+                            ? "bi bi-check-circle"
+                            : "bi bi-info-circle"
+                        }
+                      />
+                      Minimal 6 karakter
+                    </small>
+                  )}
+                </div>
+
+                <div className="simple-register-field">
+                  <label htmlFor="confirmPassword">Konfirmasi Password</label>
+
+                  <div className="simple-register-input simple-register-password">
+                    <i className="bi bi-shield-lock" />
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="Ulangi password"
+                      autoComplete="new-password"
+                      disabled={loading}
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword((prev) => !prev)
+                      }
+                      disabled={loading}
+                      aria-label={
+                        showConfirmPassword
+                          ? "Sembunyikan konfirmasi password"
+                          : "Tampilkan konfirmasi password"
+                      }
+                    >
+                      <i
+                        className={
+                          showConfirmPassword
+                            ? "bi bi-eye-slash"
+                            : "bi bi-eye"
+                        }
+                      />
+                    </button>
+                  </div>
+
+                  {formData.confirmPassword && (
+                    <small
+                      className={
+                        passwordChecks.match
+                          ? "simple-register-valid"
+                          : "simple-register-invalid"
+                      }
+                    >
+                      <i
+                        className={
+                          passwordChecks.match
+                            ? "bi bi-check-circle"
+                            : "bi bi-exclamation-circle"
+                        }
+                      />
+
+                      {passwordChecks.match
+                        ? "Password sudah sesuai"
+                        : "Konfirmasi password belum sama"}
+                    </small>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="simple-register-submit"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm"
+                        aria-hidden="true"
+                      />
+                      <span>Membuat akun...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Buat Akun</span>
+                      <i className="bi bi-arrow-right" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="simple-register-login">
+                <span>Sudah punya akun?</span>
+                <Link to="/login">Login di sini</Link>
+              </div>
+
+              <div className="simple-register-security">
+                <i className="bi bi-shield-check" />
+                <span>
+                  Data Anda digunakan untuk layanan dan proses pendaftaran
+                  FITALENTA.
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <RegisterStyle />
+    </>
+  );
+};
+
+const RegisterStyle = () => {
+  return (
+    <style>{`
+      :root {
+        --sr-navy: #00294b;
+        --sr-navy-dark: #001f3a;
+        --sr-blue: #17578a;
+        --sr-orange: #e8491d;
+        --sr-bg: #f5f7fa;
+        --sr-text: #102a43;
+        --sr-muted: #6d7f90;
+        --sr-border: #dfe6ed;
+        --sr-white: #ffffff;
+      }
+
+      .simple-register-page,
+      .simple-register-page * {
+        box-sizing: border-box;
+      }
+
+      .simple-register-page {
+        width: 100%;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+        background: var(--sr-bg);
+        color: var(--sr-text);
+        font-family: "Figtree", ui-sans-serif, system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .simple-register-shell {
+        width: 100%;
+        min-height: calc(100vh - 96px);
+        display: grid;
+        grid-template-columns: minmax(360px, 0.9fr) minmax(520px, 1.1fr);
+      }
+
+      .simple-register-intro {
+        position: relative;
+        min-height: 100%;
+        padding: 42px clamp(36px, 6vw, 86px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        color: #ffffff;
+        background:
+          radial-gradient(
+            circle at 12% 88%,
+            rgba(255, 255, 255, 0.08) 0,
+            rgba(255, 255, 255, 0.08) 130px,
+            transparent 131px
+          ),
+          radial-gradient(
+            circle at 100% 0%,
+            rgba(255, 255, 255, 0.06) 0,
+            rgba(255, 255, 255, 0.06) 170px,
+            transparent 171px
+          ),
+          linear-gradient(145deg, #00294b 0%, #063c67 58%, #0d527f 100%);
+      }
+
+      .simple-register-back {
+        position: relative;
+        z-index: 2;
+        width: fit-content;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        color: rgba(255, 255, 255, 0.84);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        transition: 0.2s ease;
+      }
+
+      .simple-register-back:hover {
+        color: #ffffff;
+        transform: translateX(-2px);
+      }
+
+      .simple-register-intro-content {
+        position: relative;
+        z-index: 2;
+        width: min(520px, 100%);
+        margin: auto 0;
+        padding: 58px 0;
+      }
+
+      .simple-register-eyebrow {
+        display: inline-block;
+        margin-bottom: 15px;
+        color: #ff8a67;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.6px;
+      }
+
+      .simple-register-intro h1 {
+        max-width: 480px;
+        margin: 0;
+        color: #ffffff;
+        font-size: clamp(38px, 4.2vw, 58px);
+        line-height: 1.08;
+        font-weight: 800;
+        letter-spacing: -1.2px;
+      }
+
+      .simple-register-intro-content > p {
+        max-width: 500px;
+        margin: 20px 0 0;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 15px;
+        line-height: 1.75;
+      }
+
+      .simple-register-benefits {
+        margin-top: 36px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .simple-register-benefits > div {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .simple-register-benefits > div > span {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        font-size: 14px;
+      }
+
+      .simple-register-benefits p {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .simple-register-benefits strong {
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .simple-register-benefits small {
+        color: rgba(255, 255, 255, 0.66);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .simple-register-form-side {
+        min-width: 0;
+        padding: 54px clamp(32px, 6vw, 86px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f7f9fb;
+      }
+
+      .simple-register-card {
+        width: min(520px, 100%);
+        padding: 34px;
+        border: 1px solid var(--sr-border);
+        border-radius: 20px;
+        background: #ffffff;
+        box-shadow: 0 20px 55px rgba(0, 41, 75, 0.08);
+      }
+
+      .simple-register-card-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 25px;
+      }
+
+      .simple-register-icon {
+        width: 50px;
+        height: 50px;
+        flex: 0 0 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        background: #edf4fa;
+        color: var(--sr-blue);
+        font-size: 21px;
+      }
+
+      .simple-register-card-header > div:last-child {
+        min-width: 0;
+      }
+
+      .simple-register-card-header span {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--sr-orange);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 1.1px;
+      }
+
+      .simple-register-card-header h2 {
+        margin: 0;
+        color: var(--sr-navy);
+        font-size: 27px;
+        line-height: 1.2;
+        font-weight: 800;
+      }
+
+      .simple-register-card-header p {
+        margin: 5px 0 0;
+        color: var(--sr-muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .simple-register-error {
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        border: 1px solid #f1c5bd;
+        border-radius: 10px;
+        background: #fff4f2;
+        color: #a73a29;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .simple-register-form {
+        display: grid;
+        gap: 15px;
+      }
+
+      .simple-register-field label {
+        display: block;
+        margin-bottom: 7px;
+        color: #2c4053;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .simple-register-input {
+        position: relative;
+      }
+
+      .simple-register-input > i {
+        position: absolute;
+        top: 50%;
+        left: 14px;
+        transform: translateY(-50%);
+        z-index: 2;
+        color: #8b9baa;
+        font-size: 14px;
+        pointer-events: none;
+      }
+
+      .simple-register-input input {
+        width: 100%;
+        height: 48px;
+        padding: 0 44px 0 42px;
+        border: 1px solid #d8e0e7;
+        border-radius: 10px;
+        outline: none;
+        background: #ffffff;
+        color: var(--sr-text);
+        font: inherit;
+        font-size: 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .simple-register-input input::placeholder {
+        color: #a0adb8;
+      }
+
+      .simple-register-input input:focus {
+        border-color: #5a8db3;
+        box-shadow: 0 0 0 3px rgba(23, 87, 138, 0.09);
+      }
+
+      .simple-register-password button {
+        position: absolute;
+        top: 50%;
+        right: 7px;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #8495a5;
+        cursor: pointer;
+      }
+
+      .simple-register-field > small {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 9px;
+        line-height: 1.4;
+      }
+
+      .simple-register-valid {
+        color: #2f8a5d;
+      }
+
+      .simple-register-invalid {
+        color: #c44835;
+      }
+
+      .simple-register-hint {
+        color: #7d8d9b;
+      }
+
+      .simple-register-submit {
+        width: 100%;
+        height: 50px;
+        margin-top: 4px;
+        padding: 0 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--sr-orange);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 9px 20px rgba(232, 73, 29, 0.18);
+        transition: 0.2s ease;
+      }
+
+      .simple-register-login {
+        margin-top: 23px;
+        padding-top: 19px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        border-top: 1px solid #e8edf2;
+        color: var(--sr-muted);
+        font-size: 11px;
+      }
+
+      .simple-register-login a {
+        color: var(--sr-blue);
+        text-decoration: none;
+        font-weight: 800;
+      }
+
+      .simple-register-security {
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        color: #8795a1;
+        font-size: 9px;
+        text-align: center;
+        line-height: 1.45;
+      }
+
+      .simple-register-loading {
+        min-height: calc(100vh - 96px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: var(--sr-navy);
+      }
+
+      @media (max-width: 799px) {
+        .simple-register-shell {
+          min-height: calc(100vh - 80px);
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .simple-register-intro {
+          padding: 28px 20px;
+        }
+
+        .simple-register-intro-content {
+          padding: 38px 0 20px;
+        }
+
+        .simple-register-benefits {
+          grid-template-columns: 1fr;
+        }
+
+        .simple-register-form-side {
+          padding: 30px 16px 48px;
+        }
+
+        .simple-register-card {
+          padding: 25px 20px;
+          border-radius: 16px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .simple-register-shell {
+          min-height: calc(100vh - 76px);
+        }
+      }
+    `}</style>
+  );
 };
 
 export default Register;

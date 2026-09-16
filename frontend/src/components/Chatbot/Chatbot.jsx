@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { sendChatMessage } from "../../services/chatbotService";
-import "./chatbot.css";
+import "./Chatbot.css";
 
 const SESSION_STORAGE_KEY =
     "fitalenta_chat_session";

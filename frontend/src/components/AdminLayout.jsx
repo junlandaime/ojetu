@@ -1,10 +1,8 @@
+import "../AdminFitalenta.css";
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-/* =========================================================
-   ADMIN MENU CONFIGURATION
-========================================================= */
 const ADMIN_MENU_ITEMS = [
     {
         path: "/admin",
@@ -45,23 +43,19 @@ const ADMIN_MENU_ITEMS = [
     },
 ];
 
-/* =========================================================
-   ADMIN LAYOUT
-========================================================= */
 const AdminLayout = ({ children }) => {
     const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
     const [isMobile, setIsMobile] = useState(
         typeof window !== "undefined" ? window.innerWidth < 992 : false
     );
+
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-    /* ---------------------------------------------------------
-       RESPONSIVE SIDEBAR
-    --------------------------------------------------------- */
     useEffect(() => {
         const handleResize = () => {
             const mobile = window.innerWidth < 992;
@@ -74,6 +68,7 @@ const AdminLayout = ({ children }) => {
         };
 
         handleResize();
+
         window.addEventListener("resize", handleResize);
 
         return () => {
@@ -81,16 +76,10 @@ const AdminLayout = ({ children }) => {
         };
     }, []);
 
-    /* ---------------------------------------------------------
-       CLOSE MOBILE SIDEBAR AFTER ROUTE CHANGE
-    --------------------------------------------------------- */
     useEffect(() => {
         setMobileSidebarOpen(false);
     }, [location.pathname]);
 
-    /* ---------------------------------------------------------
-       ACTIVE MENU
-    --------------------------------------------------------- */
     const isActive = (menuItem) => {
         if (menuItem.exact) {
             return location.pathname === menuItem.path;
@@ -102,17 +91,14 @@ const AdminLayout = ({ children }) => {
         );
     };
 
-    /* ---------------------------------------------------------
-       CURRENT PAGE INFORMATION
-    --------------------------------------------------------- */
     const currentPage =
         ADMIN_MENU_ITEMS.find((item) => isActive(item)) ||
         ADMIN_MENU_ITEMS[0];
 
-    /* ---------------------------------------------------------
-       USER INFORMATION
-    --------------------------------------------------------- */
-    const displayName = user?.full_name || user?.email || "Admin Fitalenta";
+    const displayName =
+        user?.full_name ||
+        user?.email ||
+        "Admin Fitalenta";
 
     const getInitials = (name) => {
         if (!name) return "A";
@@ -127,28 +113,19 @@ const AdminLayout = ({ children }) => {
 
     const initials = getInitials(displayName);
 
-    /* ---------------------------------------------------------
-       LOGOUT
-    --------------------------------------------------------- */
-    const handleLogout = () => {
-        logout();
-        navigate("/");
-    };
+   const handleLogout = async () => {
+    await logout();
+    window.location.href = "https://www.fitalenta.co.id/";
+};
 
-    /* ---------------------------------------------------------
-       MOBILE SIDEBAR
-    --------------------------------------------------------- */
     const toggleMobileSidebar = () => {
         setMobileSidebarOpen((prev) => !prev);
     };
 
-    /* ---------------------------------------------------------
-       SIDEBAR MENU
-    --------------------------------------------------------- */
     const renderMenu = (mobile = false) => (
         <nav className="admin-sidebar-navigation">
             <div className="admin-sidebar-section-label">
-                {!sidebarCollapsed || mobile ? "MENU UTAMA" : ""}
+                {!sidebarCollapsed || mobile ? "UTAMA" : ""}
             </div>
 
             <ul className="admin-sidebar-menu">
@@ -176,7 +153,6 @@ const AdminLayout = ({ children }) => {
                                     }
                                 }}
                             >
-                                {/* --- Menu Icon --- */}
                                 <span className="admin-sidebar-menu-icon">
                                     <i
                                         className={`bi ${item.icon}`}
@@ -184,17 +160,14 @@ const AdminLayout = ({ children }) => {
                                     ></i>
                                 </span>
 
-                                {/* --- Menu Text --- */}
                                 {(!sidebarCollapsed || mobile) && (
                                     <span className="admin-sidebar-menu-content">
                                         <strong>{item.label}</strong>
-                                        <small>{item.description}</small>
-                                    </span>
-                                )}
 
-                                {/* --- Active Indicator --- */}
-                                {active && (
-                                    <span className="admin-sidebar-active-indicator"></span>
+                                        <small>
+                                            {item.description}
+                                        </small>
+                                    </span>
                                 )}
                             </Link>
                         </li>
@@ -204,11 +177,46 @@ const AdminLayout = ({ children }) => {
         </nav>
     );
 
+    const renderSidebarFooter = (mobile = false) => (
+        <div className="admin-sidebar-footer">
+            {(!sidebarCollapsed || mobile) && (
+                <div className="admin-sidebar-user-summary">
+                    <div className="admin-sidebar-user-avatar">
+                        {initials}
+                    </div>
+
+                    <div className="admin-sidebar-user-copy">
+                        <strong>{displayName}</strong>
+                        <span>Administrator</span>
+                    </div>
+                </div>
+            )}
+
+            <button
+                type="button"
+                className="admin-sidebar-logout"
+                onClick={handleLogout}
+                title={
+                    sidebarCollapsed && !mobile
+                        ? "Keluar Aplikasi"
+                        : undefined
+                }
+            >
+                <span className="admin-sidebar-logout-icon">
+                    <i className="bi bi-box-arrow-right"></i>
+                </span>
+
+                {(!sidebarCollapsed || mobile) && (
+                    <span className="admin-sidebar-footer-label">
+                        Keluar Aplikasi
+                    </span>
+                )}
+            </button>
+        </div>
+    );
+
     return (
         <div className="admin-layout">
-            {/* =========================================================
-                DESKTOP SIDEBAR
-            ========================================================= */}
             {!isMobile && (
                 <aside
                     className={`admin-sidebar ${
@@ -217,16 +225,13 @@ const AdminLayout = ({ children }) => {
                             : ""
                     }`}
                 >
-                    {/* ---------------------------------------------------------
-                        SIDEBAR BRAND
-                    --------------------------------------------------------- */}
                     <div className="admin-sidebar-header">
                         <Link
                             to="/admin"
                             className="admin-sidebar-brand"
                             title={
                                 sidebarCollapsed
-                                    ? "FITALENTA Admin Panel"
+                                    ? "FITALENTA Admin Management"
                                     : undefined
                             }
                         >
@@ -237,14 +242,11 @@ const AdminLayout = ({ children }) => {
                             {!sidebarCollapsed && (
                                 <span className="admin-sidebar-brand-copy">
                                     <strong>FITALENTA</strong>
-                                    <small>Admin Panel</small>
+                                    <small>ADMIN MANAGEMENT</small>
                                 </span>
                             )}
                         </Link>
 
-                        {/* ---------------------------------------------------------
-                            COLLAPSE BUTTON
-                        --------------------------------------------------------- */}
                         <button
                             type="button"
                             className="admin-sidebar-collapse-button"
@@ -252,11 +254,6 @@ const AdminLayout = ({ children }) => {
                                 setSidebarCollapsed((prev) => !prev)
                             }
                             aria-label={
-                                sidebarCollapsed
-                                    ? "Perbesar sidebar"
-                                    : "Perkecil sidebar"
-                            }
-                            title={
                                 sidebarCollapsed
                                     ? "Perbesar sidebar"
                                     : "Perkecil sidebar"
@@ -272,76 +269,29 @@ const AdminLayout = ({ children }) => {
                         </button>
                     </div>
 
-                    {/* ---------------------------------------------------------
-                        SIDEBAR MENU
-                    --------------------------------------------------------- */}
                     {renderMenu(false)}
 
-                    {/* ---------------------------------------------------------
-                        SIDEBAR FOOTER
-                    --------------------------------------------------------- */}
-                    <div className="admin-sidebar-footer">
-                        {!sidebarCollapsed && (
-                            <div className="admin-sidebar-user-summary">
-                                <div className="admin-sidebar-user-avatar">
-                                    {initials}
-                                </div>
-
-                                <div>
-                                    <strong>{displayName}</strong>
-                                    <span>Administrator</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <button
-                            type="button"
-                            className="admin-sidebar-logout"
-                            onClick={handleLogout}
-                            title={
-                                sidebarCollapsed
-                                    ? "Logout"
-                                    : undefined
-                            }
-                        >
-                            <span className="admin-sidebar-logout-icon">
-                                <i className="bi bi-box-arrow-right"></i>
-                            </span>
-
-                            {!sidebarCollapsed && (
-                                <span className="admin-sidebar-footer-label">
-                                    Logout
-                                </span>
-                            )}
-                        </button>
-                    </div>
+                    {renderSidebarFooter(false)}
                 </aside>
             )}
 
-            {/* =========================================================
-                MOBILE SIDEBAR OVERLAY
-            ========================================================= */}
             {isMobile && mobileSidebarOpen && (
                 <button
                     type="button"
                     className="admin-mobile-sidebar-overlay"
-                    onClick={() => setMobileSidebarOpen(false)}
+                    onClick={() =>
+                        setMobileSidebarOpen(false)
+                    }
                     aria-label="Tutup menu"
                 ></button>
             )}
 
-            {/* =========================================================
-                MOBILE SIDEBAR
-            ========================================================= */}
             {isMobile && (
                 <aside
                     className={`admin-mobile-sidebar ${
                         mobileSidebarOpen ? "open" : ""
                     }`}
                 >
-                    {/* ---------------------------------------------------------
-                        MOBILE SIDEBAR HEADER
-                    --------------------------------------------------------- */}
                     <div className="admin-sidebar-header">
                         <Link
                             to="/admin"
@@ -356,7 +306,7 @@ const AdminLayout = ({ children }) => {
 
                             <span className="admin-sidebar-brand-copy">
                                 <strong>FITALENTA</strong>
-                                <small>Admin Panel</small>
+                                <small>ADMIN MANAGEMENT</small>
                             </span>
                         </Link>
 
@@ -372,55 +322,21 @@ const AdminLayout = ({ children }) => {
                         </button>
                     </div>
 
-                    {/* ---------------------------------------------------------
-                        MOBILE SIDEBAR MENU
-                    --------------------------------------------------------- */}
                     {renderMenu(true)}
 
-                    {/* ---------------------------------------------------------
-                        MOBILE SIDEBAR FOOTER
-                    --------------------------------------------------------- */}
-                    <div className="admin-sidebar-footer">
-                        <div className="admin-sidebar-user-summary">
-                            <div className="admin-sidebar-user-avatar">
-                                {initials}
-                            </div>
-
-                            <div>
-                                <strong>{displayName}</strong>
-                                <span>Administrator</span>
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="admin-sidebar-logout"
-                            onClick={handleLogout}
-                        >
-                            <span className="admin-sidebar-logout-icon">
-                                <i className="bi bi-box-arrow-right"></i>
-                            </span>
-
-                            <span className="admin-sidebar-footer-label">
-                                Logout
-                            </span>
-                        </button>
-                    </div>
+                    {renderSidebarFooter(true)}
                 </aside>
             )}
 
-            {/* =========================================================
-                MAIN AREA
-            ========================================================= */}
-            <div className="admin-main">
-                {/* =========================================================
-                    ADMIN TOPBAR
-                ========================================================= */}
+            <div
+                className={`admin-main ${
+                    sidebarCollapsed
+                        ? "admin-main-sidebar-collapsed"
+                        : ""
+                }`}
+            >
                 <header className="admin-topbar">
                     <div className="admin-topbar-inner">
-                        {/* ---------------------------------------------------------
-                            LEFT TOPBAR
-                        --------------------------------------------------------- */}
                         <div className="admin-topbar-left">
                             {isMobile && (
                                 <button
@@ -434,22 +350,20 @@ const AdminLayout = ({ children }) => {
                             )}
 
                             <div className="admin-page-context">
-                                <span className="admin-page-context-icon">
-                                    <i
-                                        className={`bi ${currentPage.icon}`}
-                                    ></i>
-                                </span>
+                                <span className="admin-page-title-indicator"></span>
 
-                                <div>
-                                    <span>ADMIN PANEL</span>
-                                    <strong>{currentPage.label}</strong>
+                                <div className="admin-page-title-copy">
+                                    <strong>
+                                        {currentPage.label}
+                                    </strong>
+
+                                    <span>
+                                        FITALENTA Admin Management
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* ---------------------------------------------------------
-                            RIGHT TOPBAR
-                        --------------------------------------------------------- */}
                         <div className="admin-topbar-right">
                             <div className="dropdown">
                                 <button
@@ -463,15 +377,19 @@ const AdminLayout = ({ children }) => {
                                     </span>
 
                                     <span className="admin-topbar-user-info">
-                                        <small>Administrator</small>
-                                        <strong>{displayName}</strong>
+                                        <strong>
+                                            {displayName}
+                                        </strong>
+
+                                        <small>
+                                            Administrator
+                                        </small>
                                     </span>
 
                                     <i className="bi bi-chevron-down admin-user-menu-chevron"></i>
                                 </button>
 
                                 <ul className="dropdown-menu dropdown-menu-end admin-user-dropdown">
-                                    {/* --- Dropdown User Information --- */}
                                     <li>
                                         <div className="admin-user-dropdown-header">
                                             <div className="admin-user-dropdown-avatar">
@@ -482,6 +400,7 @@ const AdminLayout = ({ children }) => {
                                                 <strong>
                                                     {displayName}
                                                 </strong>
+
                                                 <span>
                                                     {user?.email ||
                                                         "Administrator FITALENTA"}
@@ -494,7 +413,6 @@ const AdminLayout = ({ children }) => {
                                         <hr className="dropdown-divider" />
                                     </li>
 
-                                    {/* --- Dropdown Logout --- */}
                                     <li>
                                         <button
                                             type="button"
@@ -502,7 +420,8 @@ const AdminLayout = ({ children }) => {
                                             onClick={handleLogout}
                                         >
                                             <i className="bi bi-box-arrow-right"></i>
-                                            Logout
+
+                                            Keluar Aplikasi
                                         </button>
                                     </li>
                                 </ul>
@@ -511,12 +430,22 @@ const AdminLayout = ({ children }) => {
                     </div>
                 </header>
 
-                {/* =========================================================
-                    PAGE CONTENT
-                ========================================================= */}
                 <main className="admin-content-area">
-                    {children}
+                    <div className="admin-content-container">
+                        {children}
+                    </div>
                 </main>
+
+                <footer className="admin-footer">
+                    <span>
+                        © {new Date().getFullYear()}{" "}
+                        <strong>FITALENTA</strong>. All rights reserved.
+                    </span>
+
+                    <span>
+                        Admin Management Panel
+                    </span>
+                </footer>
             </div>
         </div>
     );
