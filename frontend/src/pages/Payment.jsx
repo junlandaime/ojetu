@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import PrivateImage from "../components/PrivateImage";
 
 /* =========================================================
    PAYMENT UTILITIES
@@ -2709,17 +2710,12 @@ const Payment = () => {
                                     </div>
                                     <div className="payment-modal-body">
                                         <div className="payment-proof-image-view">
-                                            <img
-                                                src={paymentUtils.getImageUrl(
-                                                    selectedPayment.proof_image
-                                                )}
+                                            <PrivateImage
+                                                filePath={selectedPayment.proof_image}
                                                 alt="Bukti Pembayaran"
                                                 onError={(event) => {
-                                                    console.error(
-                                                        "Error loading proof image"
-                                                    );
-                                                    event.target.style.display =
-                                                        "none";
+                                                    console.error("Error loading proof image");
+                                                    event.target.style.display = "none";
                                                     setMessage({
                                                         type: "error",
                                                         text: "Gagal memuat gambar bukti pembayaran",

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
+import PrivateImage from "../components/PrivateImage";
+import { getPrivateFileUrl } from "../utils/privateFile";
 import helpers from "../utils/helpers";
 
 const AdminDashboard = () => {
@@ -325,6 +327,15 @@ const AdminDashboard = () => {
         setSelectedRegistration(registration);
         setDetailTab("basic");
         setShowDetailModal(true);
+    };
+
+    const handleOpenPrivateFile = async (filePath) => {
+        try {
+            const url = await getPrivateFileUrl(filePath);
+            window.open(url, "_blank", "noopener,noreferrer");
+        } catch (error) {
+            console.error("Gagal membuka file private:", error);
+        }
     };
 
     const handleUpdateRegistrationStatus = (registration) => {
@@ -1558,11 +1569,9 @@ const AdminDashboard = () => {
                                                     <div className="admin-participant-cell">
                                                         <div className="admin-participant-photo">
                                                             {registration.photo_path ? (
-                                                                <img
-                                                                    src={registration.photo_path}
-                                                                    alt={
-                                                                        registration.full_name
-                                                                    }
+                                                                <PrivateImage
+                                                                    filePath={registration.photo_path}
+                                                                    alt={registration.full_name}
                                                                 />
                                                             ) : (
                                                                 <span>
@@ -1796,11 +1805,9 @@ const AdminDashboard = () => {
                                                 <div className="admin-participant-cell">
                                                     <div className="admin-participant-photo">
                                                         {registration.photo_path ? (
-                                                            <img
-                                                                src={registration.photo_path}
-                                                                alt={
-                                                                    registration.full_name
-                                                                }
+                                                            <PrivateImage
+                                                                filePath={registration.photo_path}
+                                                                alt={registration.full_name}
                                                             />
                                                         ) : (
                                                             <span>
@@ -2069,11 +2076,9 @@ const AdminDashboard = () => {
                                     <div className="admin-modal-heading">
                                         <div className="admin-modal-avatar">
                                             {selectedRegistration.photo_path ? (
-                                                <img
-                                                    src={selectedRegistration.photo_path}
-                                                    alt={
-                                                        selectedRegistration.full_name
-                                                    }
+                                                <PrivateImage
+                                                    filePath={selectedRegistration.photo_path}
+                                                    alt={selectedRegistration.full_name}
                                                 />
                                             ) : (
                                                 getInitials(
@@ -2459,7 +2464,8 @@ const AdminDashboard = () => {
 
                                                             {selectedRegistration.photo_path ? (
                                                                 <a
-                                                                    href={selectedRegistration.photo_path}
+                                                                    href="#"
+                                                                    onClick={(e) => { e.preventDefault(); handleOpenPrivateFile(selectedRegistration.photo_path); }}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
@@ -2493,7 +2499,8 @@ const AdminDashboard = () => {
 
                                                             {selectedRegistration.n4_certificate_path ? (
                                                                 <a
-                                                                    href={selectedRegistration.n4_certificate_path}
+                                                                    href="#"
+                                                                    onClick={(e) => { e.preventDefault(); handleOpenPrivateFile(selectedRegistration.n4_certificate_path); }}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
@@ -2527,7 +2534,8 @@ const AdminDashboard = () => {
 
                                                             {selectedRegistration.ssw_certificate_path ? (
                                                                 <a
-                                                                    href={selectedRegistration.ssw_certificate_path}
+                                                                    href="#"
+                                                                    onClick={(e) => { e.preventDefault(); handleOpenPrivateFile(selectedRegistration.ssw_certificate_path); }}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >

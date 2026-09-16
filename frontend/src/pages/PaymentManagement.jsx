@@ -5,6 +5,8 @@ import React, {
     useRef,
 } from "react";
 import axios from "axios";
+import PrivateImage from "../components/PrivateImage";
+import { getPrivateFileUrl } from "../utils/privateFile";
 import { useAuth } from "../context/AuthContext";
 
 /* =========================================================
@@ -911,7 +913,7 @@ const PaymentManagement = () => {
     /* =========================================================
        PREVIEW PROOF
     ========================================================= */
-    const handlePreviewProof = (
+    const handlePreviewProof = async (
         payment
     ) => {
         if (
@@ -923,9 +925,7 @@ const PaymentManagement = () => {
             return;
         }
         setPreviewImage(
-            paymentUtils.getImageUrl(
-                payment.proof_image
-            )
+            await getPrivateFileUrl(payment.proof_image)
         );
         setActiveModal(
             MODAL_TYPES.PREVIEW
@@ -1948,16 +1948,10 @@ const PaymentManagement = () => {
                                             </strong>
                                         </div>
                                     </div>
-                                    <img
-                                        src={paymentUtils.getImageUrl(
-                                            selectedPayment.proof_image
-                                        )}
+                                    <PrivateImage
+                                        filePath={selectedPayment.proof_image}
                                         alt="Bukti Pembayaran"
-                                        onClick={() =>
-                                            handlePreviewProof(
-                                                selectedPayment
-                                            )
-                                        }
+                                        onClick={() => handlePreviewProof(selectedPayment)}
                                     />
                                 </div>
                             )}

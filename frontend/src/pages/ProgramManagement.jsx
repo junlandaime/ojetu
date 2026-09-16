@@ -6,10 +6,9 @@ import axios from "axios";
    CATEGORY ORDER
 ========================================================= */
 const CATEGORY_ORDER = [
-    "Penyaluran",
     "Pelatihan",
-    "Korea",
-    "AMTO",
+    "Penyaluran",
+    "Pelatihan dan Penyaluran",
 ];
 
 /* =========================================================
@@ -95,18 +94,15 @@ const getCategorySortIndex = (value = "") => {
         normalizeProgramName(value);
 
     const aliases = {
-        penyaluran: 0,
-        pelayananpenyaluran: 0,
-        layananpenyaluran: 0,
+        pelatihan: 0,
+        layananpelatihan: 0,
 
-        pelatihan: 1,
-        layananpelatihan: 1,
+        penyaluran: 1,
+        pelayananpenyaluran: 1,
+        layananpenyaluran: 1,
 
-        korea: 2,
-        programkorea: 2,
-
-        amto: 3,
-        programamto: 3,
+        pelatihandanpenyaluran: 2,
+        penyalurandanpelatihan: 2,
     };
 
     return aliases[normalizedName] ?? 999;
@@ -2286,10 +2282,10 @@ const ProgramManagement = () => {
                                                         )}
                                                     </select>
 
-                                                    <small>
-                                                        Kategori utama: Penyaluran,
-                                                        Pelatihan, Korea, atau AMTO.
-                                                    </small>
+                                                   <small>
+    Kategori utama: Pelatihan,
+    Penyaluran, atau Pelatihan dan Penyaluran.
+</small>
                                                 </div>
                                             </div>
 
