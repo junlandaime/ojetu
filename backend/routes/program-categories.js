@@ -15,17 +15,13 @@ router.get("/", async (req, res) => {
                 WHERE name IN (
                                'Pelatihan',
                                'Penyaluran',
-                               'Pelatihan dan Penyaluran',
-                               'Korea',
-                               'AMTO'
+                               'Pelatihan dan Penyaluran'
                     )
                 ORDER BY
                     CASE name
                         WHEN 'Pelatihan' THEN 1
                         WHEN 'Penyaluran' THEN 2
                         WHEN 'Pelatihan dan Penyaluran' THEN 3
-                        WHEN 'Korea' THEN 4
-                        WHEN 'AMTO' THEN 5
                         ELSE 999
                         END,
                     name ASC

@@ -17,20 +17,16 @@ import helpers from "../utils/helpers";
 
 const PROGRAM_FILTERS = [
   {
-    key: "penyaluran",
-    label: "Penyaluran",
-  },
-  {
     key: "pelatihan",
     label: "Pelatihan",
   },
   {
-    key: "korea",
-    label: "Korea",
+    key: "penyaluran",
+    label: "Penyaluran",
   },
   {
-    key: "amto",
-    label: "AMTO",
+    key: "pelatihan-penyaluran",
+    label: "Pelatihan dan Penyaluran",
   },
 ];
 
@@ -143,6 +139,17 @@ const getProgramKey = (
 
   if (
     categoryName.includes(
+      "pelatihan"
+    ) &&
+    categoryName.includes(
+      "penyaluran"
+    )
+  ) {
+    return "pelatihan-penyaluran";
+  }
+
+  if (
+    categoryName.includes(
       "penyaluran"
     )
   ) {
@@ -155,22 +162,6 @@ const getProgramKey = (
     )
   ) {
     return "pelatihan";
-  }
-
-  if (
-    categoryName.includes(
-      "korea"
-    )
-  ) {
-    return "korea";
-  }
-
-  if (
-    categoryName.includes(
-      "amto"
-    )
-  ) {
-    return "amto";
   }
 
   return "unknown";

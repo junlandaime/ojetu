@@ -11,8 +11,6 @@ const CATEGORY_ORDER = [
     "Pelatihan",
     "Penyaluran",
     "Pelatihan dan Penyaluran",
-    "Korea",
-    "AMTO",
 ];
 
 /* =========================================================
@@ -66,12 +64,6 @@ const getCategorySortIndex = (value = "") => {
 
         pelatihandanpenyaluran: 2,
         penyalurandanpelatihan: 2,
-
-        korea: 3,
-        programkorea: 3,
-
-        amto: 4,
-        programamto: 4,
     };
 
     return aliases[normalized] ?? 999;
@@ -303,8 +295,6 @@ router.get(
                             WHEN 'Pelatihan' THEN 1
                             WHEN 'Penyaluran' THEN 2
                             WHEN 'Pelatihan dan Penyaluran' THEN 3
-                            WHEN 'Korea' THEN 4
-                            WHEN 'AMTO' THEN 5
                             ELSE 999
                             END ASC,
                         CASE
@@ -590,7 +580,7 @@ router.put(
                     .json({
                         success: false,
                         message:
-                            "Kategori program tidak valid. Gunakan Pelatihan, Penyaluran, Pelatihan dan Penyaluran, Korea, atau AMTO.",
+                            "Kategori program tidak valid. Gunakan Pelatihan, Penyaluran, atau Pelatihan dan Penyaluran.",
                     });
             }
 
@@ -991,7 +981,7 @@ router.post(
                     .json({
                         success: false,
                         message:
-                            "Kategori program tidak valid. Gunakan Pelatihan, Penyaluran, Pelatihan dan Penyaluran, Korea, atau AMTO.",
+                            "Kategori program tidak valid. Gunakan Pelatihan, Penyaluran, atau Pelatihan dan Penyaluran.",
                     });
             }
 
