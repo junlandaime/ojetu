@@ -1,6 +1,6 @@
 import "../AdminFitalenta.css";
 import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const ADMIN_MENU_ITEMS = [
@@ -46,7 +46,6 @@ const ADMIN_MENU_ITEMS = [
 const AdminLayout = ({ children }) => {
     const { user, logout } = useAuth();
     const location = useLocation();
-    const navigate = useNavigate();
 
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 

@@ -5,7 +5,7 @@ import { buildFileUrl } from "./api";
 export const getPrivateFileUrl = async (filePath) => {
   if (!filePath) return null;
   const normalizedPath = String(filePath).trim().replace(/\\/g, "/");
-  const match = normalizedPath.match(/\/uploads\/(photos|documents|payments)\/([^/?#]+)/);
+  const match = normalizedPath.match(/(?:\/)?uploads\/(photos|documents|payments)\/([^/?#]+)/);
   if (!match) throw new Error("Path file tidak valid");
   return buildFileUrl(`/uploads/${match[1]}/${match[2]}`);
 };

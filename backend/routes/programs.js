@@ -8,8 +8,9 @@ const router = express.Router();
    CATEGORY ORDER
 ========================================================= */
 const CATEGORY_ORDER = [
-    "Penyaluran",
     "Pelatihan",
+    "Penyaluran",
+    "Pelatihan dan Penyaluran",
     "Korea",
     "AMTO",
 ];
@@ -56,17 +57,21 @@ const getCategorySortIndex = (value = "") => {
         normalizeProgramName(value);
 
     const aliases = {
-        penyaluran: 0,
-        layananpenyaluran: 0,
+        pelatihan: 0,
+        layananpelatihan: 0,
 
-        pelatihan: 1,
-        layananpelatihan: 1,
+        penyaluran: 1,
+        layananpenyaluran: 1,
+        pelayananpenyaluran: 1,
 
-        korea: 2,
-        programkorea: 2,
+        pelatihandanpenyaluran: 2,
+        penyalurandanpelatihan: 2,
 
-        amto: 3,
-        programamto: 3,
+        korea: 3,
+        programkorea: 3,
+
+        amto: 4,
+        programamto: 4,
     };
 
     return aliases[normalized] ?? 999;
@@ -295,10 +300,11 @@ router.get(
                     WHERE p.status = 'active'
                     ORDER BY
                         CASE pc.name
-                            WHEN 'Penyaluran' THEN 1
-                            WHEN 'Pelatihan' THEN 2
-                            WHEN 'Korea' THEN 3
-                            WHEN 'AMTO' THEN 4
+                            WHEN 'Pelatihan' THEN 1
+                            WHEN 'Penyaluran' THEN 2
+                            WHEN 'Pelatihan dan Penyaluran' THEN 3
+                            WHEN 'Korea' THEN 4
+                            WHEN 'AMTO' THEN 5
                             ELSE 999
                             END ASC,
                         CASE
@@ -584,7 +590,7 @@ router.put(
                     .json({
                         success: false,
                         message:
-                            "Kategori program tidak valid. Gunakan Penyaluran, Pelatihan, Korea, atau AMTO.",
+                            "Kategori program tidak valid. Gunakan Pelatihan, Penyaluran, Pelatihan dan Penyaluran, Korea, atau AMTO.",
                     });
             }
 
@@ -985,7 +991,7 @@ router.post(
                     .json({
                         success: false,
                         message:
-                            "Kategori program tidak valid. Gunakan Penyaluran, Pelatihan, Korea, atau AMTO.",
+                            "Kategori program tidak valid. Gunakan Pelatihan, Penyaluran, Pelatihan dan Penyaluran, Korea, atau AMTO.",
                     });
             }
 
