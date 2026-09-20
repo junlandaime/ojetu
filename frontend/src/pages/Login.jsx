@@ -12,7 +12,7 @@ import { useAuth } from "../context/AuthContext";
 
 
 const MAIN_SITE =
-  "https://www.fitalenta.co.id/";
+  "https://www.fitalenta.co.id";
 
 
 const Login = () => {

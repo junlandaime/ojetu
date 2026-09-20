@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const MAIN_SITE = "https://www.fitalenta.co.id/";
+const MAIN_SITE = "https://www.fitalenta.co.id";
 
 const Register = () => {
   const [formData, setFormData] = useState({
